@@ -220,7 +220,7 @@ export async function getMaxTrainingDay(username: string = getCurrentUser()): Pr
   }
 
   try {
-    const data = await fetchSheetData(userSheet.sheetId, "Plan!A2:A100");
+    const data = await fetchSheetData(userSheet.sheetId, "Plan!A2:A500");
     console.log(`📊 Raw day data from sheet:`, {
       totalRows: data.length,
       firstFewRows: data.slice(0, 20).map(row => row[0]),
@@ -274,7 +274,7 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
     
     // Fetch exercises from the Plan tab (now includes Notes and Media URL columns)
     console.log(`📊 Fetching from sheet: ${userSheet.sheetId}, tab: Plan`);
-    const data = await fetchSheetData(userSheet.sheetId, "Plan!A2:K100");
+    const data = await fetchSheetData(userSheet.sheetId, "Plan!A2:K500");
     
     console.log(`📝 Raw data from Plan tab:`, {
       totalRows: data.length,
