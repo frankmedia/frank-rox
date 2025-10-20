@@ -76,7 +76,10 @@ const Today = () => {
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="container max-w-2xl mx-auto px-4 py-4">
           <div className="flex flex-col items-center mb-3">
-            <div className="flex items-center gap-3 mb-2">
+            <div 
+              className="flex items-center gap-3 mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => navigate("/")}
+            >
               <img 
                 src="https://www.svgrepo.com/show/461257/dumbbell-3.svg" 
                 alt="Dumbbell" 
