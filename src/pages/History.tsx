@@ -21,8 +21,16 @@ const History = () => {
       try {
         setLoading(true);
         
-        // Load from localStorage
-        const existingLogs = localStorage.getItem("workoutHistory");
+        // Load from user-specific localStorage
+        const userStr = localStorage.getItem("frank_rock_user");
+        if (!userStr) {
+          setLoading(false);
+          return;
+        }
+        
+        const user = JSON.parse(userStr);
+        const storageKey = `workoutHistory_${user.username}`;
+        const existingLogs = localStorage.getItem(storageKey);
         const logs = existingLogs ? JSON.parse(existingLogs) : [];
         
         // Convert to WorkoutLog format

@@ -16,7 +16,17 @@ interface TrainingDaySelectorProps {
 
 export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
   const [currentDay, setCurrentDay] = useState<string>(() => {
-    return localStorage.getItem("currentTrainingDay") || "1";
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userKey = `currentTrainingDay_${user.username}`;
+        return localStorage.getItem(userKey) || "1";
+      }
+    } catch (e) {
+      console.error("Error loading training day:", e);
+    }
+    return "1";
   });
   
   const [maxDay, setMaxDay] = useState<number>(99); // Default to 99, will be updated from sheet
@@ -41,7 +51,19 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
 
   const handleDayChange = (newDay: string) => {
     setCurrentDay(newDay);
-    localStorage.setItem("currentTrainingDay", newDay);
+    
+    // Save to user-specific storage
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userKey = `currentTrainingDay_${user.username}`;
+        localStorage.setItem(userKey, newDay);
+      }
+    } catch (e) {
+      console.error("Error saving training day:", e);
+    }
+    
     onDayChange?.(newDay);
     
     // Reload the page to fetch new exercises

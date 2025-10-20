@@ -2,13 +2,26 @@ import { Exercise, WorkoutLog, UserSheet, UserStats } from "@/types/workout";
 
 const API_KEY = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY;
 const MASTER_SHEET_ID = import.meta.env.VITE_MASTER_SHEET_ID;
-const USER_NAME = import.meta.env.VITE_USER_NAME || "frank";
+
+// Get the currently logged-in user from localStorage
+function getCurrentUser(): string {
+  try {
+    const userStr = localStorage.getItem("frank_rock_user");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      return user.username || "frank";
+    }
+  } catch (e) {
+    console.error("Error getting current user:", e);
+  }
+  return "frank"; // Fallback
+}
 
 // Debug logging
 console.log("🔧 Google Sheets Service Configuration:");
 console.log("  API_KEY:", API_KEY ? `${API_KEY.substring(0, 20)}...` : "❌ MISSING");
 console.log("  MASTER_SHEET_ID:", MASTER_SHEET_ID || "❌ MISSING");
-console.log("  USER_NAME:", USER_NAME);
+console.log("  CURRENT_USER:", getCurrentUser());
 
 // Cache for API responses (5 minutes TTL)
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -132,7 +145,7 @@ async function appendSheetData(
 /**
  * Get user's sheet ID from master sheet
  */
-export async function getUserSheet(username: string = USER_NAME): Promise<UserSheet | null> {
+export async function getUserSheet(username: string = getCurrentUser()): Promise<UserSheet | null> {
   console.log(`👤 Getting user sheet for: ${username}`);
   
   try {
@@ -199,7 +212,7 @@ async function fetchMediaFallback(
  * Get the maximum training day number from the user's sheet
  * This determines the cycle length (e.g., 6-day program, 12-day program)
  */
-export async function getMaxTrainingDay(username: string = USER_NAME): Promise<number> {
+export async function getMaxTrainingDay(username: string = getCurrentUser()): Promise<number> {
   const userSheet = await getUserSheet(username);
   
   if (!userSheet) {
@@ -225,7 +238,7 @@ export async function getMaxTrainingDay(username: string = USER_NAME): Promise<n
  * Parse exercises from user's workout sheet for today
  * Expected format in Plan tab: Weekday | Exercise Name | Type | Sets | Reps | Suggested Weight | Personal Best | Duration | Distance | Notes | Media URL
  */
-export async function fetchTodayExercises(username: string = USER_NAME): Promise<Exercise[]> {
+export async function fetchTodayExercises(username: string = getCurrentUser()): Promise<Exercise[]> {
   console.log(`🏋️ Fetching today's exercises for: ${username}`);
   
   const userSheet = await getUserSheet(username);
@@ -337,7 +350,7 @@ export async function fetchTodayExercises(username: string = USER_NAME): Promise
 /**
  * Fetch all exercises from Plan (not filtered by day) for navigation
  */
-export async function fetchAllPlannedExercises(username: string = USER_NAME): Promise<Exercise[]> {
+export async function fetchAllPlannedExercises(username: string = getCurrentUser()): Promise<Exercise[]> {
   const userSheet = await getUserSheet(username);
   
   if (!userSheet) {
@@ -401,7 +414,7 @@ export async function fetchAllPlannedExercises(username: string = USER_NAME): Pr
  * Fetch workout history
  * Expected format: Exercise | Date | Weight | RPE | Is PB | Duration | Distance | Notes
  */
-export async function fetchWorkoutHistory(username: string = USER_NAME): Promise<WorkoutLog[]> {
+export async function fetchWorkoutHistory(username: string = getCurrentUser()): Promise<WorkoutLog[]> {
   const userSheet = await getUserSheet(username);
   
   if (!userSheet) {
@@ -439,7 +452,7 @@ export async function fetchWorkoutHistory(username: string = USER_NAME): Promise
 /**
  * Calculate stats from workout history
  */
-export async function fetchUserStats(username: string = USER_NAME): Promise<UserStats> {
+export async function fetchUserStats(username: string = getCurrentUser()): Promise<UserStats> {
   const history = await fetchWorkoutHistory(username);
   
   // Calculate this week's stats
@@ -504,7 +517,7 @@ export async function logExercise(
     distance?: number;
     notes?: string;
   },
-  username: string = USER_NAME
+  username: string = getCurrentUser()
 ): Promise<{ success: boolean; message?: string; isPB?: boolean; oldPB?: number; newPB?: number }> {
   try {
     console.log("📝 Logging exercise via Vercel API:", exerciseName, data);
@@ -539,8 +552,9 @@ export async function logExercise(
     
     console.log("✅ Exercise logged successfully:", result);
     
-    // Also save to localStorage as backup
-    const existingLogs = localStorage.getItem("workoutHistory");
+    // Also save to localStorage as backup (user-specific key)
+    const storageKey = `workoutHistory_${username}`;
+    const existingLogs = localStorage.getItem(storageKey);
     const logs = existingLogs ? JSON.parse(existingLogs) : [];
     
     const timestamp = new Date().toLocaleString("en-GB", {
@@ -561,7 +575,7 @@ export async function logExercise(
     });
     
     if (logs.length > 100) logs.splice(100);
-    localStorage.setItem("workoutHistory", JSON.stringify(logs));
+    localStorage.setItem(storageKey, JSON.stringify(logs));
     
     return {
       success: true,
@@ -573,9 +587,10 @@ export async function logExercise(
   } catch (error) {
     console.error("❌ Error logging exercise:", error);
     
-    // Fallback to localStorage only if API fails
+    // Fallback to localStorage only if API fails (user-specific key)
     console.log("💾 Saving to localStorage as fallback");
-    const existingLogs = localStorage.getItem("workoutHistory");
+    const storageKey = `workoutHistory_${username}`;
+    const existingLogs = localStorage.getItem(storageKey);
     const logs = existingLogs ? JSON.parse(existingLogs) : [];
     
     const timestamp = new Date().toLocaleString("en-GB", {
@@ -595,7 +610,7 @@ export async function logExercise(
     });
     
     if (logs.length > 100) logs.splice(100);
-    localStorage.setItem("workoutHistory", JSON.stringify(logs));
+    localStorage.setItem(storageKey, JSON.stringify(logs));
     
     return {
       success: true,

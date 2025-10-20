@@ -11,7 +11,17 @@ const Today = () => {
   const navigate = useNavigate();
   const { exercises, loading, error } = useData();
   const [currentTrainingDay, setCurrentTrainingDay] = useState(() => {
-    return localStorage.getItem("currentTrainingDay") || "1";
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userKey = `currentTrainingDay_${user.username}`;
+        return localStorage.getItem(userKey) || "1";
+      }
+    } catch (e) {
+      console.error("Error loading training day:", e);
+    }
+    return "1";
   });
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   
@@ -21,20 +31,30 @@ const Today = () => {
     day: "numeric",
   });
 
-  // Load completed exercises from today
+  // Load completed exercises from today (user-specific)
   useEffect(() => {
-    const workoutHistory = localStorage.getItem("workoutHistory");
-    if (workoutHistory) {
-      const logs = JSON.parse(workoutHistory);
-      const todayDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-      
-      const todayCompleted = new Set(
-        logs
-          .filter((log: any) => log.timestamp && log.timestamp.startsWith(todayDate))
-          .map((log: any) => log.exerciseName)
-      );
-      
-      setCompletedExercises(todayCompleted);
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const storageKey = `workoutHistory_${user.username}`;
+        const workoutHistory = localStorage.getItem(storageKey);
+        
+        if (workoutHistory) {
+          const logs = JSON.parse(workoutHistory);
+          const todayDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+          
+          const todayCompleted = new Set(
+            logs
+              .filter((log: any) => log.timestamp && log.timestamp.startsWith(todayDate))
+              .map((log: any) => log.exerciseName)
+          );
+          
+          setCompletedExercises(todayCompleted);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading completed exercises:", e);
     }
   }, [exercises]); // Re-check when exercises change
 

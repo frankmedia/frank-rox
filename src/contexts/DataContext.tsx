@@ -31,15 +31,10 @@ export const DataProvider = ({ children }: DataProviderProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userSheet, setUserSheet] = useState<any>(null);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [currentUser, setCurrentUser] = useState<string>("");
 
   const loadData = async () => {
-    if (hasLoaded) {
-      console.log("📦 Using cached data - skipping API call");
-      return;
-    }
-
-    console.log("🚀 Loading all data (ONE TIME ONLY)...");
+    console.log("🚀 Loading data for user:", currentUser || "unknown");
     setLoading(true);
     setError(null);
 
@@ -62,8 +57,6 @@ export const DataProvider = ({ children }: DataProviderProps) => {
       console.log("✅ All data loaded successfully!");
       console.log(`   - User: ${sheet.user}`);
       console.log(`   - Exercises: ${exerciseData.length}`);
-      
-      setHasLoaded(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load data";
       setError(message);
@@ -75,13 +68,38 @@ export const DataProvider = ({ children }: DataProviderProps) => {
 
   const refresh = async () => {
     console.log("🔄 Manual refresh requested...");
-    setHasLoaded(false);
     await loadData();
   };
 
+  // Watch for user changes and reload data when user changes
   useEffect(() => {
-    loadData();
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const username = user.username || "";
+        
+        if (username !== currentUser) {
+          console.log("👤 User changed from", currentUser || "(none)", "to", username);
+          setCurrentUser(username);
+          
+          // Force reload when user changes
+          if (currentUser) {
+            loadData();
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error detecting user:", e);
+    }
   }, []);
+
+  // Load data on mount and when user changes
+  useEffect(() => {
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser]);
 
   return (
     <DataContext.Provider
