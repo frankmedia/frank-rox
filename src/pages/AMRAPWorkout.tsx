@@ -130,56 +130,97 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
             {/* Exercise List */}
             <div className="space-y-3">
               <h3 className="text-2xl font-bold text-center mb-4">Exercises</h3>
-              {exercises.map((ex: Exercise) => (
-                <Card
-                  key={ex.id}
-                  className="p-6 border-2"
-                >
-                  <div>
-                    <h3 className="text-3xl font-bold mb-1">{ex.name}</h3>
-                    <p className="text-lg text-muted-foreground">
-                      {ex.reps && `${ex.reps} reps`}
-                      {ex.suggestedKg && ` • ${ex.suggestedKg}kg`}
-                    </p>
-                  </div>
-                </Card>
-              ))}
+              {exercises.map((ex: Exercise) => {
+                // Build description parts
+                const parts: string[] = [];
+                
+                if (ex.targetDistanceKm) {
+                  // Convert km to meters for display
+                  const meters = Math.round(ex.targetDistanceKm * 1000);
+                  parts.push(`${meters}m`);
+                }
+                
+                if (ex.reps) {
+                  parts.push(`${ex.reps} reps`);
+                }
+                
+                if (ex.suggestedKg) {
+                  parts.push(`${ex.suggestedKg}kg`);
+                }
+                
+                if (ex.durationMin) {
+                  parts.push(`${ex.durationMin} min`);
+                }
+                
+                return (
+                  <Card
+                    key={ex.id}
+                    className="p-6 border-2"
+                  >
+                    <div>
+                      <h3 className="text-3xl font-bold mb-1">{ex.name}</h3>
+                      {parts.length > 0 && (
+                        <p className="text-lg text-muted-foreground">
+                          {parts.join(" • ")}
+                        </p>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
             
             {/* Controls */}
-            <div className="flex gap-4 justify-center">
+            <div className="flex gap-4 justify-center flex-wrap">
               {isRunning ? (
-                <Button
-                  size="lg"
-                  onClick={handlePause}
-                  className="h-16 px-8 text-xl font-bold"
-                  variant="outline"
-                >
-                  Pause
-                </Button>
+                <>
+                  <Button
+                    size="lg"
+                    onClick={handlePause}
+                    className="h-16 px-8 text-xl font-bold"
+                    variant="outline"
+                  >
+                    Pause
+                  </Button>
+                  <Button
+                    size="lg"
+                    onClick={handleComplete}
+                    className="h-16 px-8 text-xl font-bold"
+                    style={{ backgroundColor: "#FFCC00", color: "#000" }}
+                  >
+                    Complete Early
+                  </Button>
+                </>
               ) : timeRemaining > 0 ? (
+                <>
+                  <Button
+                    size="lg"
+                    onClick={handleResume}
+                    className="h-16 px-8 text-xl font-bold"
+                    style={{ backgroundColor: "#00FF4D", color: "#000" }}
+                  >
+                    Resume
+                  </Button>
+                  <Button
+                    size="lg"
+                    onClick={handleComplete}
+                    className="h-16 px-8 text-xl font-bold"
+                    style={{ backgroundColor: "#FFCC00", color: "#000" }}
+                  >
+                    Complete Early
+                  </Button>
+                </>
+              ) : (
                 <Button
                   size="lg"
-                  onClick={handleResume}
-                  className="h-16 px-8 text-xl font-bold"
-                  style={{ backgroundColor: "#00FF4D", color: "#000" }}
+                  onClick={handleComplete}
+                  className="h-16 w-full text-xl font-bold"
+                  style={{ backgroundColor: "#FFCC00", color: "#000" }}
                 >
-                  Resume
+                  ✓ Mark as Done
                 </Button>
-              ) : null}
+              )}
             </div>
-            
-            {/* Mark as Done */}
-            {timeRemaining === 0 && (
-              <Button
-                size="lg"
-                onClick={handleComplete}
-                className="h-16 w-full text-xl font-bold"
-                style={{ backgroundColor: "#FFCC00", color: "#000" }}
-              >
-                ✓ Mark as Done
-              </Button>
-            )}
           </>
         )}
         

@@ -428,10 +428,16 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
               durationMinFromSheet: durationMin
             });
           }
-          // Also parse reps/kg for standalone grouped exercises if present
+          // Also parse reps/kg/distance for standalone grouped exercises if present
           if (sets) exercise.sets = parseInt(sets);
           if (reps) exercise.reps = parseInt(reps);
           if (suggestedKg) exercise.suggestedKg = parseFloat(suggestedKg);
+          
+          // For AMRAP child exercises, also check Duration column for distance (in km)
+          if (exerciseType === "bodyweight" && durationMin && !isNaN(parseFloat(durationMin))) {
+            exercise.targetDistanceKm = parseFloat(durationMin);
+            console.log(`🎯 AMRAP child exercise "${name}" has distance: ${exercise.targetDistanceKm}km`);
+          }
         } else {
           // For non-header exercises, parse normally
           
