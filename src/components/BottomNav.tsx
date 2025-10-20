@@ -1,0 +1,69 @@
+import { useNavigate, useLocation } from "react-router-dom";
+import { Home, History, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const BottomNav = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const tabs = [
+    {
+      id: "today",
+      label: "Today",
+      icon: Home,
+      path: "/",
+    },
+    {
+      id: "history",
+      label: "History",
+      icon: History,
+      path: "/history",
+    },
+    {
+      id: "profile",
+      label: "Profile",
+      icon: User,
+      path: "/profile",
+    },
+  ];
+
+  const isActive = (path: string) => {
+    if (path === "/") {
+      return location.pathname === "/";
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border safe-area-inset-bottom">
+      <div className="container max-w-2xl mx-auto px-4">
+        <div className="flex items-center justify-around h-16">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = isActive(tab.path);
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => navigate(tab.path)}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors",
+                  "hover:bg-accent/50 rounded-lg",
+                  active ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                <Icon className={cn("w-5 h-5", active && "fill-primary")} />
+                <span className={cn("text-xs font-medium", active && "font-semibold")}>
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+export default BottomNav;
+

@@ -2,12 +2,13 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Dumbbell, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ExerciseMediaThumbnail } from "./ExerciseMedia";
 
 interface ExerciseCardProps {
   exercise: {
     id: string;
     name: string;
-    type: "strength" | "cardio";
+    type: "weights" | "cardio" | "bodyweight";
     sets?: number;
     reps?: number;
     suggestedKg?: number;
@@ -15,6 +16,7 @@ interface ExerciseCardProps {
     targetDistanceKm?: number;
     personalBest?: string;
     completed?: boolean;
+    mediaUrl?: string;
   };
   onClick?: () => void;
 }
@@ -30,13 +32,18 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
       )}
       onClick={onClick}
     >
+      {/* Media Thumbnail */}
+      {exercise.mediaUrl && (
+        <ExerciseMediaThumbnail url={exercise.mediaUrl} alt={exercise.name} />
+      )}
+      
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
-            {exercise.type === "strength" ? (
-              <Dumbbell className="w-5 h-5 text-primary" />
-            ) : (
+            {exercise.type === "cardio" ? (
               <Clock className="w-5 h-5 text-primary" />
+            ) : (
+              <Dumbbell className="w-5 h-5 text-primary" />
             )}
             <h3 className="text-lg font-bold text-foreground">{exercise.name}</h3>
           </div>
@@ -49,15 +56,18 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
         </div>
 
         <div className="space-y-2">
-          {exercise.type === "strength" && (
+          {(exercise.type === "weights" || exercise.type === "bodyweight") && (
             <div className="flex items-center gap-4 text-muted-foreground">
               <span className="text-4xl font-bold text-foreground">
                 {exercise.sets} × {exercise.reps}
               </span>
-              {exercise.suggestedKg && (
+              {exercise.type === "weights" && exercise.suggestedKg && (
                 <span className="text-lg">
                   Target: <span className="font-semibold text-secondary">{exercise.suggestedKg}kg</span>
                 </span>
+              )}
+              {exercise.type === "bodyweight" && (
+                <span className="text-sm text-muted-foreground">Bodyweight</span>
               )}
             </div>
           )}

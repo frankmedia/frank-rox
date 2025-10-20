@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,41 +7,137 @@ import { Textarea } from "@/components/ui/textarea";
 import { Timer } from "@/components/Timer";
 import { RestTimer } from "@/components/RestTimer";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { fetchTodayExercises, logExercise } from "@/services/googleSheets";
+import { Exercise } from "@/types/workout";
+import { ExerciseMedia } from "@/components/ExerciseMedia";
 
 const ExerciseDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  // Mock data - will be replaced with Google Sheets
-  const exercise = {
-    id: "1",
-    name: "Barbell Squat",
-    type: "strength" as const,
-    sets: 4,
-    reps: 8,
-    suggestedKg: 100,
-  };
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [exercise, setExercise] = useState<Exercise | null>(null);
 
-  const [todaysKg, setTodaysKg] = useState(exercise.suggestedKg.toString());
+  const [todaysKg, setTodaysKg] = useState("");
+  const [todaysDistance, setTodaysDistance] = useState("");
+  const [todaysDuration, setTodaysDuration] = useState("");
   const [rpe, setRpe] = useState("7");
   const [notes, setNotes] = useState("");
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(60);
 
-  const handleMarkAsDone = () => {
-    // Will integrate with Google Sheets API
-    toast.success("Exercise logged successfully!", {
-      description: `${exercise.name} - ${todaysKg}kg completed`,
-    });
-    navigate("/");
+  useEffect(() => {
+    const loadExercises = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchTodayExercises();
+        setExercises(data);
+        
+        // Find exercise by ID or use first
+        const index = id ? data.findIndex(ex => ex.id === id) : 0;
+        const foundIndex = index >= 0 ? index : 0;
+        setCurrentIndex(foundIndex);
+        
+        if (data[foundIndex]) {
+          const ex = data[foundIndex];
+          setExercise(ex);
+          if (ex.type === "weights" && ex.suggestedKg) {
+            setTodaysKg(ex.suggestedKg.toString());
+          }
+          if (ex.type === "cardio") {
+            if (ex.targetDistanceKm) setTodaysDistance(ex.targetDistanceKm.toString());
+            if (ex.durationMin) setTodaysDuration(ex.durationMin.toString());
+          }
+        }
+      } catch (error) {
+        console.error("Error loading exercise:", error);
+        toast.error("Failed to load exercise");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadExercises();
+  }, [id]);
+
+  const handleMarkAsDone = async () => {
+    if (!exercise) return;
+
+    const data: any = {
+      rpe: rpe ? parseInt(rpe) : undefined,
+      notes: notes || undefined,
+    };
+
+    if (exercise.type === "cardio") {
+      data.distance = todaysDistance ? parseFloat(todaysDistance) : undefined;
+      data.duration = todaysDuration ? parseInt(todaysDuration) : undefined;
+    } else if (exercise.type === "weights") {
+      data.weight = todaysKg ? parseFloat(todaysKg) : undefined;
+    }
+    // For bodyweight, no weight is needed
+
+    await logExercise(exercise.name, data);
+    
+    // Navigate to next exercise or back to home
+    if (currentIndex < exercises.length - 1) {
+      const nextExercise = exercises[currentIndex + 1];
+      toast.success("✅ Exercise completed!", {
+        description: `Moving to: ${nextExercise.name}`,
+      });
+      setTimeout(() => {
+        navigate(`/exercise/${nextExercise.id}`);
+      }, 500); // Small delay so user sees the toast
+    } else {
+      toast.success("🎉 All exercises complete!", {
+        description: "Great workout! Returning home...",
+      });
+      setTimeout(() => {
+        navigate("/");
+      }, 1000); // Longer delay to celebrate completion
+    }
   };
 
   const handleRestTimer = (seconds: number) => {
     setRestDuration(seconds);
     setShowRestTimer(true);
   };
+
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      const prevExercise = exercises[currentIndex - 1];
+      navigate(`/exercise/${prevExercise.id}`);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIndex < exercises.length - 1) {
+      const nextExercise = exercises[currentIndex + 1];
+      navigate(`/exercise/${nextExercise.id}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!exercise) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Exercise not found</p>
+          <Button onClick={() => navigate("/")}>Back to Home</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -50,21 +146,37 @@ const ExerciseDetail = () => {
         <div className="container max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Button
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="lg"
               onClick={() => navigate("/")}
-              className="rounded-full"
+              className="h-14 w-14 p-0"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-8 h-8" />
             </Button>
-            <h1 className="text-xl font-bold text-foreground">{exercise.name}</h1>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-            >
-              <ArrowRight className="w-5 h-5" />
-            </Button>
+            <h1 className="text-xl font-bold text-foreground flex-1 text-center px-2">{exercise.name}</h1>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handlePrevious}
+                disabled={currentIndex === 0}
+                className="h-14 w-14 p-0"
+              >
+                <ArrowLeft className="w-8 h-8" />
+              </Button>
+              <span className="text-base font-semibold text-foreground min-w-[50px] text-center">
+                {currentIndex + 1}/{exercises.length}
+              </span>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleNext}
+                disabled={currentIndex === exercises.length - 1}
+                className="h-14 w-14 p-0"
+              >
+                <ArrowRight className="w-8 h-8" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -74,12 +186,32 @@ const ExerciseDetail = () => {
         <Card className="p-6 bg-secondary/10 border-secondary">
           <div className="text-center">
             <p className="text-sm text-muted-foreground mb-2">Target</p>
-            <p className="text-7xl font-bold text-foreground mb-4">
-              {exercise.sets} × {exercise.reps}
-            </p>
-            <p className="text-2xl text-secondary font-semibold">
-              Suggested: {exercise.suggestedKg}kg
-            </p>
+            {exercise.type === "cardio" ? (
+              <>
+                <p className="text-5xl font-bold text-foreground mb-4">
+                  {exercise.durationMin} min
+                </p>
+                <p className="text-2xl text-secondary font-semibold">
+                  Distance: {exercise.targetDistanceKm}km
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-7xl font-bold text-foreground mb-4">
+                  {exercise.sets} × {exercise.reps}
+                </p>
+                {exercise.type === "weights" && exercise.suggestedKg && (
+                  <p className="text-2xl text-secondary font-semibold">
+                    Suggested: {exercise.suggestedKg}kg
+                  </p>
+                )}
+                {exercise.type === "bodyweight" && (
+                  <p className="text-xl text-muted-foreground font-medium">
+                    Bodyweight Exercise
+                  </p>
+                )}
+              </>
+            )}
           </div>
         </Card>
 
@@ -104,32 +236,140 @@ const ExerciseDetail = () => {
 
         {/* Input Form */}
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="weight" className="text-lg font-semibold">Today's Weight (kg)</Label>
-            <Input
-              id="weight"
-              type="number"
-              value={todaysKg}
-              onChange={(e) => setTodaysKg(e.target.value)}
-              className="text-5xl font-bold h-24 mt-2 text-center"
-              placeholder="100"
-            />
-          </div>
+          {exercise.type === "weights" && (
+            <div>
+              <Label htmlFor="weight" className="text-xl font-bold">Today's Weight (kg)</Label>
+              <div className="flex items-center gap-3 mt-3">
+                <Button
+                  type="button"
+                  onClick={() => setTodaysKg((prev) => Math.max(0, parseFloat(prev || "0") - 1).toString())}
+                  className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                  variant="default"
+                >
+                  -
+                </Button>
+                <Input
+                  id="weight"
+                  type="number"
+                  value={todaysKg}
+                  onChange={(e) => setTodaysKg(e.target.value)}
+                  className="text-6xl font-bold h-32 text-center border-2 flex-1"
+                  placeholder="100"
+                />
+                <Button
+                  type="button"
+                  onClick={() => setTodaysKg((prev) => (parseFloat(prev || "0") + 1).toString())}
+                  className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                  variant="default"
+                >
+                  +
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {exercise.type === "cardio" && (
+            <>
+              <div>
+                <Label htmlFor="distance" className="text-xl font-bold">Distance (km)</Label>
+                <div className="flex items-center gap-3 mt-3">
+                  <Button
+                    type="button"
+                    onClick={() => setTodaysDistance((prev) => Math.max(0, parseFloat(prev || "0") - 1).toString())}
+                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                    variant="default"
+                  >
+                    -
+                  </Button>
+                  <Input
+                    id="distance"
+                    type="number"
+                    step="0.1"
+                    value={todaysDistance}
+                    onChange={(e) => setTodaysDistance(e.target.value)}
+                    className="text-6xl font-bold h-32 text-center border-2 flex-1"
+                    placeholder="5.0"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => setTodaysDistance((prev) => (parseFloat(prev || "0") + 1).toString())}
+                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                    variant="default"
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="duration" className="text-xl font-bold">Duration (minutes)</Label>
+                <div className="flex items-center gap-3 mt-3">
+                  <Button
+                    type="button"
+                    onClick={() => setTodaysDuration((prev) => Math.max(0, parseFloat(prev || "0") - 1).toString())}
+                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                    variant="default"
+                  >
+                    -
+                  </Button>
+                  <Input
+                    id="duration"
+                    type="number"
+                    value={todaysDuration}
+                    onChange={(e) => setTodaysDuration(e.target.value)}
+                    className="text-6xl font-bold h-32 text-center border-2 flex-1"
+                    placeholder="20"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => setTodaysDuration((prev) => (parseFloat(prev || "0") + 1).toString())}
+                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                    variant="default"
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+          
+          {exercise.type === "bodyweight" && (
+            <div className="text-center py-4">
+              <p className="text-muted-foreground">Bodyweight exercise - no weight to track</p>
+            </div>
+          )}
 
           <div>
-            <Label htmlFor="rpe" className="text-lg font-semibold">
+            <Label htmlFor="rpe" className="text-xl font-bold">
               RPE (1-10) <span className="text-muted-foreground text-sm">- Rate of Perceived Exertion</span>
             </Label>
-            <Input
-              id="rpe"
-              type="number"
-              min="1"
-              max="10"
-              value={rpe}
-              onChange={(e) => setRpe(e.target.value)}
-              className="text-5xl font-bold h-24 mt-2 text-center"
-              placeholder="7"
-            />
+            <div className="flex items-center gap-3 mt-3">
+              <Button
+                type="button"
+                onClick={() => setRpe((prev) => Math.max(1, parseInt(prev || "1") - 1).toString())}
+                className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                variant="default"
+              >
+                -
+              </Button>
+              <Input
+                id="rpe"
+                type="number"
+                min="1"
+                max="10"
+                value={rpe}
+                onChange={(e) => setRpe(e.target.value)}
+                className="text-6xl font-bold h-32 text-center border-2 flex-1"
+                placeholder="7"
+              />
+              <Button
+                type="button"
+                onClick={() => setRpe((prev) => Math.min(10, parseInt(prev || "1") + 1).toString())}
+                className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                variant="default"
+              >
+                +
+              </Button>
+            </div>
           </div>
 
           <div>
@@ -153,6 +393,46 @@ const ExerciseDetail = () => {
           <CheckCircle2 className="w-6 h-6 mr-2" />
           Mark as Done
         </Button>
+
+        {/* Exercise Notes/Instructions - At Bottom */}
+        {(exercise.notes || exercise.mediaUrl) && (
+          <Card className="p-4 bg-primary/5 border-4 border-yellow-500">
+            {/* Show media from mediaUrl field */}
+            {exercise.mediaUrl && (
+              <div className="mb-4 max-w-full">
+                <ExerciseMedia url={exercise.mediaUrl} alt={`${exercise.name} demonstration`} />
+              </div>
+            )}
+            
+            {/* Show notes - check if it's a URL or text */}
+            {exercise.notes && (() => {
+              // Check if notes is just a URL (image or video)
+              const trimmedNotes = exercise.notes.trim();
+              const isUrl = trimmedNotes.startsWith('http://') || trimmedNotes.startsWith('https://');
+              
+              // Check if it looks like an image URL or video URL
+              const isMediaUrl = isUrl && (
+                /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|$)/i.test(trimmedNotes) ||
+                /(youtube\.com|youtu\.be|vimeo\.com)/i.test(trimmedNotes) ||
+                /images\.|image\.|img\.|cdn\.|cloudfront\.|ctfassets\./i.test(trimmedNotes)
+              );
+              
+              if (isMediaUrl) {
+                // It's a media URL, render as media
+                return (
+                  <div className="mb-4 max-w-full">
+                    <ExerciseMedia url={trimmedNotes} alt={`${exercise.name} demonstration`} />
+                  </div>
+                );
+              } else {
+                // It's text (or a non-media URL), render as text
+                return (
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{exercise.notes}</p>
+                );
+              }
+            })()}
+          </Card>
+        )}
       </main>
     </div>
   );
