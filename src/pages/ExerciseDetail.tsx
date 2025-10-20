@@ -269,6 +269,14 @@ const ExerciseDetail = () => {
           </div>
         </Card>
 
+        {/* DEBUG INFO - Remove after testing */}
+        <Card className="p-4 bg-yellow-500/10 border-yellow-500">
+          <p className="text-sm font-mono">
+            DEBUG: type={exercise.type} | duration={exercise.durationMin} | 
+            shouldShow={(exercise.type === "cardio" || exercise.type === "mobility") && !!exercise.durationMin ? "YES" : "NO"}
+          </p>
+        </Card>
+
         {/* Workout Countdown Timer (for cardio/mobility with duration) */}
         {(exercise.type === "cardio" || exercise.type === "mobility") && exercise.durationMin && (
           <>
