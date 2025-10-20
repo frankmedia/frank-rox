@@ -193,9 +193,6 @@ const ExerciseDetail = () => {
               >
                 <ArrowLeft className="w-8 h-8" />
               </Button>
-              <span className="text-base font-semibold text-foreground min-w-[50px] text-center">
-                {currentIndex + 1}/{exercises.length}
-              </span>
               <Button
                 variant="outline"
                 size="lg"

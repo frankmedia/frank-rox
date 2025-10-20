@@ -67,7 +67,6 @@ const Today = () => {
           
           {/* Training Day Selector */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground font-medium">Training Day:</span>
             <TrainingDaySelector onDayChange={setCurrentTrainingDay} />
           </div>
         </div>
