@@ -542,7 +542,17 @@ export async function logExercise(
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    const result = await response.json();
+    // Get response as text first, then parse
+    const responseText = await response.text();
+    console.log("📥 Raw response:", responseText);
+    
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("❌ Failed to parse response:", responseText);
+      throw new Error("Invalid response from server");
+    }
     
     if (result.success) {
       console.log("✅ Exercise logged successfully:", result);
