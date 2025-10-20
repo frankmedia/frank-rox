@@ -311,7 +311,6 @@ const ExerciseDetail = () => {
                   >
                     START COUNTDOWN
                   </Button>
-                  <p className="text-sm text-muted-foreground mt-3">{exercise.durationMin} minutes</p>
                 </div>
               </Card>
             )}
