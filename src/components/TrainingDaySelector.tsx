@@ -68,17 +68,17 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
     <div className="flex items-center gap-2">
       <Button
         variant="outline"
-        size="icon"
         onClick={goToPreviousDay}
         disabled={loading}
         title="Previous day (wraps around to last day)"
+        className="h-12 w-12 text-2xl"
       >
         ←
       </Button>
 
       <Select value={currentDay} onValueChange={handleDayChange} disabled={loading}>
-        <SelectTrigger className="w-[160px]">
-          <RotateCw className="w-4 h-4 mr-2" />
+        <SelectTrigger className="w-[180px] h-12 text-base">
+          <RotateCw className="w-5 h-5 mr-2" />
           <SelectValue placeholder="Training Day" />
         </SelectTrigger>
         <SelectContent className="max-h-[300px]">
@@ -92,10 +92,10 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
 
       <Button 
         variant="outline" 
-        size="icon" 
         onClick={goToNextDay}
         disabled={loading}
         title={`Next day (Day ${parseInt(currentDay) >= maxDay ? '1' : parseInt(currentDay) + 1})`}
+        className="h-12 w-12 text-2xl"
       >
         →
       </Button>
