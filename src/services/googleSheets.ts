@@ -491,7 +491,7 @@ export async function fetchUserStats(username: string = USER_NAME): Promise<User
  * Note: This is a placeholder - actual implementation requires OAuth2
  */
 /**
- * Log exercise to LOCAL STORAGE (temporary solution until Apps Script is fixed)
+ * Log exercise via Vercel serverless function (writes to Google Sheets)
  */
 export async function logExercise(
   exerciseName: string,
@@ -507,26 +507,11 @@ export async function logExercise(
   username: string = USER_NAME
 ): Promise<{ success: boolean; message?: string; isPB?: boolean; oldPB?: number; newPB?: number }> {
   try {
-    console.log("📝 Logging exercise to LOCAL STORAGE:", exerciseName, data);
+    console.log("📝 Logging exercise via Vercel API:", exerciseName, data);
     
-    // Get existing logs from localStorage
-    const existingLogs = localStorage.getItem("workoutHistory");
-    const logs = existingLogs ? JSON.parse(existingLogs) : [];
-    
-    // Create new log entry
-    const timestamp = new Date().toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    
-    const newLog = {
-      id: Date.now().toString(),
+    const payload = {
       username,
       exerciseName,
-      timestamp,
       weight: data.weight,
       sets: data.sets,
       reps: data.reps,
@@ -536,28 +521,87 @@ export async function logExercise(
       notes: data.notes,
     };
     
-    // Add to logs
-    logs.unshift(newLog); // Add to beginning
+    // Call Vercel serverless function
+    const response = await fetch('/api/log-workout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
     
-    // Keep only last 100 logs
-    if (logs.length > 100) {
-      logs.splice(100);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
     }
     
-    // Save back to localStorage
-    localStorage.setItem("workoutHistory", JSON.stringify(logs));
+    const result = await response.json();
     
-    console.log("✅ Exercise logged successfully to local storage");
-    console.log("📊 Total logs:", logs.length);
+    console.log("✅ Exercise logged successfully:", result);
+    
+    // Also save to localStorage as backup
+    const existingLogs = localStorage.getItem("workoutHistory");
+    const logs = existingLogs ? JSON.parse(existingLogs) : [];
+    
+    const timestamp = new Date().toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    
+    logs.unshift({
+      id: Date.now().toString(),
+      username,
+      exerciseName,
+      timestamp,
+      ...data,
+      isPB: result.isPB,
+    });
+    
+    if (logs.length > 100) logs.splice(100);
+    localStorage.setItem("workoutHistory", JSON.stringify(logs));
     
     return {
       success: true,
-      message: "Workout logged successfully (saved locally)",
-      isPB: false,
+      message: result.message,
+      isPB: result.isPB,
+      oldPB: result.oldPB,
+      newPB: result.newPB,
     };
   } catch (error) {
     console.error("❌ Error logging exercise:", error);
-    return { success: false, message: error instanceof Error ? error.message : "Unknown error" };
+    
+    // Fallback to localStorage only if API fails
+    console.log("💾 Saving to localStorage as fallback");
+    const existingLogs = localStorage.getItem("workoutHistory");
+    const logs = existingLogs ? JSON.parse(existingLogs) : [];
+    
+    const timestamp = new Date().toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    
+    logs.unshift({
+      id: Date.now().toString(),
+      username,
+      exerciseName,
+      timestamp,
+      ...data,
+    });
+    
+    if (logs.length > 100) logs.splice(100);
+    localStorage.setItem("workoutHistory", JSON.stringify(logs));
+    
+    return {
+      success: true,
+      message: "Workout saved locally (will sync when online)",
+      isPB: false,
+    };
   }
 }
 
