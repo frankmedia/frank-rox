@@ -73,7 +73,9 @@ const App = () => (
               path="/exercise/:id"
               element={
                 <ProtectedRoute>
-                  <ExerciseDetail />
+                  <AuthenticatedLayout>
+                    <ExerciseDetail />
+                  </AuthenticatedLayout>
                 </ProtectedRoute>
               }
             />
