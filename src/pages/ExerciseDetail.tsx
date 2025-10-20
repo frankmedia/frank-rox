@@ -267,7 +267,7 @@ const ExerciseDetail = () => {
             />
           </Card>
         ) : (
-          <RestTimer onSelectDuration={handleRestTimer} />
+          <RestTimer onSelectDuration={handleRestTimer} exerciseType={exercise.type} />
         )}
 
         {/* Input Form */}

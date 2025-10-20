@@ -20,7 +20,6 @@ export interface WorkoutLog {
   exercise: string;
   date: string;
   weight?: number;
-  rpe?: number;
   isPB?: boolean;
   duration?: number;
   distance?: number;
