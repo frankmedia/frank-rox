@@ -18,16 +18,19 @@ interface ExerciseCardProps {
     mediaUrl?: string;
   };
   onClick?: () => void;
+  isCompleted?: boolean;
 }
 
-export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardProps) {
+  const completed = isCompleted || exercise.completed;
+  
   return (
     <Card
       className={cn(
-        "relative overflow-hidden border-2 transition-all duration-300 cursor-pointer",
-        exercise.completed
-          ? "bg-secondary/20 border-secondary"
-          : "bg-card hover:bg-card/80 border-border hover:border-secondary/50"
+        "relative overflow-hidden transition-all duration-300 cursor-pointer",
+        completed
+          ? "bg-secondary/10 border-4 border-yellow-500"
+          : "bg-card hover:bg-card/80 border-2 border-border hover:border-secondary/50"
       )}
       onClick={onClick}
     >
@@ -82,10 +85,10 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
           )}
         </div>
 
-        {exercise.completed && (
+        {completed && (
           <div className="absolute top-0 right-0 w-16 h-16">
-            <div className="absolute transform rotate-45 bg-secondary text-background text-xs font-bold py-1 right-[-30px] top-[10px] w-[100px] text-center">
-              DONE
+            <div className="absolute transform rotate-45 bg-yellow-500 text-black text-xs font-bold py-1 right-[-30px] top-[10px] w-[100px] text-center">
+              ✓ DONE
             </div>
           </div>
         )}

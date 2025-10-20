@@ -13,12 +13,30 @@ const Today = () => {
   const [currentTrainingDay, setCurrentTrainingDay] = useState(() => {
     return localStorage.getItem("currentTrainingDay") || "1";
   });
+  const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "short",
     day: "numeric",
   });
+
+  // Load completed exercises from today
+  useEffect(() => {
+    const workoutHistory = localStorage.getItem("workoutHistory");
+    if (workoutHistory) {
+      const logs = JSON.parse(workoutHistory);
+      const todayDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+      
+      const todayCompleted = new Set(
+        logs
+          .filter((log: any) => log.timestamp && log.timestamp.startsWith(todayDate))
+          .map((log: any) => log.exerciseName)
+      );
+      
+      setCompletedExercises(todayCompleted);
+    }
+  }, [exercises]); // Re-check when exercises change
 
   useEffect(() => {
     if (error) {
@@ -82,6 +100,7 @@ const Today = () => {
                   key={exercise.id}
                   exercise={exercise}
                   onClick={() => navigate(`/exercise/${exercise.id}`)}
+                  isCompleted={completedExercises.has(exercise.name)}
                 />
               ))}
             </div>
