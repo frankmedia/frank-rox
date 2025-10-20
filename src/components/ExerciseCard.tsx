@@ -145,13 +145,29 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
               </div>
               {exercise.exercises && exercise.exercises.length > 0 && (
                 <div className="text-sm text-muted-foreground space-y-1 mt-2">
-                  {exercise.exercises.map((ex: any, idx: number) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <span className="text-foreground">→</span>
-                      <span>{ex.name}</span>
-                      {ex.reps && <span className="font-semibold">({ex.reps} reps)</span>}
-                    </div>
-                  ))}
+                  {exercise.exercises.map((ex: any, idx: number) => {
+                    const parts: string[] = [];
+                    let displayName = ex.name;
+                    
+                    // Add distance to name in brackets
+                    if (ex.targetDistanceKm) {
+                      const meters = Math.round(ex.targetDistanceKm * 1000);
+                      displayName = `${ex.name} [${meters}m]`;
+                    }
+                    
+                    // Build description
+                    if (ex.reps) parts.push(`${ex.reps} reps`);
+                    if (ex.suggestedKg) parts.push(`${ex.suggestedKg}kg`);
+                    if (ex.durationMin) parts.push(`${ex.durationMin} min`);
+                    
+                    return (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-foreground">→</span>
+                        <span>{displayName}</span>
+                        {parts.length > 0 && <span className="font-semibold">({parts.join(" • ")})</span>}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -167,13 +183,28 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
               </div>
               {exercise.exercises && exercise.exercises.length > 0 && (
                 <div className="text-sm text-muted-foreground space-y-1 mt-2">
-                  {exercise.exercises.map((ex: any, idx: number) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <span className="text-foreground">→</span>
-                      <span>{ex.name}</span>
-                      {ex.reps && <span className="font-semibold">({ex.reps} reps)</span>}
-                    </div>
-                  ))}
+                  {exercise.exercises.map((ex: any, idx: number) => {
+                    const parts: string[] = [];
+                    let displayName = ex.name;
+                    
+                    // Add distance to name in brackets
+                    if (ex.targetDistanceKm) {
+                      const meters = Math.round(ex.targetDistanceKm * 1000);
+                      displayName = `${ex.name} [${meters}m]`;
+                    }
+                    
+                    // Build description (no reps for AMRAP - you do as many as you can)
+                    if (ex.suggestedKg) parts.push(`${ex.suggestedKg}kg`);
+                    if (ex.durationMin) parts.push(`${ex.durationMin} min`);
+                    
+                    return (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-foreground">→</span>
+                        <span>{displayName}</span>
+                        {parts.length > 0 && <span className="font-semibold">({parts.join(" • ")})</span>}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
