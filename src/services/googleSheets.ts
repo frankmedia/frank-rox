@@ -304,12 +304,14 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           fullRow: row
         });
         
-        const typeValue = type?.toLowerCase() || "weights";
+        const typeValue = type?.toString().toLowerCase().trim() || "weights";
         
         // Detect group headers (exercise names starting with CIRCUIT:, AMRAP:, or HIIT:)
         const nameUpper = name?.toUpperCase() || "";
         let exerciseType: Exercise["type"] = "weights";
         let isGroupHeader = false;
+        
+        console.log(`📝 Parsing exercise "${name}" with type "${type}" (normalized: "${typeValue}")`);
         
         // Check if name indicates a group header
         if (nameUpper.startsWith("CIRCUIT:")) {
@@ -329,9 +331,13 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         } else if (typeValue === "circuit") {
           exerciseType = "circuit";
           isGroupHeader = false; // Standalone circuit exercise (shouldn't happen, but handle it)
+        } else if (typeValue === "circuit_exercise") {
+          exerciseType = "weights"; // Circuit child exercises default to weights
         } else if (typeValue === "amrap") {
           exerciseType = "amrap";
           isGroupHeader = false; // Standalone AMRAP exercise (shouldn't happen, but handle it)
+        } else if (typeValue === "amrap_exercise") {
+          exerciseType = "bodyweight"; // AMRAP child exercises default to bodyweight
         } else if (typeValue === "cardio") {
           exerciseType = "cardio";
         } else if (typeValue === "bodyweight") {
