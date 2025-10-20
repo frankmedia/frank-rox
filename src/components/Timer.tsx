@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, RotateCcw } from "lucide-react";
+import { Play, Pause, RotateCcw, X } from "lucide-react";
 
 interface TimerProps {
   mode: "stopwatch" | "countdown";
   initialSeconds?: number;
   onComplete?: () => void;
+  onCancel?: () => void;
 }
 
-export function Timer({ mode, initialSeconds = 0, onComplete }: TimerProps) {
+export function Timer({ mode, initialSeconds = 0, onComplete, onCancel }: TimerProps) {
   const [seconds, setSeconds] = useState(initialSeconds);
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<number>();
@@ -75,6 +76,16 @@ export function Timer({ mode, initialSeconds = 0, onComplete }: TimerProps) {
         >
           <RotateCcw className="w-6 h-6" />
         </Button>
+        {onCancel && (
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={onCancel}
+            className="rounded-full w-16 h-16 border-2 border-red-500 hover:bg-red-500/10"
+          >
+            <X className="w-6 h-6 text-red-500" />
+          </Button>
+        )}
       </div>
     </div>
   );

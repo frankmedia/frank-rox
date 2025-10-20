@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Timer } from "@/components/Timer";
 import { RestTimer } from "@/components/RestTimer";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { fetchTodayExercises, logExercise } from "@/services/googleSheets";
 import { Exercise } from "@/types/workout";
@@ -289,30 +289,17 @@ const ExerciseDetail = () => {
                     setTodaysDuration(exercise.durationMin.toString());
                     setShowWorkoutTimer(false);
                   }}
+                  onCancel={() => setShowWorkoutTimer(false)}
                 />
-                <div className="flex justify-center mt-4">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setShowWorkoutTimer(false)}
-                    className="h-14 w-14 rounded-full border-2 border-red-500 hover:bg-red-500/10"
-                  >
-                    <X className="w-8 h-8 text-red-500" />
-                  </Button>
-                </div>
               </Card>
             ) : (
-              <Card className="p-8 bg-gradient-to-r from-primary/10 to-secondary/10 border-2 border-primary">
-                <div className="text-center">
-                  <Button
-                    size="lg"
-                    onClick={handleStartWorkout}
-                    className="h-24 px-16 text-3xl font-bold w-full"
-                  >
-                    START COUNTDOWN
-                  </Button>
-                </div>
-              </Card>
+              <Button
+                size="lg"
+                onClick={handleStartWorkout}
+                className="h-24 px-16 text-3xl font-bold w-full"
+              >
+                START COUNTDOWN
+              </Button>
             )}
           </>
         )}
