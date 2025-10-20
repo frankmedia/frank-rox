@@ -121,50 +121,75 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
         
         {/* Exercise List with Round Circles */}
         <div className="space-y-3">
-          {exercises.map((ex: Exercise) => (
-            <Card
-              key={ex.id}
-              className="p-6 border-2 cursor-pointer hover:bg-muted/50 transition-all"
-              onClick={() => toggleNextRound(ex.id)}
-            >
-              <div className="flex items-center gap-6">
-                {/* Exercise Name and Details */}
-                <div className="flex-1">
-                  <h3 className="text-3xl font-bold mb-1">{ex.name}</h3>
-                  <p className="text-lg text-muted-foreground">
-                    {ex.reps && `${ex.reps} reps`}
-                    {ex.sets && ` • ${ex.sets} sets`}
-                    {ex.suggestedKg && ` • ${ex.suggestedKg}kg`}
-                  </p>
-                </div>
+              {exercises.map((ex: Exercise) => {
+                // Build display info
+                let title = ex.name;
+                const parts: string[] = [];
                 
-                {/* Round Circles - indicators only, not buttons */}
-                <div className="flex items-center gap-4">
-                  {Array.from({ length: totalRounds }, (_, idx) => {
-                    const roundNumber = idx + 1;
-                    const isComplete = isRoundComplete(ex.id, roundNumber);
-                    
-                    return (
-                      <div
-                        key={roundNumber}
-                        className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all ${
-                          isComplete
-                            ? "border-green-500 bg-green-500"
-                            : "border-muted-foreground"
-                        }`}
-                      >
-                        {isComplete ? (
-                          <Check className="w-10 h-10 text-white" />
-                        ) : (
-                          <span className="text-2xl font-bold text-muted-foreground">{roundNumber}</span>
+                // Add distance to title in brackets if exists
+                if (ex.targetDistanceKm) {
+                  const meters = Math.round(ex.targetDistanceKm * 1000);
+                  title = `${ex.name} [${meters}m]`;
+                }
+                
+                // Build subtitle
+                if (ex.reps) {
+                  parts.push(`${ex.reps} reps`);
+                }
+                
+                if (ex.suggestedKg) {
+                  parts.push(`${ex.suggestedKg}kg`);
+                }
+                
+                if (ex.durationMin) {
+                  parts.push(`${ex.durationMin} min`);
+                }
+                
+                return (
+                  <Card
+                    key={ex.id}
+                    className="p-6 border-2 cursor-pointer hover:bg-muted/50 transition-all"
+                    onClick={() => toggleNextRound(ex.id)}
+                  >
+                    <div className="flex items-center gap-6">
+                      {/* Exercise Name and Details */}
+                      <div className="flex-1">
+                        <h3 className="text-3xl font-bold mb-1">{title}</h3>
+                        {parts.length > 0 && (
+                          <p className="text-lg text-muted-foreground">
+                            {parts.join(" • ")}
+                          </p>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </Card>
-          ))}
+                
+                      {/* Round Circles - indicators only, not buttons */}
+                      <div className="flex items-center gap-4">
+                        {Array.from({ length: totalRounds }, (_, idx) => {
+                          const roundNumber = idx + 1;
+                          const isComplete = isRoundComplete(ex.id, roundNumber);
+                          
+                          return (
+                            <div
+                              key={roundNumber}
+                              className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all ${
+                                isComplete
+                                  ? "border-green-500 bg-green-500"
+                                  : "border-muted-foreground"
+                              }`}
+                            >
+                              {isComplete ? (
+                                <Check className="w-10 h-10 text-white" />
+                              ) : (
+                                <span className="text-2xl font-bold text-muted-foreground">{roundNumber}</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
         </div>
         
         {/* Rest Timer Section */}

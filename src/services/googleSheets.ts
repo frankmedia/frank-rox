@@ -433,10 +433,17 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           if (reps) exercise.reps = parseInt(reps);
           if (suggestedKg) exercise.suggestedKg = parseFloat(suggestedKg);
           
-          // For AMRAP child exercises, also check Duration column for distance (in km)
-          if (exerciseType === "bodyweight" && durationMin && !isNaN(parseFloat(durationMin))) {
-            exercise.targetDistanceKm = parseFloat(durationMin);
-            console.log(`🎯 AMRAP child exercise "${name}" has distance: ${exercise.targetDistanceKm}km`);
+          // For child exercises (AMRAP/Circuit), also check Duration column for distance (in km)
+          // and Distance column for distance
+          if (exerciseType === "bodyweight" || exerciseType === "weights") {
+            if (durationMin && !isNaN(parseFloat(durationMin))) {
+              exercise.durationMin = parseFloat(durationMin);
+              console.log(`⏱️  Child exercise "${name}" has duration: ${exercise.durationMin} min`);
+            }
+            if (targetDistanceKm && !isNaN(parseFloat(targetDistanceKm))) {
+              exercise.targetDistanceKm = parseFloat(targetDistanceKm);
+              console.log(`📏 Child exercise "${name}" has distance: ${exercise.targetDistanceKm}km`);
+            }
           }
         } else {
           // For non-header exercises, parse normally
