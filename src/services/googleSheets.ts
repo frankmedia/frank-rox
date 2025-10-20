@@ -388,21 +388,39 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           // Standalone HIIT/Circuit/AMRAP exercises (not group headers)
           if (exerciseType === "hiit") {
             exercise.totalRounds = sets ? parseInt(sets) : 8; // Sets = intervals for HIIT
-            exercise.workRestRatio = notes || "20s/10s"; // Notes = work/rest ratio
-            if (durationMin) {
-              exercise.durationMin = parseInt(durationMin);
+            
+            // Check if Duration column contains work/rest ratio (e.g., "50/10")
+            if (durationMin && durationMin.toString().includes("/")) {
+              exercise.workRestRatio = durationMin.toString().trim();
+              console.log(`⚡ HIIT work/rest from Duration column: "${exercise.workRestRatio}"`);
+            } else {
+              exercise.workRestRatio = notes || "20/10";
+              if (durationMin) {
+                exercise.durationMin = parseInt(durationMin);
+              }
             }
+            
             console.log(`⚡ HIIT Exercise "${name}":`, {
               totalRounds: exercise.totalRounds,
               workRestRatio: exercise.workRestRatio,
               durationMin: exercise.durationMin,
-              notesFromSheet: notes
+              durationColumnValue: durationMin
             });
           } else if (exerciseType === "circuit") {
             exercise.totalRounds = sets ? parseInt(sets) : 3;
-            if (durationMin) {
+            
+            // Check if Duration column contains rest info (e.g., "90s rest")
+            if (durationMin && isNaN(parseInt(durationMin))) {
+              exercise.notes = durationMin.toString().trim();
+            } else if (durationMin) {
               exercise.durationMin = parseInt(durationMin);
             }
+            
+            console.log(`🔄 CIRCUIT Exercise "${name}":`, {
+              totalRounds: exercise.totalRounds,
+              notes: exercise.notes,
+              durationColumnValue: durationMin
+            });
           } else if (exerciseType === "amrap") {
             exercise.timeCap = durationMin ? parseInt(durationMin) : 10;
             console.log(`🎯 AMRAP Exercise "${name}":`, {
