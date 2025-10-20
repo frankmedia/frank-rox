@@ -175,47 +175,24 @@ export function HIITWorkout({ exercise, onComplete }: HIITWorkoutProps) {
             </Card>
             
             {/* Controls */}
-            <div className="flex gap-4 justify-center">
-              {isRunning ? (
-                <Button
-                  size="lg"
-                  onClick={handlePause}
-                  className="h-16 px-8 text-xl font-bold"
-                  variant="outline"
-                >
-                  Pause
-                </Button>
-              ) : (
-                <Button
-                  size="lg"
-                  onClick={handleResume}
-                  className="h-16 px-8 text-xl font-bold"
-                  style={{ backgroundColor: "#FF00B2" }}
-                >
-                  Resume
-                </Button>
-              )}
+            <div className="flex gap-4 w-full">
               <Button
                 size="lg"
                 onClick={handleReset}
-                className="h-16 px-8 text-xl font-bold"
+                className="h-20 text-2xl font-bold flex-1"
                 variant="outline"
               >
                 Restart
               </Button>
-            </div>
-            
-            {/* Mark as Done */}
-            {currentInterval >= totalIntervals - 1 && !isRunning && (
               <Button
                 size="lg"
                 onClick={handleComplete}
-                className="h-16 w-full text-xl font-bold"
+                className="h-20 text-2xl font-bold flex-[2]"
                 style={{ backgroundColor: "#FFCC00", color: "#000" }}
               >
-                ✓ Mark as Done
+                Complete Early
               </Button>
-            )}
+            </div>
           </>
         )}
         

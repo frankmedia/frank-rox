@@ -369,6 +369,13 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         // Mark if this is a child exercise of a group
         const isChildExercise = typeValue === "circuit_exercise" || typeValue === "amrap_exercise";
         
+        console.log(`🏷️  Setting _isChildExercise for "${name}":`, {
+          typeValue,
+          isCircuitExercise: typeValue === "circuit_exercise",
+          isAmrapExercise: typeValue === "amrap_exercise",
+          isChildExercise
+        });
+        
         const exercise: Exercise = {
           id: String(index + 1),
           name: name || "Unnamed Exercise",
@@ -496,15 +503,24 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
     let groupChildren: Exercise[] = [];
     
     for (const exercise of parsedExercises) {
+      console.log(`🔍 Grouping check for "${exercise.name}":`, {
+        isGroupHeader: exercise.isGroupHeader,
+        _isChildExercise: (exercise as any)._isChildExercise,
+        startsWithArrow: exercise.name.trim().startsWith("→"),
+        currentGroupName: currentGroup?.name
+      });
+      
       if (exercise.isGroupHeader) {
         // Save previous group if exists
         if (currentGroup && groupChildren.length > 0) {
           currentGroup.exercises = groupChildren;
           groupedExercises.push(currentGroup);
+          console.log(`✅ Saved group "${currentGroup.name}" with ${groupChildren.length} children`);
         }
         // Start new group
         currentGroup = exercise;
         groupChildren = [];
+        console.log(`🆕 Started new group: "${exercise.name}"`);
       } else if (currentGroup) {
         // Check if this exercise belongs to the current group
         // Only group exercises with names starting with "→" or marked as child exercises
@@ -512,22 +528,30 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
                         exercise.name.trim().startsWith("- ") ||
                         (exercise as any)._isChildExercise;
         
+        console.log(`  ➡️ Is child? ${isChild} (group: "${currentGroup.name}")`);
+        
         if (isChild) {
           // Add to current group
           groupChildren.push(exercise);
+          console.log(`  ✅ Added "${exercise.name}" to group "${currentGroup.name}" (${groupChildren.length} children now)`);
         } else {
           // Not a child exercise - close current group and add this as standalone
           if (groupChildren.length > 0) {
             currentGroup.exercises = groupChildren;
             groupedExercises.push(currentGroup);
+            console.log(`  🔒 Closed group "${currentGroup.name}" with ${groupChildren.length} children`);
+          } else {
+            console.log(`  ⚠️ Closing group "${currentGroup.name}" with NO children`);
           }
           currentGroup = null;
           groupChildren = [];
           groupedExercises.push(exercise);
+          console.log(`  ➕ Added standalone: "${exercise.name}"`);
         }
       } else {
         // Standalone exercise (not part of a group)
         groupedExercises.push(exercise);
+        console.log(`  ➕ Added standalone: "${exercise.name}" (no current group)`);
       }
     }
     
