@@ -2,18 +2,11 @@
   <defs>
     <style>
       .kettlebell { fill: #000000; }
-      .accent { fill: #FFD700; }
     </style>
   </defs>
   <!-- Handle -->
-  <path class="accent" d="M 35,15 Q 35,5 50,5 Q 65,5 65,15 L 65,30 Q 65,35 60,35 L 40,35 Q 35,35 35,30 Z" />
+  <path class="kettlebell" d="M 25,10 Q 25,0 50,0 Q 75,0 75,10 L 75,35 Q 75,40 70,40 L 30,40 Q 25,40 25,35 Z" />
   
-  <!-- Body (bell shape) -->
-  <ellipse class="kettlebell" cx="50" cy="60" rx="28" ry="32"/>
-  
-  <!-- Base -->
-  <ellipse class="accent" cx="50" cy="85" rx="22" ry="8"/>
-  
-  <!-- Body highlight -->
-  <ellipse class="accent" cx="50" cy="55" rx="20" ry="22" opacity="0.3"/>
+  <!-- Body (bell shape) - much larger -->
+  <ellipse class="kettlebell" cx="50" cy="65" rx="40" ry="35"/>
 </svg>
