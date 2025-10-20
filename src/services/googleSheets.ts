@@ -339,12 +339,14 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           exerciseType = "circuit";
           isGroupHeader = false; // Standalone circuit exercise (shouldn't happen, but handle it)
         } else if (typeValue === "circuit_exercise") {
-          exerciseType = "weights"; // Circuit child exercises default to weights
+          // Keep as special marker for grouping, will be converted later
+          exerciseType = "weights";
         } else if (typeValue === "amrap") {
           exerciseType = "amrap";
           isGroupHeader = false; // Standalone AMRAP exercise (shouldn't happen, but handle it)
         } else if (typeValue === "amrap_exercise") {
-          exerciseType = "bodyweight"; // AMRAP child exercises default to bodyweight
+          // Keep as special marker for grouping, will be converted later
+          exerciseType = "bodyweight";
         } else if (typeValue === "cardio") {
           exerciseType = "cardio";
         } else if (typeValue === "bodyweight") {
@@ -364,6 +366,9 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           }
         }
 
+        // Mark if this is a child exercise of a group
+        const isChildExercise = typeValue === "circuit_exercise" || typeValue === "amrap_exercise";
+        
         const exercise: Exercise = {
           id: String(index + 1),
           name: name || "Unnamed Exercise",
@@ -371,6 +376,8 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           notes: notes || undefined,
           mediaUrl: finalMediaUrl,
           isGroupHeader,
+          // Add a marker for child exercises
+          _isChildExercise: isChildExercise,
         };
 
         // For group headers, parse special fields
@@ -500,13 +507,12 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         groupChildren = [];
       } else if (currentGroup) {
         // Check if this exercise belongs to the current group
-        // Only group exercises with names starting with "→" or matching child type
-        const isChildExercise = exercise.name.trim().startsWith("→") || 
-                                exercise.name.trim().startsWith("- ") ||
-                                exercise.type === "circuit_exercise" ||
-                                exercise.type === "amrap_exercise";
+        // Only group exercises with names starting with "→" or marked as child exercises
+        const isChild = exercise.name.trim().startsWith("→") || 
+                        exercise.name.trim().startsWith("- ") ||
+                        (exercise as any)._isChildExercise;
         
-        if (isChildExercise) {
+        if (isChild) {
           // Add to current group
           groupChildren.push(exercise);
         } else {
