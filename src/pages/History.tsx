@@ -20,16 +20,50 @@ const History = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [historyData, statsData] = await Promise.all([
-          fetchWorkoutHistory(),
-          fetchUserStats(),
-        ]);
+        
+        // Load from localStorage
+        const existingLogs = localStorage.getItem("workoutHistory");
+        const logs = existingLogs ? JSON.parse(existingLogs) : [];
+        
+        // Convert to WorkoutLog format
+        const historyData: WorkoutLog[] = logs.map((log: any) => ({
+          id: log.id,
+          exercise: log.exerciseName,
+          date: log.timestamp,
+          weight: log.weight,
+          rpe: log.rpe,
+          isPB: false, // TODO: Calculate PB
+          duration: log.duration,
+          distance: log.distance,
+          notes: log.notes,
+        }));
+        
         setHistory(historyData);
+        
+        // Calculate basic stats from logs
+        const thisWeekLogs = logs.filter((log: any) => {
+          const logDate = new Date(log.timestamp);
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return logDate >= weekAgo;
+        });
+        
+        const statsData: UserStats = {
+          thisWeek: {
+            workouts: thisWeekLogs.length,
+            exercises: thisWeekLogs.length,
+            totalWeight: thisWeekLogs.reduce((sum: number, log: any) => sum + (log.weight || 0), 0),
+          },
+          personalBests: [], // TODO: Calculate PBs
+        };
+        
         setStats(statsData);
+        
+        console.log("✅ Loaded history from localStorage:", historyData.length, "entries");
       } catch (error) {
         console.error("Error loading history:", error);
         toast.error("Failed to load history", {
-          description: "Please check your Google Sheets configuration",
+          description: "Could not load local storage data",
         });
       } finally {
         setLoading(false);

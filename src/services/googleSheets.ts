@@ -491,7 +491,7 @@ export async function fetchUserStats(username: string = USER_NAME): Promise<User
  * Note: This is a placeholder - actual implementation requires OAuth2
  */
 /**
- * Log exercise via Google Apps Script (handles PB tracking automatically)
+ * Log exercise to LOCAL STORAGE (temporary solution until Apps Script is fixed)
  */
 export async function logExercise(
   exerciseName: string,
@@ -506,19 +506,27 @@ export async function logExercise(
   },
   username: string = USER_NAME
 ): Promise<{ success: boolean; message?: string; isPB?: boolean; oldPB?: number; newPB?: number }> {
-  const appsScriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
-  
-  if (!appsScriptUrl) {
-    console.error("❌ VITE_APPS_SCRIPT_URL not configured in .env");
-    return { success: false, message: "Apps Script URL not configured" };
-  }
-  
   try {
-    console.log("📝 Logging exercise:", exerciseName, data);
+    console.log("📝 Logging exercise to LOCAL STORAGE:", exerciseName, data);
     
-    const payload = {
+    // Get existing logs from localStorage
+    const existingLogs = localStorage.getItem("workoutHistory");
+    const logs = existingLogs ? JSON.parse(existingLogs) : [];
+    
+    // Create new log entry
+    const timestamp = new Date().toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    
+    const newLog = {
+      id: Date.now().toString(),
       username,
       exerciseName,
+      timestamp,
       weight: data.weight,
       sets: data.sets,
       reps: data.reps,
@@ -528,43 +536,25 @@ export async function logExercise(
       notes: data.notes,
     };
     
-    // Google Apps Script workaround: Send as GET request and assume success
-    const params = new URLSearchParams({
-      data: JSON.stringify(payload)
-    });
+    // Add to logs
+    logs.unshift(newLog); // Add to beginning
     
-    // Trigger the request (fire and forget - Apps Script will process it)
-    const url = `${appsScriptUrl}?${params.toString()}`;
-    console.log("📤 Sending to:", url);
-    
-    // Use an image trick to bypass CORS
-    const img = new Image();
-    img.src = url;
-    
-    // For now, assume success since we can't read the response due to CORS
-    // The script IS running (status 200), we just can't read the response
-    console.log("✅ Request sent to Apps Script");
-    
-    // Return optimistic success
-    const result = {
-      success: true,
-      message: "Workout logged successfully",
-      isPB: false, // Can't detect PB without reading response
-    };
-    
-    if (result.success) {
-      console.log("✅ Exercise logged successfully:", result);
-      return {
-        success: true,
-        message: result.message,
-        isPB: result.isPB,
-        oldPB: result.oldPB,
-        newPB: result.newPB,
-      };
-    } else {
-      console.error("❌ Failed to log exercise:", result.error);
-      return { success: false, message: result.error };
+    // Keep only last 100 logs
+    if (logs.length > 100) {
+      logs.splice(100);
     }
+    
+    // Save back to localStorage
+    localStorage.setItem("workoutHistory", JSON.stringify(logs));
+    
+    console.log("✅ Exercise logged successfully to local storage");
+    console.log("📊 Total logs:", logs.length);
+    
+    return {
+      success: true,
+      message: "Workout logged successfully (saved locally)",
+      isPB: false,
+    };
   } catch (error) {
     console.error("❌ Error logging exercise:", error);
     return { success: false, message: error instanceof Error ? error.message : "Unknown error" };
