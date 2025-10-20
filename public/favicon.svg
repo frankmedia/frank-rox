@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <style>
+      .dumbbell { fill: #000000; }
+      .accent { fill: #FFD700; }
+    </style>
+  </defs>
+  <!-- Left weight -->
+  <rect class="accent" x="5" y="25" width="15" height="50" rx="2"/>
+  <rect class="dumbbell" x="18" y="30" width="8" height="40" rx="1"/>
+  
+  <!-- Bar -->
+  <rect class="dumbbell" x="26" y="45" width="48" height="10" rx="2"/>
+  
+  <!-- Right weight -->
+  <rect class="dumbbell" x="74" y="30" width="8" height="40" rx="1"/>
+  <rect class="accent" x="80" y="25" width="15" height="50" rx="2"/>
+</svg>
+
