@@ -296,14 +296,15 @@ export async function fetchTodayExercises(username: string = USER_NAME): Promise
           exerciseType = "weights";
         }
 
-        // If no mediaUrl, try to fetch from Videos/Images tabs
+        // If no mediaUrl, try to fetch from Videos/Images tabs (disabled - using notes field instead)
         let finalMediaUrl = mediaUrl || undefined;
-        if (!finalMediaUrl && name) {
-          const fallbackUrl = await fetchMediaFallback(userSheet.sheetId, name);
-          if (fallbackUrl) {
-            finalMediaUrl = fallbackUrl;
-          }
-        }
+        // Fallback disabled - images are in notes field
+        // if (!finalMediaUrl && name) {
+        //   const fallbackUrl = await fetchMediaFallback(userSheet.sheetId, name);
+        //   if (fallbackUrl) {
+        //     finalMediaUrl = fallbackUrl;
+        //   }
+        // }
 
         const exercise: Exercise = {
           id: String(index + 1),
