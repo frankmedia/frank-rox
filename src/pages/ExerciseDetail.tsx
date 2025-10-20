@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Timer } from "@/components/Timer";
 import { RestTimer } from "@/components/RestTimer";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { fetchTodayExercises, logExercise } from "@/services/googleSheets";
 import { Exercise } from "@/types/workout";
@@ -293,9 +293,11 @@ const ExerciseDetail = () => {
                 <div className="flex justify-center mt-4">
                   <Button
                     variant="outline"
+                    size="icon"
                     onClick={() => setShowWorkoutTimer(false)}
+                    className="h-14 w-14 rounded-full border-2 border-red-500 hover:bg-red-500/10"
                   >
-                    Cancel Timer
+                    <X className="w-8 h-8 text-red-500" />
                   </Button>
                 </div>
               </Card>
