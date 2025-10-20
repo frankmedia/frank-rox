@@ -55,7 +55,7 @@ const Login = () => {
               src="https://www.svgrepo.com/show/461257/dumbbell-3.svg" 
               alt="Dumbbell" 
               className="w-full h-full"
-              style={{ filter: 'invert(1)' }}
+              style={{ filter: 'brightness(0) saturate(100%) invert(85%) sepia(78%) saturate(2476%) hue-rotate(359deg) brightness(104%) contrast(104%)' }}
             />
           </div>
           <h1 className="text-5xl font-bold text-white mb-2">Frank Rock</h1>
