@@ -2,7 +2,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Dumbbell, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ExerciseMediaThumbnail } from "./ExerciseMedia";
 
 interface ExerciseCardProps {
   exercise: {
@@ -32,11 +31,6 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
       )}
       onClick={onClick}
     >
-      {/* Media Thumbnail */}
-      {exercise.mediaUrl && (
-        <ExerciseMediaThumbnail url={exercise.mediaUrl} alt={exercise.name} />
-      )}
-      
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
