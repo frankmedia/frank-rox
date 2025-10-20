@@ -94,6 +94,17 @@ All colors MUST be HSL.
   button, a {
     @apply min-h-[44px] min-w-[44px];
   }
+
+  /* Hide number input spinners - we have custom +/- buttons */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }
 
 @layer utilities {
