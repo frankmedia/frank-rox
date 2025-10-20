@@ -297,6 +297,13 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
       filteredData.map(async (row, index) => {
         const [, name, type, sets, reps, suggestedKg, personalBest, durationMin, targetDistanceKm, notes, mediaUrl] = row;
         
+        console.log(`🔥 RAW ROW DATA for "${name}":`, {
+          type: type,
+          durationMin: durationMin,
+          targetDistanceKm: targetDistanceKm,
+          fullRow: row
+        });
+        
         const typeValue = type?.toLowerCase() || "weights";
         let exerciseType: "weights" | "cardio" | "bodyweight" | "mobility" = "weights";
         
@@ -330,6 +337,9 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         // ALWAYS parse duration if it exists (for timer)
         if (durationMin) {
           exercise.durationMin = parseInt(durationMin);
+          console.log(`✅ SET durationMin=${exercise.durationMin} for "${name}"`);
+        } else {
+          console.log(`❌ NO durationMin for "${name}" (raw: "${durationMin}")`);
         }
         
         // ALWAYS parse distance if it exists

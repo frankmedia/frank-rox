@@ -59,7 +59,10 @@ const Login = () => {
             />
           </div>
           <h1 className="text-5xl font-bold text-white mb-2">Frank Rox</h1>
-          <p className="text-lg text-yellow-500 font-semibold">
+          <p className="text-2xl text-yellow-500 font-bold mb-2">
+            Train with Frank the Tank
+          </p>
+          <p className="text-sm text-gray-400">
             Track your workouts with precision
           </p>
         </div>
