@@ -26,23 +26,41 @@ function doPost(e) {
   try {
     // Debug logging
     Logger.log("🔍 Received request");
-    Logger.log("postData.type: " + (e.postData ? e.postData.type : "undefined"));
-    Logger.log("parameter keys: " + (e.parameter ? Object.keys(e.parameter).join(", ") : "none"));
+    Logger.log("e object: " + (e ? "exists" : "undefined"));
+    
+    if (!e) {
+      return ContentService.createTextOutput(
+        JSON.stringify({ success: false, error: "No event object received" })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    Logger.log("postData: " + (e.postData ? "exists" : "undefined"));
+    Logger.log("parameter: " + (e.parameter ? JSON.stringify(e.parameter) : "undefined"));
+    Logger.log("parameters: " + (e.parameters ? JSON.stringify(e.parameters) : "undefined"));
     
     // Handle both JSON and form data submissions
     let data;
+    
+    // Try e.parameter.data first (URL-encoded form data)
     if (e.parameter && e.parameter.data) {
-      // Form data submission (CORS workaround)
-      Logger.log("📝 Parsing form data");
+      Logger.log("📝 Parsing form data from e.parameter.data");
       data = JSON.parse(e.parameter.data);
-    } else if (e.postData && e.postData.contents) {
-      // JSON submission
+    } 
+    // Try e.parameters.data (some Apps Script versions use this)
+    else if (e.parameters && e.parameters.data && e.parameters.data[0]) {
+      Logger.log("📝 Parsing form data from e.parameters.data");
+      data = JSON.parse(e.parameters.data[0]);
+    }
+    // Try JSON submission
+    else if (e.postData && e.postData.contents) {
       Logger.log("📝 Parsing JSON data");
       data = JSON.parse(e.postData.contents);
-    } else {
+    } 
+    else {
       Logger.log("❌ No data found in request");
+      Logger.log("Full e object keys: " + Object.keys(e).join(", "));
       return ContentService.createTextOutput(
-        JSON.stringify({ success: false, error: "No data received" })
+        JSON.stringify({ success: false, error: "No data received. Keys: " + Object.keys(e).join(", ") })
       ).setMimeType(ContentService.MimeType.JSON);
     }
     
