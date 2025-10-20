@@ -302,14 +302,14 @@ const ExerciseDetail = () => {
             ) : (
               <Card className="p-8 bg-gradient-to-r from-primary/10 to-secondary/10 border-2 border-primary">
                 <div className="text-center">
-                  <p className="text-lg text-muted-foreground mb-4">Ready to start?</p>
                   <Button
                     size="lg"
                     onClick={handleStartWorkout}
-                    className="h-20 px-12 text-2xl font-bold"
+                    className="h-24 px-16 text-3xl font-bold w-full"
                   >
-                    START {exercise.durationMin} MIN COUNTDOWN
+                    START COUNTDOWN
                   </Button>
+                  <p className="text-sm text-muted-foreground mt-3">{exercise.durationMin} minutes</p>
                 </div>
               </Card>
             )}
