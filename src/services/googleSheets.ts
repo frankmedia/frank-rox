@@ -313,43 +313,29 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         
         const typeValue = type?.toString().toLowerCase().trim() || "weights";
         
-        // Detect group headers (exercise names starting with CIRCUIT:, AMRAP:, or HIIT:)
-        const nameUpper = name?.toUpperCase() || "";
         let exerciseType: Exercise["type"] = "weights";
         let isGroupHeader = false;
         
         console.log(`📝 Parsing exercise "${name}" with type "${type}" (normalized: "${typeValue}")`);
         
-        // Check if name indicates a group header (allowing for numbers like "CIRCUIT 1:", "AMRAP 2:", etc.)
-        if (nameUpper.includes("CIRCUIT") && nameUpper.includes(":")) {
+        // Simple type detection based on type column only
+        if (typeValue === "circuit") {
           exerciseType = "circuit";
           isGroupHeader = true;
-          console.log(`🔵 Detected CIRCUIT header: "${name}"`);
-        } else if (nameUpper.includes("AMRAP") && nameUpper.includes(":")) {
-          exerciseType = "amrap";
-          isGroupHeader = true;
-          console.log(`🟢 Detected AMRAP header: "${name}"`);
-        } else if (nameUpper.includes("HIIT") && nameUpper.includes(":")) {
-          exerciseType = "hiit";
-          isGroupHeader = true;
-          console.log(`🔴 Detected HIIT header: "${name}"`);
-        }
-        // Check type column for exercise type (including hiit, circuit, amrap as standalone)
-        else if (typeValue === "hiit") {
-          exerciseType = "hiit";
-          isGroupHeader = false; // Standalone HIIT exercise
-        } else if (typeValue === "circuit") {
-          exerciseType = "circuit";
-          isGroupHeader = false; // Standalone circuit exercise (shouldn't happen, but handle it)
+          console.log(`🔵 CIRCUIT header: "${name}"`);
         } else if (typeValue === "circuit_exercise") {
-          // Keep as special marker for grouping, will be converted later
-          exerciseType = "weights";
+          exerciseType = "weights"; // Will be set as child
+          isGroupHeader = false;
         } else if (typeValue === "amrap") {
           exerciseType = "amrap";
-          isGroupHeader = false; // Standalone AMRAP exercise (shouldn't happen, but handle it)
+          isGroupHeader = true;
+          console.log(`🟢 AMRAP header: "${name}"`);
         } else if (typeValue === "amrap_exercise") {
-          // Keep as special marker for grouping, will be converted later
-          exerciseType = "bodyweight";
+          exerciseType = "bodyweight"; // Will be set as child
+          isGroupHeader = false;
+        } else if (typeValue === "hiit") {
+          exerciseType = "hiit";
+          isGroupHeader = false;
         } else if (typeValue === "cardio") {
           exerciseType = "cardio";
         } else if (typeValue === "bodyweight") {
