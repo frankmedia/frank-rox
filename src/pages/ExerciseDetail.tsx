@@ -252,7 +252,7 @@ const ExerciseDetail = () => {
             >
               <ArrowLeft className="w-8 h-8" />
             </Button>
-            <h1 className="text-xl font-bold text-foreground flex-1 text-center px-2">{exercise.name}</h1>
+            <h1 className="text-2xl font-bold text-foreground flex-1 text-center px-2">{exercise.name}</h1>
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"

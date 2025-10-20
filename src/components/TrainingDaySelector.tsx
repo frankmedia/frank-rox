@@ -121,12 +121,6 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
       >
         →
       </Button>
-      
-      {!loading && (
-        <span className="text-sm text-muted-foreground">
-          {currentDay} / {maxDay}
-        </span>
-      )}
     </div>
   );
 }
