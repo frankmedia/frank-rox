@@ -249,8 +249,18 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
   }
 
   try {
-    // Get current training day from localStorage or default to "1"
-    const currentTrainingDay = localStorage.getItem("currentTrainingDay") || "1";
+    // Get current training day from user-specific localStorage or default to "1"
+    let currentTrainingDay = "1";
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userKey = `currentTrainingDay_${user.username}`;
+        currentTrainingDay = localStorage.getItem(userKey) || "1";
+      }
+    } catch (e) {
+      console.error("Error reading training day:", e);
+    }
     console.log(`📅 Current Training Day: ${currentTrainingDay}`);
     
     // Fetch exercises from the Plan tab (now includes Notes and Media URL columns)
@@ -267,9 +277,9 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
       const dayNumber = row[0]?.toString().trim();
       const exerciseName = row[1];
       
-      // Normalize both to compare (handle both "1" and "01" formats)
-      const normalizedDayNumber = dayNumber ? parseInt(dayNumber).toString().padStart(2, "0") : "";
-      const normalizedCurrentDay = currentTrainingDay ? parseInt(currentTrainingDay).toString().padStart(2, "0") : "";
+      // Normalize both to compare (convert to numbers to handle "1", "01", "001" formats)
+      const normalizedDayNumber = dayNumber ? parseInt(dayNumber).toString() : "";
+      const normalizedCurrentDay = currentTrainingDay ? parseInt(currentTrainingDay).toString() : "";
       
       const matches = normalizedDayNumber === normalizedCurrentDay && exerciseName;
       
