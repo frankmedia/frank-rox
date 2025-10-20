@@ -123,14 +123,22 @@ const Today = () => {
         ) : (
           <>
             <div className="space-y-4">
-              {exercises.map((exercise) => (
-                <ExerciseCard
-                  key={exercise.id}
-                  exercise={exercise}
-                  onClick={() => navigate(`/exercise/${exercise.id}`)}
-                  isCompleted={completedExercises.has(exercise.name)}
-                />
-              ))}
+              {exercises.map((exercise) => {
+                // Skip rendering child exercises that are part of a group
+                // They're already displayed inside their parent card
+                if ((exercise as any)._isChildExercise) {
+                  return null;
+                }
+                
+                return (
+                  <ExerciseCard
+                    key={exercise.id}
+                    exercise={exercise}
+                    onClick={() => navigate(`/exercise/${exercise.id}`)}
+                    isCompleted={completedExercises.has(exercise.name)}
+                  />
+                );
+              })}
             </div>
 
             {exercises.length === 0 && (
