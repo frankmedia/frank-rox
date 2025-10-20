@@ -171,34 +171,23 @@ export async function getUserSheet(username: string = USER_NAME): Promise<UserSh
 }
 
 /**
- * Fetch media URL from Videos or Images tabs as fallback
+ * Fetch media URL from Videos tab in MASTER sheet as fallback
  */
 async function fetchMediaFallback(
-  sheetId: string,
   exerciseName: string
 ): Promise<string | null> {
   try {
-    // Try videos tab first (lowercase)
-    const videosData = await fetchSheetData(sheetId, "videos!A:B").catch(() => []);
+    // Look in MASTER sheet's videos tab (centralized media library)
+    const videosData = await fetchSheetData(MASTER_SHEET_ID, "videos!A:B").catch(() => []);
     for (const row of videosData) {
       const [name, url] = row;
       if (name && name.toLowerCase().trim() === exerciseName.toLowerCase().trim() && url) {
-        console.log(`🎥 Found video for "${exerciseName}" in videos tab:`, url);
+        console.log(`🎥 Found video for "${exerciseName}" in master sheet videos tab:`, url);
         return url;
       }
     }
     
-    // Try images tab second (lowercase)
-    const imagesData = await fetchSheetData(sheetId, "images!A:B").catch(() => []);
-    for (const row of imagesData) {
-      const [name, url] = row;
-      if (name && name.toLowerCase().trim() === exerciseName.toLowerCase().trim() && url) {
-        console.log(`🖼️ Found image for "${exerciseName}" in images tab:`, url);
-        return url;
-      }
-    }
-    
-    console.log(`ℹ️ No media found for "${exerciseName}" in videos or images tabs`);
+    console.log(`ℹ️ No media found for "${exerciseName}" in master sheet videos tab`);
     return null;
   } catch (error) {
     console.error("❌ Error fetching media fallback:", error);
@@ -296,15 +285,14 @@ export async function fetchTodayExercises(username: string = USER_NAME): Promise
           exerciseType = "weights";
         }
 
-        // If no mediaUrl, try to fetch from Videos/Images tabs (disabled - using notes field instead)
+        // If no mediaUrl, try to fetch from videos tab in MASTER sheet
         let finalMediaUrl = mediaUrl || undefined;
-        // Fallback disabled - images are in notes field
-        // if (!finalMediaUrl && name) {
-        //   const fallbackUrl = await fetchMediaFallback(userSheet.sheetId, name);
-        //   if (fallbackUrl) {
-        //     finalMediaUrl = fallbackUrl;
-        //   }
-        // }
+        if (!finalMediaUrl && name) {
+          const fallbackUrl = await fetchMediaFallback(name);
+          if (fallbackUrl) {
+            finalMediaUrl = fallbackUrl;
+          }
+        }
 
         const exercise: Exercise = {
           id: String(index + 1),
