@@ -320,16 +320,19 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         
         console.log(`📝 Parsing exercise "${name}" with type "${type}" (normalized: "${typeValue}")`);
         
-        // Check if name indicates a group header
-        if (nameUpper.startsWith("CIRCUIT:")) {
+        // Check if name indicates a group header (allowing for numbers like "CIRCUIT 1:", "AMRAP 2:", etc.)
+        if (nameUpper.includes("CIRCUIT") && nameUpper.includes(":")) {
           exerciseType = "circuit";
           isGroupHeader = true;
-        } else if (nameUpper.startsWith("AMRAP:")) {
+          console.log(`🔵 Detected CIRCUIT header: "${name}"`);
+        } else if (nameUpper.includes("AMRAP") && nameUpper.includes(":")) {
           exerciseType = "amrap";
           isGroupHeader = true;
-        } else if (nameUpper.startsWith("HIIT:")) {
+          console.log(`🟢 Detected AMRAP header: "${name}"`);
+        } else if (nameUpper.includes("HIIT") && nameUpper.includes(":")) {
           exerciseType = "hiit";
           isGroupHeader = true;
+          console.log(`🔴 Detected HIIT header: "${name}"`);
         }
         // Check type column for exercise type (including hiit, circuit, amrap as standalone)
         else if (typeValue === "hiit") {
