@@ -168,13 +168,13 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
             </div>
             
             {/* Controls */}
-            <div className="flex gap-4 justify-center flex-wrap">
+            <div className="flex gap-4 w-full">
               {isRunning ? (
                 <>
                   <Button
                     size="lg"
                     onClick={handlePause}
-                    className="h-16 px-8 text-xl font-bold"
+                    className="h-20 text-2xl font-bold flex-1"
                     variant="outline"
                   >
                     Pause
@@ -182,7 +182,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
                   <Button
                     size="lg"
                     onClick={handleComplete}
-                    className="h-16 px-8 text-xl font-bold"
+                    className="h-20 text-2xl font-bold flex-[2]"
                     style={{ backgroundColor: "#FFCC00", color: "#000" }}
                   >
                     Complete Early
@@ -193,7 +193,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
                   <Button
                     size="lg"
                     onClick={handleResume}
-                    className="h-16 px-8 text-xl font-bold"
+                    className="h-20 text-2xl font-bold flex-1"
                     style={{ backgroundColor: "#00FF4D", color: "#000" }}
                   >
                     Resume
@@ -201,7 +201,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
                   <Button
                     size="lg"
                     onClick={handleComplete}
-                    className="h-16 px-8 text-xl font-bold"
+                    className="h-20 text-2xl font-bold flex-[2]"
                     style={{ backgroundColor: "#FFCC00", color: "#000" }}
                   >
                     Complete Early
@@ -211,7 +211,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
                 <Button
                   size="lg"
                   onClick={handleComplete}
-                  className="h-16 w-full text-xl font-bold"
+                  className="h-20 w-full text-2xl font-bold"
                   style={{ backgroundColor: "#FFCC00", color: "#000" }}
                 >
                   ✓ Mark as Done
