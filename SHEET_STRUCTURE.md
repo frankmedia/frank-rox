@@ -23,15 +23,15 @@ This tab contains your training plan. The app shows exercises for the CURRENT TR
 | Column | Name | Required | Description | Example |
 |--------|------|----------|-------------|---------|
 | **A** | Day | ✅ Yes | Training day number | 1, 2, 3, etc. |
-| **B** | Exercise | ✅ Yes | Exercise name | Goblet Squat |
-| **C** | Type | ✅ Yes | `weights`, `cardio`, `bodyweight`, or `mobility` | weights |
-| **D** | Sets | For weights/bodyweight | Number of sets | 5 |
+| **B** | Exercise | ✅ Yes | Exercise name (prefix "CIRCUIT:", "AMRAP:", "→" for groups) | Goblet Squat |
+| **C** | Type | ✅ Yes | `weights`, `cardio`, `bodyweight`, `mobility`, `hiit`, `circuit`, `amrap` | weights |
+| **D** | Sets | For weights/bodyweight/hiit/circuit | Number of sets/rounds/intervals | 5 |
 | **E** | Reps | For weights/bodyweight | Reps per set | 12 |
 | **F** | Kg | For weights only | Suggested weight in kg | 16 |
-| **G** | Personal Best | Optional (NOT for mobility) | Your best performance | 20kg |
-| **H** | Duration | For cardio/mobility | Minutes | 36 |
+| **G** | Personal Best | Optional (NOT for mobility/hiit/circuit/amrap) | Your best performance | 20kg |
+| **H** | Duration | For cardio/mobility/hiit/amrap | Minutes (time cap for AMRAP) | 36 |
 | **I** | Distance | For cardio only | Kilometers | 6.0 |
-| **J** | Notes | Optional | Instructions/form cues or media URL | Slow 3s down • 1s pause • 1s up |
+| **J** | Notes | Optional | Instructions/form cues/work-rest ratio (HIIT) | Slow 3s down • 1s pause • 1s up |
 | **K** | Media URL | Optional | Image or YouTube URL | https://... |
 
 ---
@@ -90,6 +90,70 @@ This tab contains your training plan. The app shows exercises for the CURRENT TR
 
 ---
 
+#### ⚡ **HIIT** (Type = `hiit`)
+**Example: Assault Bike HIIT**
+
+| A | B | C | D | E | F | G | H | I | J | K |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | Assault Bike HIIT | hiit | 8 | | | | 4 | | 20s work / 10s rest | https://... |
+
+**Fill:** Day, Exercise, Type=`hiit`, Sets (D) = number of intervals, Duration (H) = total time (optional), Notes (J) = work/rest ratio (e.g., "20s work / 10s rest")
+**Leave Empty:** Reps, Kg, Personal Best, Distance
+**Leave Media URL optional**
+
+**How it works:**
+- Sets = number of intervals (e.g., 8 intervals)
+- Notes = work/rest split (e.g., "20s work / 10s rest" or "20s/10s")
+- App provides auto-interval timer with beeps
+
+---
+
+#### 🔄 **CIRCUIT** (Type = `circuit`)
+**Example: Circuit with multiple exercises**
+
+| A | B | C | D | E | F | G | H | I | J | K |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | CIRCUIT: Lower Body | circuit | 3 | | | | | | 90s rest between rounds | |
+| 3 | → Dumbbell Front Squat | circuit_exercise | | 10 | 6 | | | | | |
+| 3 | → Step-Ups | circuit_exercise | | 10 | 6 | | | | | |
+| 3 | → Seated Row | circuit_exercise | | 12 | 18 | | | | | |
+
+**Fill:** 
+- **Header row:** Exercise Name starts with "CIRCUIT:", Type=`circuit`, Sets (D) = number of rounds, Notes = rest info
+- **Exercise rows:** Exercise Name starts with "→", Type=`circuit_exercise`, Reps, Kg (if weights)
+**Leave Empty:** Personal Best, Duration, Distance (on header), Media URL (on header)
+
+**How it works:**
+- First row = Circuit header with total rounds
+- Following rows = individual exercises in the circuit
+- App shows round-tracking circles (tap to mark each round complete)
+- Orange border color (`#FF6600`)
+
+---
+
+#### 🎯 **AMRAP** (As Many Reps/Rounds As Possible) (Type = `amrap`)
+**Example: 10-minute AMRAP**
+
+| A | B | C | D | E | F | G | H | I | J | K |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | AMRAP: Bodyweight | amrap | | | | | 10 | | | |
+| 3 | → Burpees | amrap_exercise | | 10 | | | | | | |
+| 3 | → Air Squats | amrap_exercise | | 20 | | | | | | |
+| 3 | → Sit-Ups | amrap_exercise | | 30 | | | | | | |
+
+**Fill:** 
+- **Header row:** Exercise Name starts with "AMRAP:", Type=`amrap`, Duration (H) = time cap in minutes
+- **Exercise rows:** Exercise Name starts with "→", Type=`amrap_exercise`, Reps
+**Leave Empty:** Sets, Kg, Personal Best, Distance (on header), Media URL (on header)
+
+**How it works:**
+- First row = AMRAP header with time cap
+- Following rows = exercises to repeat in sequence
+- App provides countdown timer and round tracking
+- Green border color (`#00FF4D`)
+
+---
+
 #### Example Full Sheet:
 
 ```
@@ -105,13 +169,20 @@ Row 7: 2 | Bulgarian Split Squat | weights | 3 | 10 | 18 | 22kg | | | Knee track
 #### Important Notes:
 - **Row 1 = Headers** (will be skipped by the app)
 - **Day = Training day number:** 1, 2, 3, 4, 5, 6, etc. (your program cycles)
-- **Type must be:** `weights`, `cardio`, `bodyweight`, or `mobility` (lowercase!)
+- **Type must be:** `weights`, `cardio`, `bodyweight`, `mobility`, `hiit`, `circuit`, `circuit_exercise`, `amrap`, or `amrap_exercise` (lowercase!)
 - **For Nannan-style drills:** Create **one row per interval/drill** with its specific duration and distance
 - **Mobility exercises:** NO Personal Best column (PB not tracked for mobility)
+- **HIIT/Circuit/AMRAP:** Use header rows + child exercise rows for grouped workouts
 - **Media URL supports:**
   - Direct image URLs (jpg, png, gif)
   - YouTube URLs (youtube.com/watch?v=, youtu.be/, youtube.com/shorts/)
   - Can also put URLs in the **Notes** column - app will detect and display them!
+
+#### Color Scheme:
+- **HIIT:** Hot Pink border (`#FF00B2`) ⚡
+- **Circuit:** Orange border (`#FF6600`) 🔄
+- **AMRAP:** Bright Green border (`#00FF4D`) 🎯
+- **Regular exercises:** Yellow accents (`#FFCC00`) 🟡
 
 ---
 
