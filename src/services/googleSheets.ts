@@ -221,12 +221,21 @@ export async function getMaxTrainingDay(username: string = getCurrentUser()): Pr
 
   try {
     const data = await fetchSheetData(userSheet.sheetId, "Plan!A2:A100");
+    console.log(`📊 Raw day data from sheet:`, {
+      totalRows: data.length,
+      firstFewRows: data.slice(0, 20).map(row => row[0]),
+      allDayValues: data.map(row => row[0])
+    });
+    
     const dayNumbers = data
       .map(row => parseInt(row[0]?.toString().trim()))
       .filter(num => !isNaN(num) && num > 0);
     
+    console.log(`📊 Parsed day numbers:`, dayNumbers);
+    console.log(`📊 Unique days:`, [...new Set(dayNumbers)].sort((a, b) => a - b));
+    
     const maxDay = dayNumbers.length > 0 ? Math.max(...dayNumbers) : 1;
-    console.log(`🔄 Program cycle length: ${maxDay} days`);
+    console.log(`🔄 Program cycle length: ${maxDay} days (from ${dayNumbers.length} total rows)`);
     return maxDay;
   } catch (error) {
     console.error("❌ Error getting max training day:", error);
