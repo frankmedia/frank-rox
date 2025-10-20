@@ -288,12 +288,14 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         const [, name, type, sets, reps, suggestedKg, personalBest, durationMin, targetDistanceKm, notes, mediaUrl] = row;
         
         const typeValue = type?.toLowerCase() || "weights";
-        let exerciseType: "weights" | "cardio" | "bodyweight" = "weights";
+        let exerciseType: "weights" | "cardio" | "bodyweight" | "mobility" = "weights";
         
         if (typeValue === "cardio") {
           exerciseType = "cardio";
         } else if (typeValue === "bodyweight") {
           exerciseType = "bodyweight";
+        } else if (typeValue === "mobility") {
+          exerciseType = "mobility";
         } else {
           exerciseType = "weights";
         }
@@ -319,6 +321,10 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           exercise.durationMin = durationMin ? parseInt(durationMin) : 20;
           exercise.targetDistanceKm = targetDistanceKm ? parseFloat(targetDistanceKm) : 0;
           exercise.personalBest = personalBest || undefined;
+        } else if (exercise.type === "mobility") {
+          // Mobility exercises: duration-based, no PB
+          exercise.durationMin = durationMin ? parseInt(durationMin) : 10;
+          // No PB for mobility
         } else {
           // For weights and bodyweight exercises
           exercise.sets = sets ? parseInt(sets) : 3;
@@ -367,12 +373,14 @@ export async function fetchAllPlannedExercises(username: string = getCurrentUser
         const [weekday, name, type, sets, reps, suggestedKg, personalBest, durationMin, targetDistanceKm, notes, mediaUrl] = row;
         
         const typeValue = type?.toLowerCase() || "weights";
-        let exerciseType: "weights" | "cardio" | "bodyweight" = "weights";
+        let exerciseType: "weights" | "cardio" | "bodyweight" | "mobility" = "weights";
         
         if (typeValue === "cardio") {
           exerciseType = "cardio";
         } else if (typeValue === "bodyweight") {
           exerciseType = "bodyweight";
+        } else if (typeValue === "mobility") {
+          exerciseType = "mobility";
         } else {
           exerciseType = "weights";
         }
@@ -390,6 +398,10 @@ export async function fetchAllPlannedExercises(username: string = getCurrentUser
           exercise.durationMin = durationMin ? parseInt(durationMin) : 20;
           exercise.targetDistanceKm = targetDistanceKm ? parseFloat(targetDistanceKm) : 0;
           exercise.personalBest = personalBest || undefined;
+        } else if (exercise.type === "mobility") {
+          // Mobility exercises: duration-based, no PB
+          exercise.durationMin = durationMin ? parseInt(durationMin) : 10;
+          // No PB for mobility
         } else {
           // For weights and bodyweight exercises
           exercise.sets = sets ? parseInt(sets) : 3;

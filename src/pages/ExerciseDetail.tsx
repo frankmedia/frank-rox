@@ -75,6 +75,9 @@ const ExerciseDetail = () => {
     if (exercise.type === "cardio") {
       data.distance = todaysDistance ? parseFloat(todaysDistance) : undefined;
       data.duration = todaysDuration ? parseInt(todaysDuration) : undefined;
+    } else if (exercise.type === "mobility") {
+      // Mobility exercises: duration only, no PB tracking
+      data.duration = todaysDuration ? parseInt(todaysDuration) : undefined;
     } else if (exercise.type === "weights") {
       data.weight = todaysKg ? parseFloat(todaysKg) : undefined;
       data.sets = exercise.sets;
@@ -221,6 +224,15 @@ const ExerciseDetail = () => {
                   Distance: {exercise.targetDistanceKm}km
                 </p>
               </>
+            ) : exercise.type === "mobility" ? (
+              <>
+                <p className="text-5xl font-bold text-foreground mb-4">
+                  {exercise.durationMin} min
+                </p>
+                <p className="text-xl text-muted-foreground font-medium">
+                  Mobility Work
+                </p>
+              </>
             ) : (
               <>
                 <p className="text-7xl font-bold text-foreground mb-4">
@@ -361,6 +373,38 @@ const ExerciseDetail = () => {
           {exercise.type === "bodyweight" && (
             <div className="text-center py-4">
               <p className="text-muted-foreground">Bodyweight exercise - no weight to track</p>
+            </div>
+          )}
+
+          {exercise.type === "mobility" && (
+            <div>
+              <Label htmlFor="duration" className="text-xl font-bold">Duration (minutes)</Label>
+              <div className="flex items-center gap-3 mt-3">
+                <Button
+                  type="button"
+                  onClick={() => setTodaysDuration((prev) => Math.max(0, parseFloat(prev || "0") - 1).toString())}
+                  className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                  variant="default"
+                >
+                  −
+                </Button>
+                <Input
+                  type="number"
+                  id="duration"
+                  value={todaysDuration}
+                  onChange={(e) => setTodaysDuration(e.target.value)}
+                  className="text-center text-6xl h-32 border-2 font-bold"
+                  placeholder={exercise.durationMin?.toString() || "10"}
+                />
+                <Button
+                  type="button"
+                  onClick={() => setTodaysDuration((prev) => (parseFloat(prev || "0") + 1).toString())}
+                  className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                  variant="default"
+                >
+                  +
+                </Button>
+              </div>
             </div>
           )}
 

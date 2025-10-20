@@ -32,9 +32,10 @@ export const DataProvider = ({ children }: DataProviderProps) => {
   const [error, setError] = useState<string | null>(null);
   const [userSheet, setUserSheet] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<string>("");
+  const [currentTrainingDay, setCurrentTrainingDay] = useState<string>("");
 
   const loadData = async () => {
-    console.log("🚀 Loading data for user:", currentUser || "unknown");
+    console.log("🚀 Loading data for user:", currentUser || "unknown", "day:", currentTrainingDay || "unknown");
     setLoading(true);
     setError(null);
 
@@ -71,7 +72,7 @@ export const DataProvider = ({ children }: DataProviderProps) => {
     await loadData();
   };
 
-  // Watch for user changes and reload data when user changes
+  // Watch for user changes
   useEffect(() => {
     try {
       const userStr = localStorage.getItem("frank_rock_user");
@@ -82,11 +83,6 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         if (username !== currentUser) {
           console.log("👤 User changed from", currentUser || "(none)", "to", username);
           setCurrentUser(username);
-          
-          // Force reload when user changes
-          if (currentUser) {
-            loadData();
-          }
         }
       }
     } catch (e) {
@@ -94,12 +90,38 @@ export const DataProvider = ({ children }: DataProviderProps) => {
     }
   }, []);
 
-  // Load data on mount and when user changes
+  // Watch for training day changes (poll localStorage every 500ms)
   useEffect(() => {
-    if (currentUser) {
+    const checkTrainingDay = () => {
+      try {
+        const userStr = localStorage.getItem("frank_rock_user");
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          const userKey = `currentTrainingDay_${user.username}`;
+          const trainingDay = localStorage.getItem(userKey) || "1";
+          
+          if (trainingDay !== currentTrainingDay) {
+            console.log("📅 Training day changed from", currentTrainingDay || "(none)", "to", trainingDay);
+            setCurrentTrainingDay(trainingDay);
+          }
+        }
+      } catch (e) {
+        console.error("Error detecting training day:", e);
+      }
+    };
+
+    // Check immediately and then every 500ms
+    checkTrainingDay();
+    const interval = setInterval(checkTrainingDay, 500);
+    return () => clearInterval(interval);
+  }, [currentTrainingDay]);
+
+  // Load data when user or training day changes
+  useEffect(() => {
+    if (currentUser && currentTrainingDay) {
       loadData();
     }
-  }, [currentUser]);
+  }, [currentUser, currentTrainingDay]);
 
   return (
     <DataContext.Provider

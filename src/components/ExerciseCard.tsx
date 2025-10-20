@@ -1,13 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Dumbbell, Medal } from "lucide-react";
+import { Clock, Dumbbell, Medal, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ExerciseCardProps {
   exercise: {
     id: string;
     name: string;
-    type: "weights" | "cardio" | "bodyweight";
+    type: "weights" | "cardio" | "bodyweight" | "mobility";
     sets?: number;
     reps?: number;
     suggestedKg?: number;
@@ -39,12 +39,14 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
           <div className="flex items-center gap-2">
             {exercise.type === "cardio" ? (
               <Clock className="w-5 h-5 text-primary" />
+            ) : exercise.type === "mobility" ? (
+              <Activity className="w-5 h-5 text-primary" />
             ) : (
               <Dumbbell className="w-5 h-5 text-primary" />
             )}
             <h3 className="text-lg font-bold text-foreground">{exercise.name}</h3>
           </div>
-          {exercise.personalBest && (
+          {exercise.personalBest && exercise.type !== "mobility" && (
             <Badge className="bg-primary/10 text-primary border border-primary/20 font-bold">
               <Medal className="w-3 h-3 mr-1" />
               PB: {exercise.personalBest}
@@ -81,6 +83,17 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                   Target: <span className="font-semibold text-secondary">{exercise.targetDistanceKm}km</span>
                 </span>
               )}
+            </div>
+          )}
+
+          {exercise.type === "mobility" && (
+            <div className="flex items-center gap-4 text-muted-foreground">
+              {exercise.durationMin && (
+                <span className="text-4xl font-bold text-foreground">
+                  {exercise.durationMin} min
+                </span>
+              )}
+              <span className="text-sm text-muted-foreground">Mobility</span>
             </div>
           )}
         </div>

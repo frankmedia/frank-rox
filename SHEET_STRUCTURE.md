@@ -16,46 +16,102 @@
 
 ### Tab 1: `Plan` ⭐ (Required)
 
-This tab contains your weekly training plan. The app shows exercises for TODAY's weekday.
+This tab contains your training plan. The app shows exercises for the CURRENT TRAINING DAY.
 
 #### Column Structure:
 
 | Column | Name | Required | Description | Example |
 |--------|------|----------|-------------|---------|
-| **A** | Weekday | ✅ Yes | Day of the week | Monday |
+| **A** | Day | ✅ Yes | Training day number | 1, 2, 3, etc. |
 | **B** | Exercise | ✅ Yes | Exercise name | Goblet Squat |
-| **C** | Type | ✅ Yes | `weights`, `cardio`, or `bodyweight` | weights |
+| **C** | Type | ✅ Yes | `weights`, `cardio`, `bodyweight`, or `mobility` | weights |
 | **D** | Sets | For weights/bodyweight | Number of sets | 5 |
 | **E** | Reps | For weights/bodyweight | Reps per set | 12 |
 | **F** | Kg | For weights only | Suggested weight in kg | 16 |
-| **G** | Personal Best | Optional | Your best performance | 20kg |
-| **H** | Duration | For cardio | Minutes | 36 |
-| **I** | Distance | For cardio | Kilometers | 6.0 |
-| **J** | Notes | Optional | Instructions/form cues | Slow 3s down • 1s pause • 1s up |
+| **G** | Personal Best | Optional (NOT for mobility) | Your best performance | 20kg |
+| **H** | Duration | For cardio/mobility | Minutes | 36 |
+| **I** | Distance | For cardio only | Kilometers | 6.0 |
+| **J** | Notes | Optional | Instructions/form cues or media URL | Slow 3s down • 1s pause • 1s up |
 | **K** | Media URL | Optional | Image or YouTube URL | https://... |
 
-#### Example Rows:
+---
+
+### 📝 **How to Fill Columns for Each Exercise Type:**
+
+#### 🏋️ **WEIGHTS** (Type = `weights`)
+**Example: Goblet Squat**
+
+| A | B | C | D | E | F | G | H | I | J | K |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Goblet Squat (tempo 3-1-1) | weights | 5 | 12 | 16 | 20kg | | | Slow 3s down • 1s pause | https://... |
+
+**Fill:** Day, Exercise, Type=`weights`, Sets, Reps, Kg, Personal Best (optional), Notes (optional), Media URL (optional)
+**Leave Empty:** Duration, Distance
+
+---
+
+#### 🏃 **CARDIO** (Type = `cardio`)
+**Example: Rowing Machine - Nannan Drills**
+
+| A | B | C | D | E | F | G | H | I | J | K |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Nannan - 10 min / 1.8 km | cardio | | | | | 10 | 1.8 | Fast strokes, maintain pace | https://... |
+| 1 | Nannan - 8 min / 1.5 km | cardio | | | | | 8 | 1.5 | Sprint pace | |
+| 1 | Nannan - 10 min / 4 km | cardio | | | | | 10 | 4 | Long distance | |
+
+**Fill:** Day, Exercise, Type=`cardio`, Duration (H), Distance (I), Notes (optional), Media URL (optional)
+**Leave Empty:** Sets, Reps, Kg, Personal Best
+
+**Note:** Each Nannan drill should be a **separate row** with its own duration and distance target!
+
+---
+
+#### 💪 **BODYWEIGHT** (Type = `bodyweight`)
+**Example: Dead Bug**
+
+| A | B | C | D | E | F | G | H | I | J | K |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Dead Bug | bodyweight | 3 | 12 | | | | | Lower back flat, breathe | https://... |
+
+**Fill:** Day, Exercise, Type=`bodyweight`, Sets, Reps, Notes (optional), Media URL (optional)
+**Leave Empty:** Kg, Personal Best, Duration, Distance
+
+---
+
+#### 🧘 **MOBILITY** (Type = `mobility`)
+**Example: Hip Mobility Flow**
+
+| A | B | C | D | E | F | G | H | I | J | K |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Hip Mobility Flow | mobility | | | | | 10 | | Slow controlled movements | https://... |
+
+**Fill:** Day, Exercise, Type=`mobility`, Duration (H), Notes (optional), Media URL (optional)
+**Leave Empty:** Sets, Reps, Kg, **Personal Best** (NO PB for mobility!), Distance
+
+---
+
+#### Example Full Sheet:
 
 ```
 Row 1: Day | Exercise | Type | Sets | Reps | Kg | Personal Best | Duration | Distance | Notes | Media URL
-Row 2: Monday | Goblet Squat (tempo 3-1-1) | weights | 5 | 12 | 16 | | | | Slow 3s down • 1s pause • 1s up; chest tall; knees track out | https://sportscienceinsider.com/wp-content/uploads/2022/09/How-to-Goblet-Squat.png
-Row 3: Monday | Step-Ups (weighted) | weights | 4 | 10 | 24 | | | | Full foot on box; control the step down; drive through heel | https://liftmanual.com/wp-content/uploads/2023/04/dumbbell-single-leg-step-up.jpg
-Row 4: Monday | Dead Bug | bodyweight | 3 | 12 | | | | | Lower back flat; slow controlled limbs; breathe out on reach | https://example.com/deadbug.jpg
-Row 5: Tuesday | Row-Bike-SkiErg Rotation (Zone 2) | cardio | | | | 6:00 | 36 | 6.0 | Easy nasal breathing; 70–75% HRmax; smooth strokes | https://www.youtube.com/watch?v=example
+Row 2: 1 | Goblet Squat (tempo 3-1-1) | weights | 5 | 12 | 16 | 20kg | | | Slow 3s down • 1s pause • 1s up | https://...
+Row 3: 1 | Dead Bug | bodyweight | 3 | 12 | | | | | Lower back flat | https://...
+Row 4: 1 | Hip Mobility Flow | mobility | | | | | 10 | | Slow controlled movements | https://...
+Row 5: 1 | Nannan - 10 min / 1.8 km | cardio | | | | | 10 | 1.8 | Fast strokes | https://...
+Row 6: 1 | Nannan - 8 min / 1.5 km | cardio | | | | | 8 | 1.5 | Sprint pace | 
+Row 7: 2 | Bulgarian Split Squat | weights | 3 | 10 | 18 | 22kg | | | Knee tracks over toes | https://...
 ```
 
 #### Important Notes:
-- **Row 1 = Headers** (will be skipped)
-- **Weekday must match exactly:** Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
-- **Type must be:** `weights`, `cardio`, or `bodyweight` (lowercase)
-- **For weights exercises:** Fill Sets, Reps, Kg columns
-- **For bodyweight exercises:** Fill Sets, Reps columns (no Kg)
-- **For cardio exercises:** Fill Duration, Distance columns
+- **Row 1 = Headers** (will be skipped by the app)
+- **Day = Training day number:** 1, 2, 3, 4, 5, 6, etc. (your program cycles)
+- **Type must be:** `weights`, `cardio`, `bodyweight`, or `mobility` (lowercase!)
+- **For Nannan-style drills:** Create **one row per interval/drill** with its specific duration and distance
+- **Mobility exercises:** NO Personal Best column (PB not tracked for mobility)
 - **Media URL supports:**
   - Direct image URLs (jpg, png, gif)
   - YouTube URLs (youtube.com/watch?v=, youtu.be/, youtube.com/shorts/)
-  - Images are cropped to 16:9 aspect ratio
-  - YouTube videos are embedded
+  - Can also put URLs in the **Notes** column - app will detect and display them!
 
 ---
 
