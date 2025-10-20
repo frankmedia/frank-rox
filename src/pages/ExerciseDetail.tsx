@@ -46,6 +46,15 @@ const ExerciseDetail = () => {
         if (data[foundIndex]) {
           const ex = data[foundIndex];
           setExercise(ex);
+          
+          // Debug: Check if timer should show
+          console.log("🔍 Exercise Debug:", {
+            name: ex.name,
+            type: ex.type,
+            durationMin: ex.durationMin,
+            willShowTimer: (ex.type === "cardio" || ex.type === "mobility") && !!ex.durationMin
+          });
+          
           if (ex.type === "weights" && ex.suggestedKg) {
             setTodaysKg(ex.suggestedKg.toString());
           }
