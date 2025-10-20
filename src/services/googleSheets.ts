@@ -299,9 +299,16 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         
         console.log(`🔥 RAW ROW DATA for "${name}":`, {
           type: type,
+          sets: sets,
+          reps: reps,
+          kg: suggestedKg,
+          pb: personalBest,
           durationMin: durationMin,
           targetDistanceKm: targetDistanceKm,
-          fullRow: row
+          notes: notes,
+          mediaUrl: mediaUrl,
+          fullRow: row,
+          rowLength: row.length
         });
         
         const typeValue = type?.toString().toLowerCase().trim() || "weights";
@@ -385,6 +392,12 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
             if (durationMin) {
               exercise.durationMin = parseInt(durationMin);
             }
+            console.log(`⚡ HIIT Exercise "${name}":`, {
+              totalRounds: exercise.totalRounds,
+              workRestRatio: exercise.workRestRatio,
+              durationMin: exercise.durationMin,
+              notesFromSheet: notes
+            });
           } else if (exerciseType === "circuit") {
             exercise.totalRounds = sets ? parseInt(sets) : 3;
             if (durationMin) {
@@ -392,6 +405,10 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
             }
           } else if (exerciseType === "amrap") {
             exercise.timeCap = durationMin ? parseInt(durationMin) : 10;
+            console.log(`🎯 AMRAP Exercise "${name}":`, {
+              timeCap: exercise.timeCap,
+              durationMinFromSheet: durationMin
+            });
           }
           // Also parse reps/kg for standalone grouped exercises if present
           if (sets) exercise.sets = parseInt(sets);
