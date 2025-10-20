@@ -131,15 +131,17 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
             <div className="space-y-3">
               <h3 className="text-2xl font-bold text-center mb-4">Exercises</h3>
               {exercises.map((ex: Exercise) => {
-                // Build description parts
+                // Build title with distance in brackets
+                let title = ex.name;
                 const parts: string[] = [];
                 
                 if (ex.targetDistanceKm) {
-                  // Convert km to meters for display
+                  // Convert km to meters for display in title
                   const meters = Math.round(ex.targetDistanceKm * 1000);
-                  parts.push(`${meters}m`);
+                  title = `${ex.name} [${meters}m]`;
                 }
                 
+                // Build subtitle with other info
                 if (ex.reps) {
                   parts.push(`${ex.reps} reps`);
                 }
@@ -158,7 +160,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
                     className="p-6 border-2"
                   >
                     <div>
-                      <h3 className="text-3xl font-bold mb-1">{ex.name}</h3>
+                      <h3 className="text-3xl font-bold mb-1">{title}</h3>
                       {parts.length > 0 && (
                         <p className="text-lg text-muted-foreground">
                           {parts.join(" • ")}
