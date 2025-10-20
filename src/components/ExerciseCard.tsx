@@ -80,7 +80,7 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
               )}
               {exercise.targetDistanceKm && (
                 <span className="text-lg">
-                  Target: <span className="font-semibold text-secondary">{exercise.targetDistanceKm}km</span>
+                  Target: <span className="font-semibold text-secondary">{exercise.targetDistanceKm.toFixed(1)}km</span>
                 </span>
               )}
             </div>

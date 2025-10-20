@@ -198,7 +198,7 @@ const History = () => {
                       )}
                       {entry.distance && (
                         <>
-                          <p className="text-2xl font-bold text-secondary">{entry.distance}km</p>
+                          <p className="text-2xl font-bold text-secondary">{entry.distance.toFixed(1)}km</p>
                           <p className="text-xs text-muted-foreground">{entry.duration} min</p>
                         </>
                       )}

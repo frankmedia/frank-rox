@@ -221,7 +221,7 @@ const ExerciseDetail = () => {
                   {exercise.durationMin} min
                 </p>
                 <p className="text-2xl text-secondary font-semibold">
-                  Distance: {exercise.targetDistanceKm}km
+                  Distance: {exercise.targetDistanceKm?.toFixed(1)}km
                 </p>
               </>
             ) : exercise.type === "mobility" ? (
