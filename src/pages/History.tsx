@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 const History = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("progress");
+  const [activeTab, setActiveTab] = useState("history");
   const [history, setHistory] = useState<WorkoutLog[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
