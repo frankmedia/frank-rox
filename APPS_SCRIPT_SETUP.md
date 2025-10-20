@@ -24,16 +24,29 @@ function doGet(e) {
 
 function doPost(e) {
   try {
+    // Debug logging
+    Logger.log("🔍 Received request");
+    Logger.log("postData.type: " + (e.postData ? e.postData.type : "undefined"));
+    Logger.log("parameter keys: " + (e.parameter ? Object.keys(e.parameter).join(", ") : "none"));
+    
     // Handle both JSON and form data submissions
     let data;
-    if (e.postData.type === "application/x-www-form-urlencoded") {
+    if (e.parameter && e.parameter.data) {
       // Form data submission (CORS workaround)
-      const params = e.parameter;
-      data = JSON.parse(params.data || "{}");
-    } else {
+      Logger.log("📝 Parsing form data");
+      data = JSON.parse(e.parameter.data);
+    } else if (e.postData && e.postData.contents) {
       // JSON submission
+      Logger.log("📝 Parsing JSON data");
       data = JSON.parse(e.postData.contents);
+    } else {
+      Logger.log("❌ No data found in request");
+      return ContentService.createTextOutput(
+        JSON.stringify({ success: false, error: "No data received" })
+      ).setMimeType(ContentService.MimeType.JSON);
     }
+    
+    Logger.log("✅ Parsed data: " + JSON.stringify(data));
     
     // Validate required fields
     if (!data.username || !data.exerciseName) {
@@ -170,25 +183,36 @@ function doPost(e) {
       historySheet.getRange(lastRow, 1, 1, 10).setBackground("#FFF9E6"); // Light yellow
     }
     
+    const responseData = { 
+      success: true, 
+      message: isPB ? `🏆 New Personal Best! ${oldPB ? oldPB + ' → ' : ''}${data.weight} kg` : "Workout logged successfully",
+      timestamp: timestamp,
+      isPB: isPB,
+      oldPB: oldPB,
+      newPB: isPB ? data.weight : null
+    };
+    
+    Logger.log("📤 Returning response: " + JSON.stringify(responseData));
+    
     const response = ContentService.createTextOutput(
-      JSON.stringify({ 
-        success: true, 
-        message: isPB ? `🏆 New Personal Best! ${oldPB ? oldPB + ' → ' : ''}${data.weight} kg` : "Workout logged successfully",
-        timestamp: timestamp,
-        isPB: isPB,
-        oldPB: oldPB,
-        newPB: isPB ? data.weight : null
-      })
+      JSON.stringify(responseData)
     ).setMimeType(ContentService.MimeType.JSON);
     
     return response;
     
   } catch (error) {
+    Logger.log("❌ Error: " + error.toString());
+    Logger.log("❌ Stack: " + error.stack);
+    
+    const errorResponse = { 
+      success: false, 
+      error: error.toString() 
+    };
+    
+    Logger.log("📤 Returning error response: " + JSON.stringify(errorResponse));
+    
     const response = ContentService.createTextOutput(
-      JSON.stringify({ 
-        success: false, 
-        error: error.toString() 
-      })
+      JSON.stringify(errorResponse)
     ).setMimeType(ContentService.MimeType.JSON);
     
     return response;
