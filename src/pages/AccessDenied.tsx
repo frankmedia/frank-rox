@@ -25,7 +25,7 @@ const AccessDenied = () => {
 
         <div className="bg-secondary/30 rounded-lg p-4 mb-6">
           <p className="text-sm text-muted-foreground">
-            Only users listed in the allowlist can access Frank Rock. If you believe this
+            Only users listed in the allowlist can access Frank Rox. If you believe this
             is an error, please reach out to support.
           </p>
         </div>

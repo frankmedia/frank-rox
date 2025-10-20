@@ -63,7 +63,7 @@ const Today = () => {
                 className="w-10 h-10"
                 style={{ filter: 'brightness(0) saturate(100%) invert(85%) sepia(78%) saturate(2476%) hue-rotate(359deg) brightness(104%) contrast(104%)' }}
               />
-              <h1 className="text-3xl font-bold text-foreground">Frank Rock</h1>
+              <h1 className="text-3xl font-bold text-foreground">Frank Rox</h1>
             </div>
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <Calendar className="w-4 h-4" />
