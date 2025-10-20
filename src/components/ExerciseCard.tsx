@@ -33,7 +33,7 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
     if (completed) return "border-yellow-500";
     switch (exercise.type) {
       case "hiit": return "border-[#FF00B2]"; // Hot pink
-      case "circuit": return "border-[#0033FF]"; // Blue
+      case "circuit": return "border-[#FF6600]"; // Orange
       case "amrap": return "border-[#00FF4D]"; // Bright green
       default: return "border-border hover:border-secondary/50";
     }
@@ -43,7 +43,7 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
   const getIcon = () => {
     switch (exercise.type) {
       case "hiit": return <Zap className="w-5 h-5" style={{ color: "#FF00B2" }} />;
-      case "circuit": return <Repeat className="w-5 h-5" style={{ color: "#0033FF" }} />;
+      case "circuit": return <Repeat className="w-5 h-5" style={{ color: "#FF6600" }} />;
       case "amrap": return <Target className="w-5 h-5" style={{ color: "#00FF4D" }} />;
       case "cardio": return <Clock className="w-5 h-5 text-primary" />;
       case "mobility": return <Activity className="w-5 h-5 text-primary" />;
