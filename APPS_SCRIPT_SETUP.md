@@ -15,55 +15,26 @@ This allows your app to write workout history to Google Sheets without OAuth!
 ```javascript
 // Frank Rock - Workout History Logger API with Personal Best Tracking
 
-// Handle CORS preflight requests
+// Handle GET requests (CORS-friendly)
 function doGet(e) {
-  return ContentService.createTextOutput(
-    JSON.stringify({ status: "OK", message: "Frank Rock API is running" })
-  ).setMimeType(ContentService.MimeType.JSON);
+  // If no data parameter, return status
+  if (!e || !e.parameter || !e.parameter.data) {
+    return ContentService.createTextOutput(
+      JSON.stringify({ status: "OK", message: "Frank Rock API is running" })
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  // Process workout logging via GET
+  return processWorkoutLog(e.parameter.data);
 }
 
-function doPost(e) {
+// Main workout logging function
+function processWorkoutLog(dataString) {
   try {
-    // Debug logging
-    Logger.log("🔍 Received request");
-    Logger.log("e object: " + (e ? "exists" : "undefined"));
+    Logger.log("🔍 Processing workout log");
+    Logger.log("📝 Data string: " + dataString);
     
-    if (!e) {
-      return ContentService.createTextOutput(
-        JSON.stringify({ success: false, error: "No event object received" })
-      ).setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    Logger.log("postData: " + (e.postData ? "exists" : "undefined"));
-    Logger.log("parameter: " + (e.parameter ? JSON.stringify(e.parameter) : "undefined"));
-    Logger.log("parameters: " + (e.parameters ? JSON.stringify(e.parameters) : "undefined"));
-    
-    // Handle both JSON and form data submissions
-    let data;
-    
-    // Try e.parameter.data first (URL-encoded form data)
-    if (e.parameter && e.parameter.data) {
-      Logger.log("📝 Parsing form data from e.parameter.data");
-      data = JSON.parse(e.parameter.data);
-    } 
-    // Try e.parameters.data (some Apps Script versions use this)
-    else if (e.parameters && e.parameters.data && e.parameters.data[0]) {
-      Logger.log("📝 Parsing form data from e.parameters.data");
-      data = JSON.parse(e.parameters.data[0]);
-    }
-    // Try JSON submission
-    else if (e.postData && e.postData.contents) {
-      Logger.log("📝 Parsing JSON data");
-      data = JSON.parse(e.postData.contents);
-    } 
-    else {
-      Logger.log("❌ No data found in request");
-      Logger.log("Full e object keys: " + Object.keys(e).join(", "));
-      return ContentService.createTextOutput(
-        JSON.stringify({ success: false, error: "No data received. Keys: " + Object.keys(e).join(", ") })
-      ).setMimeType(ContentService.MimeType.JSON);
-    }
-    
+    const data = JSON.parse(dataString);
     Logger.log("✅ Parsed data: " + JSON.stringify(data));
     
     // Validate required fields
@@ -237,23 +208,32 @@ function doPost(e) {
   }
 }
 
+// Handle POST requests (for backwards compatibility)
+function doPost(e) {
+  if (e && e.parameter && e.parameter.data) {
+    return processWorkoutLog(e.parameter.data);
+  } else if (e && e.postData && e.postData.contents) {
+    return processWorkoutLog(e.postData.contents);
+  } else {
+    return ContentService.createTextOutput(
+      JSON.stringify({ success: false, error: "No data in POST request" })
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // Test function
 function testLog() {
-  const testData = {
-    postData: {
-      contents: JSON.stringify({
-        username: "frank",
-        exerciseName: "Goblet Squat",
-        weight: 18, // Try a higher weight to test PB logic
-        sets: 5,
-        reps: 12,
-        rpe: 7,
-        notes: "Test workout - feeling strong!"
-      })
-    }
-  };
+  const testData = JSON.stringify({
+    username: "frank",
+    exerciseName: "Goblet Squat",
+    weight: 18,
+    sets: 5,
+    reps: 12,
+    rpe: 7,
+    notes: "Test workout - feeling strong!"
+  });
   
-  const result = doPost(testData);
+  const result = processWorkoutLog(testData);
   Logger.log(result.getContent());
 }
 ```
