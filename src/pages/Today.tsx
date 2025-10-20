@@ -4,7 +4,6 @@ import { ExerciseCard } from "@/components/ExerciseCard";
 import { Button } from "@/components/ui/button";
 import { Calendar, Trophy, User, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { DebugPanel } from "@/components/DebugPanel";
 import { TrainingDaySelector } from "@/components/TrainingDaySelector";
 import { useData } from "@/contexts/DataContext";
 
@@ -98,9 +97,6 @@ const Today = () => {
           </>
         )}
       </main>
-
-      {/* Debug Panel */}
-      <DebugPanel />
     </div>
   );
 };
