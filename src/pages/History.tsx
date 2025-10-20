@@ -39,7 +39,6 @@ const History = () => {
           exercise: log.exerciseName,
           date: log.timestamp,
           weight: log.weight,
-          rpe: log.rpe,
           isPB: false, // TODO: Calculate PB
           duration: log.duration,
           distance: log.distance,
@@ -193,7 +192,6 @@ const History = () => {
                       {entry.weight && (
                         <>
                           <p className="text-2xl font-bold text-secondary">{entry.weight}kg</p>
-                          <p className="text-xs text-muted-foreground">RPE: {entry.rpe}</p>
                         </>
                       )}
                       {entry.distance && (

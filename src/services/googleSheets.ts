@@ -434,7 +434,7 @@ export async function fetchAllPlannedExercises(username: string = getCurrentUser
 
 /**
  * Fetch workout history
- * Expected format: Exercise | Date | Weight | RPE | Is PB | Duration | Distance | Notes
+ * Expected format: Exercise | Date | Weight | Sets | Reps | Is PB | Duration | Distance | Notes
  */
 export async function fetchWorkoutHistory(username: string = getCurrentUser()): Promise<WorkoutLog[]> {
   const userSheet = await getUserSheet(username);
@@ -450,14 +450,13 @@ export async function fetchWorkoutHistory(username: string = getCurrentUser()): 
     return data
       .filter((row) => row[0]) // Filter out empty rows
       .map((row, index) => {
-        const [exercise, date, weight, rpe, isPB, duration, distance, notes] = row;
+        const [exercise, date, weight, sets, reps, isPB, duration, distance, notes] = row;
         
         return {
           id: String(index + 1),
           exercise: exercise || "Unknown",
           date: date || new Date().toLocaleString(),
           weight: weight ? parseFloat(weight) : undefined,
-          rpe: rpe ? parseInt(rpe) : undefined,
           isPB: isPB?.toLowerCase() === "true" || isPB?.toLowerCase() === "yes",
           duration: duration ? parseInt(duration) : undefined,
           distance: distance ? parseFloat(distance) : undefined,
@@ -490,7 +489,7 @@ export async function fetchUserStats(username: string = getCurrentUser()): Promi
     workouts: new Set(thisWeekHistory.map((log) => log.date.split(" ")[0])).size,
     exercises: thisWeekHistory.length,
     totalWeight: thisWeekHistory.reduce(
-      (sum, log) => sum + (log.weight || 0) * ((log.rpe || 0) > 0 ? log.rpe : 1),
+      (sum, log) => sum + (log.weight || 0),
       0
     ),
   };
@@ -534,7 +533,6 @@ export async function logExercise(
     weight?: number;
     sets?: number;
     reps?: number;
-    rpe?: number;
     duration?: number;
     distance?: number;
     notes?: string;
@@ -550,7 +548,6 @@ export async function logExercise(
       weight: data.weight,
       sets: data.sets,
       reps: data.reps,
-      rpe: data.rpe,
       duration: data.duration,
       distance: data.distance,
       notes: data.notes,

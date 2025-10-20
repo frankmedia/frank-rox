@@ -25,7 +25,6 @@ const ExerciseDetail = () => {
   const [todaysKg, setTodaysKg] = useState("");
   const [todaysDistance, setTodaysDistance] = useState("");
   const [todaysDuration, setTodaysDuration] = useState("");
-  const [rpe, setRpe] = useState("7");
   const [notes, setNotes] = useState("");
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(60);
@@ -68,7 +67,6 @@ const ExerciseDetail = () => {
     if (!exercise) return;
 
     const data: any = {
-      rpe: rpe ? parseInt(rpe) : undefined,
       notes: notes || undefined,
     };
 
@@ -407,40 +405,6 @@ const ExerciseDetail = () => {
               </div>
             </div>
           )}
-
-          <div>
-            <Label htmlFor="rpe" className="text-xl font-bold">
-              RPE (1-10) <span className="text-muted-foreground text-sm">- Rate of Perceived Exertion</span>
-            </Label>
-            <div className="flex items-center gap-3 mt-3">
-              <Button
-                type="button"
-                onClick={() => setRpe((prev) => Math.max(1, parseInt(prev || "1") - 1).toString())}
-                className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                variant="default"
-              >
-                -
-              </Button>
-              <Input
-                id="rpe"
-                type="number"
-                min="1"
-                max="10"
-                value={rpe}
-                onChange={(e) => setRpe(e.target.value)}
-                className="text-6xl font-bold h-32 text-center border-2 flex-1"
-                placeholder="7"
-              />
-              <Button
-                type="button"
-                onClick={() => setRpe((prev) => Math.min(10, parseInt(prev || "1") + 1).toString())}
-                className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                variant="default"
-              >
-                +
-              </Button>
-            </div>
-          </div>
 
           <div>
             <Label htmlFor="notes" className="text-base">Notes (optional)</Label>
