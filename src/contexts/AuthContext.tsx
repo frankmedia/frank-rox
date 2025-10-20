@@ -47,24 +47,63 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    // Simple auth - in production, this would call an API
-    // For now, just check against hardcoded credentials
-    if (username === "frank" && password === "frank123") {
-      const userData: User = {
-        username: "frank",
-        email: "frank@example.com",
-        name: "Frank",
-      };
-      setUser(userData);
-      localStorage.setItem("frank_rock_user", JSON.stringify(userData));
-      return true;
+    try {
+      // Fetch from master sheet to validate credentials
+      const API_KEY = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY;
+      const MASTER_SHEET_ID = import.meta.env.VITE_MASTER_SHEET_ID;
+      
+      if (!API_KEY || !MASTER_SHEET_ID) {
+        console.error("Missing API key or master sheet ID");
+        return false;
+      }
+      
+      const response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${MASTER_SHEET_ID}/values/A:C?key=${API_KEY}`
+      );
+      
+      if (!response.ok) {
+        console.error("Failed to fetch master sheet:", response.status);
+        return false;
+      }
+      
+      const data = await response.json();
+      const rows = data.values || [];
+      
+      // Find matching user (skip header row)
+      for (let i = 1; i < rows.length; i++) {
+        const [sheetUsername, sheetPassword, sheetUrl] = rows[i];
+        
+        if (sheetUsername && sheetUsername.toLowerCase() === username.toLowerCase()) {
+          // Check password
+          if (sheetPassword === password) {
+            const userData: User = {
+              username: sheetUsername,
+              email: `${sheetUsername}@example.com`,
+              name: sheetUsername.charAt(0).toUpperCase() + sheetUsername.slice(1),
+            };
+            setUser(userData);
+            localStorage.setItem("frank_rock_user", JSON.stringify(userData));
+            localStorage.setItem("VITE_USER_NAME", sheetUsername); // Store for API calls
+            return true;
+          } else {
+            console.log("Invalid password for user:", username);
+            return false;
+          }
+        }
+      }
+      
+      console.log("User not found:", username);
+      return false;
+    } catch (error) {
+      console.error("Login error:", error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem("frank_rock_user");
+    localStorage.removeItem("VITE_USER_NAME");
   };
 
   return (
