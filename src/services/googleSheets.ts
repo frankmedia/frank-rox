@@ -292,8 +292,8 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
     
     console.log(`🎯 Filtered to ${filteredData.length} exercises for Training Day ${currentTrainingDay}`);
     
-    // Map exercises and fetch fallback media if needed
-    const exercises = await Promise.all(
+    // First pass: parse all rows into exercises
+    const parsedExercises = await Promise.all(
       filteredData.map(async (row, index) => {
         const [, name, type, sets, reps, suggestedKg, personalBest, durationMin, targetDistanceKm, notes, mediaUrl] = row;
         
@@ -305,9 +305,34 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         });
         
         const typeValue = type?.toLowerCase() || "weights";
-        let exerciseType: "weights" | "cardio" | "bodyweight" | "mobility" = "weights";
         
-        if (typeValue === "cardio") {
+        // Detect group headers (exercise names starting with CIRCUIT:, AMRAP:, or HIIT:)
+        const nameUpper = name?.toUpperCase() || "";
+        let exerciseType: Exercise["type"] = "weights";
+        let isGroupHeader = false;
+        
+        // Check if name indicates a group header
+        if (nameUpper.startsWith("CIRCUIT:")) {
+          exerciseType = "circuit";
+          isGroupHeader = true;
+        } else if (nameUpper.startsWith("AMRAP:")) {
+          exerciseType = "amrap";
+          isGroupHeader = true;
+        } else if (nameUpper.startsWith("HIIT:")) {
+          exerciseType = "hiit";
+          isGroupHeader = true;
+        }
+        // Check type column for exercise type (including hiit, circuit, amrap as standalone)
+        else if (typeValue === "hiit") {
+          exerciseType = "hiit";
+          isGroupHeader = false; // Standalone HIIT exercise
+        } else if (typeValue === "circuit") {
+          exerciseType = "circuit";
+          isGroupHeader = false; // Standalone circuit exercise (shouldn't happen, but handle it)
+        } else if (typeValue === "amrap") {
+          exerciseType = "amrap";
+          isGroupHeader = false; // Standalone AMRAP exercise (shouldn't happen, but handle it)
+        } else if (typeValue === "cardio") {
           exerciseType = "cardio";
         } else if (typeValue === "bodyweight") {
           exerciseType = "bodyweight";
@@ -319,7 +344,7 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
 
         // If no mediaUrl, try to fetch from videos tab in MASTER sheet
         let finalMediaUrl = mediaUrl || undefined;
-        if (!finalMediaUrl && name) {
+        if (!finalMediaUrl && name && !isGroupHeader) {
           const fallbackUrl = await fetchMediaFallback(name);
           if (fallbackUrl) {
             finalMediaUrl = fallbackUrl;
@@ -332,34 +357,70 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           type: exerciseType,
           notes: notes || undefined,
           mediaUrl: finalMediaUrl,
+          isGroupHeader,
         };
 
-        // ALWAYS parse duration if it exists (for timer)
-        if (durationMin) {
-          exercise.durationMin = parseInt(durationMin);
-          console.log(`✅ SET durationMin=${exercise.durationMin} for "${name}"`);
+        // For group headers, parse special fields
+        if (isGroupHeader) {
+          if (exerciseType === "circuit") {
+            exercise.totalRounds = sets ? parseInt(sets) : 3; // Sets = rounds for circuits
+          } else if (exerciseType === "amrap") {
+            exercise.timeCap = durationMin ? parseInt(durationMin) : 10; // Duration = time cap for AMRAP
+          } else if (exerciseType === "hiit") {
+            exercise.totalRounds = sets ? parseInt(sets) : 8; // Sets = intervals for HIIT
+            exercise.workRestRatio = notes || "20s/10s"; // Notes = work/rest ratio
+            exercise.durationMin = durationMin ? parseInt(durationMin) : undefined;
+          }
+        } else if (exerciseType === "hiit" || exerciseType === "circuit" || exerciseType === "amrap") {
+          // Standalone HIIT/Circuit/AMRAP exercises (not group headers)
+          if (exerciseType === "hiit") {
+            exercise.totalRounds = sets ? parseInt(sets) : 8; // Sets = intervals for HIIT
+            exercise.workRestRatio = notes || "20s/10s"; // Notes = work/rest ratio
+            if (durationMin) {
+              exercise.durationMin = parseInt(durationMin);
+            }
+          } else if (exerciseType === "circuit") {
+            exercise.totalRounds = sets ? parseInt(sets) : 3;
+            if (durationMin) {
+              exercise.durationMin = parseInt(durationMin);
+            }
+          } else if (exerciseType === "amrap") {
+            exercise.timeCap = durationMin ? parseInt(durationMin) : 10;
+          }
+          // Also parse reps/kg for standalone grouped exercises if present
+          if (sets) exercise.sets = parseInt(sets);
+          if (reps) exercise.reps = parseInt(reps);
+          if (suggestedKg) exercise.suggestedKg = parseFloat(suggestedKg);
         } else {
-          console.log(`❌ NO durationMin for "${name}" (raw: "${durationMin}")`);
-        }
-        
-        // ALWAYS parse distance if it exists
-        if (targetDistanceKm) {
-          exercise.targetDistanceKm = parseFloat(targetDistanceKm);
-        }
-
-        if (exercise.type === "cardio") {
-          exercise.personalBest = personalBest || undefined;
-        } else if (exercise.type === "mobility") {
-          // Mobility: no PB
-        } else {
-          // For weights and bodyweight exercises
-          exercise.sets = sets ? parseInt(sets) : 3;
-          exercise.reps = reps ? parseInt(reps) : 10;
-          exercise.personalBest = personalBest || undefined;
+          // For non-header exercises, parse normally
           
-          // Only add weight for "weights" type
-          if (exercise.type === "weights") {
-            exercise.suggestedKg = suggestedKg ? parseFloat(suggestedKg) : 0;
+          // ALWAYS parse duration if it exists (for timer)
+          if (durationMin) {
+            exercise.durationMin = parseInt(durationMin);
+            console.log(`✅ SET durationMin=${exercise.durationMin} for "${name}"`);
+          } else {
+            console.log(`❌ NO durationMin for "${name}" (raw: "${durationMin}")`);
+          }
+          
+          // ALWAYS parse distance if it exists
+          if (targetDistanceKm) {
+            exercise.targetDistanceKm = parseFloat(targetDistanceKm);
+          }
+
+          if (exercise.type === "cardio") {
+            exercise.personalBest = personalBest || undefined;
+          } else if (exercise.type === "mobility") {
+            // Mobility: no PB
+          } else {
+            // For weights and bodyweight exercises
+            exercise.sets = sets ? parseInt(sets) : 3;
+            exercise.reps = reps ? parseInt(reps) : 10;
+            exercise.personalBest = personalBest || undefined;
+            
+            // Only add weight for "weights" type
+            if (exercise.type === "weights") {
+              exercise.suggestedKg = suggestedKg ? parseFloat(suggestedKg) : 0;
+            }
           }
         }
 
@@ -367,8 +428,47 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         return exercise;
       })
     );
-
-    return exercises;
+    
+    // Second pass: group exercises under their headers
+    const groupedExercises: Exercise[] = [];
+    let currentGroup: Exercise | null = null;
+    let groupChildren: Exercise[] = [];
+    
+    for (const exercise of parsedExercises) {
+      if (exercise.isGroupHeader) {
+        // Save previous group if exists
+        if (currentGroup && groupChildren.length > 0) {
+          currentGroup.exercises = groupChildren;
+          groupedExercises.push(currentGroup);
+        }
+        // Start new group
+        currentGroup = exercise;
+        groupChildren = [];
+      } else if (currentGroup) {
+        // Add to current group
+        groupChildren.push(exercise);
+      } else {
+        // Standalone exercise (not part of a group)
+        groupedExercises.push(exercise);
+      }
+    }
+    
+    // Don't forget the last group
+    if (currentGroup && groupChildren.length > 0) {
+      currentGroup.exercises = groupChildren;
+      groupedExercises.push(currentGroup);
+    }
+    
+    console.log(`📦 Grouped into ${groupedExercises.length} exercise blocks (${parsedExercises.length} total exercises)`);
+    console.log(`📋 Final exercises:`, groupedExercises.map(ex => ({ 
+      name: ex.name, 
+      type: ex.type, 
+      isGroupHeader: ex.isGroupHeader,
+      hasChildren: !!ex.exercises,
+      childCount: ex.exercises?.length || 0
+    })));
+    
+    return groupedExercises;
   } catch (error) {
     console.error("❌ Error fetching exercises:", {
       error,

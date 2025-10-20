@@ -1,4 +1,4 @@
-export type ExerciseType = "weights" | "cardio" | "bodyweight" | "mobility";
+export type ExerciseType = "weights" | "cardio" | "bodyweight" | "mobility" | "hiit" | "circuit" | "amrap";
 
 export interface Exercise {
   id: string;
@@ -13,6 +13,13 @@ export interface Exercise {
   targetDistanceKm?: number;
   notes?: string;
   mediaUrl?: string;
+  // New fields for grouped workouts
+  groupId?: string; // Links exercises in same circuit/amrap
+  isGroupHeader?: boolean; // True for the header row (e.g., "CIRCUIT: Lower Body")
+  exercises?: Exercise[]; // For grouped types, contains child exercises
+  workRestRatio?: string; // For HIIT (e.g., "20s/10s")
+  totalRounds?: number; // For circuit (fixed rounds) or tracking amrap
+  timeCap?: number; // For AMRAP (minutes)
 }
 
 export interface WorkoutLog {

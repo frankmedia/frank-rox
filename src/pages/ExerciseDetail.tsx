@@ -12,6 +12,9 @@ import { toast } from "sonner";
 import { fetchTodayExercises, logExercise } from "@/services/googleSheets";
 import { Exercise } from "@/types/workout";
 import { ExerciseMedia } from "@/components/ExerciseMedia";
+import { HIITWorkout } from "./HIITWorkout";
+import { CircuitWorkout } from "./CircuitWorkout";
+import { AMRAPWorkout } from "./AMRAPWorkout";
 
 const ExerciseDetail = () => {
   const { id } = useParams();
@@ -188,6 +191,51 @@ const ExerciseDetail = () => {
         </div>
       </div>
     );
+  }
+
+  // Handle completion for grouped workouts
+  const handleGroupedWorkoutComplete = async () => {
+    // Mark exercise as completed
+    const userStr = localStorage.getItem("frank_rock_user");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      const completedKey = `completedExercises_${user.username}`;
+      const today = new Date().toLocaleDateString("en-CA");
+      const completedData = JSON.parse(localStorage.getItem(completedKey) || "{}");
+      
+      if (!completedData[today]) {
+        completedData[today] = [];
+      }
+      
+      if (!completedData[today].includes(exercise.id)) {
+        completedData[today].push(exercise.id);
+      }
+      
+      localStorage.setItem(completedKey, JSON.stringify(completedData));
+    }
+    
+    // Navigate to next exercise or home
+    if (currentIndex < exercises.length - 1) {
+      const nextExercise = exercises[currentIndex + 1];
+      navigate(`/exercise/${nextExercise.id}`);
+      toast.success("✅ Moving to next exercise!");
+    } else {
+      navigate("/");
+      toast.success("🎉 All exercises complete!");
+    }
+  };
+
+  // Route to specialized workout screens for grouped workouts
+  if (exercise.type === "hiit") {
+    return <HIITWorkout exercise={exercise} onComplete={handleGroupedWorkoutComplete} />;
+  }
+
+  if (exercise.type === "circuit") {
+    return <CircuitWorkout exercise={exercise} onComplete={handleGroupedWorkoutComplete} />;
+  }
+
+  if (exercise.type === "amrap") {
+    return <AMRAPWorkout exercise={exercise} onComplete={handleGroupedWorkoutComplete} />;
   }
 
   return (
