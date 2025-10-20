@@ -17,25 +17,47 @@ This allows your app to write workout history to Google Sheets without OAuth!
 
 // Handle GET requests (CORS-friendly)
 function doGet(e) {
-  // If no data parameter, return status
-  if (!e || !e.parameter || !e.parameter.data) {
+  try {
+    Logger.log("🌐 doGet called");
+    Logger.log("e exists: " + (e ? "YES" : "NO"));
+    Logger.log("e.parameter exists: " + (e && e.parameter ? "YES" : "NO"));
+    Logger.log("e.parameter.data exists: " + (e && e.parameter && e.parameter.data ? "YES" : "NO"));
+    
+    // If no data parameter, return status
+    if (!e || !e.parameter || !e.parameter.data) {
+      Logger.log("⚠️ No data parameter - returning status");
+      return ContentService.createTextOutput(
+        JSON.stringify({ status: "OK", message: "Frank Rock API is running" })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    Logger.log("✅ Data parameter found, processing...");
+    // Process workout logging via GET
+    return processWorkoutLog(e.parameter.data);
+  } catch (error) {
+    Logger.log("❌ doGet error: " + error.toString());
+    Logger.log("❌ Stack: " + error.stack);
     return ContentService.createTextOutput(
-      JSON.stringify({ status: "OK", message: "Frank Rock API is running" })
+      JSON.stringify({ success: false, error: "doGet error: " + error.toString() })
     ).setMimeType(ContentService.MimeType.JSON);
   }
-  
-  // Process workout logging via GET
-  return processWorkoutLog(e.parameter.data);
 }
 
 // Main workout logging function
 function processWorkoutLog(dataString) {
   try {
     Logger.log("🔍 Processing workout log");
-    Logger.log("📝 Data string: " + dataString);
+    Logger.log("📝 Data string received: " + (dataString ? "YES" : "NO"));
+    Logger.log("📝 Data string length: " + (dataString ? dataString.length : 0));
+    Logger.log("📝 Data string content: " + dataString);
+    
+    if (!dataString) {
+      throw new Error("No data string provided");
+    }
     
     const data = JSON.parse(dataString);
-    Logger.log("✅ Parsed data: " + JSON.stringify(data));
+    Logger.log("✅ Parsed data successfully");
+    Logger.log("✅ Data: " + JSON.stringify(data));
     
     // Validate required fields
     if (!data.username || !data.exerciseName) {
