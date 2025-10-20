@@ -58,7 +58,7 @@ const ExerciseDetail = () => {
           if (ex.type === "weights" && ex.suggestedKg) {
             setTodaysKg(ex.suggestedKg.toString());
           }
-          if (ex.type === "cardio") {
+          if (ex.type === "cardio" || ex.type === "mobility") {
             if (ex.targetDistanceKm) setTodaysDistance(ex.targetDistanceKm.toString());
             if (ex.durationMin) setTodaysDuration(ex.durationMin.toString());
           }
