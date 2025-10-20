@@ -93,7 +93,7 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
         onClick={goToPreviousDay}
         disabled={loading}
         title="Previous day (wraps around to last day)"
-        className="h-12 w-12 text-2xl"
+        className="h-16 w-16 text-4xl"
       >
         ←
       </Button>
@@ -117,7 +117,7 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
         onClick={goToNextDay}
         disabled={loading}
         title={`Next day (Day ${parseInt(currentDay) >= maxDay ? '1' : parseInt(currentDay) + 1})`}
-        className="h-12 w-12 text-2xl"
+        className="h-16 w-16 text-4xl"
       >
         →
       </Button>
