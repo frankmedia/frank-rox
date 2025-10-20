@@ -445,8 +445,26 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         currentGroup = exercise;
         groupChildren = [];
       } else if (currentGroup) {
-        // Add to current group
-        groupChildren.push(exercise);
+        // Check if this exercise belongs to the current group
+        // Only group exercises with names starting with "→" or matching child type
+        const isChildExercise = exercise.name.trim().startsWith("→") || 
+                                exercise.name.trim().startsWith("- ") ||
+                                exercise.type === "circuit_exercise" ||
+                                exercise.type === "amrap_exercise";
+        
+        if (isChildExercise) {
+          // Add to current group
+          groupChildren.push(exercise);
+        } else {
+          // Not a child exercise - close current group and add this as standalone
+          if (groupChildren.length > 0) {
+            currentGroup.exercises = groupChildren;
+            groupedExercises.push(currentGroup);
+          }
+          currentGroup = null;
+          groupChildren = [];
+          groupedExercises.push(exercise);
+        }
       } else {
         // Standalone exercise (not part of a group)
         groupedExercises.push(exercise);

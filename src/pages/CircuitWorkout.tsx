@@ -22,22 +22,24 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
   const [showTimer, setShowTimer] = useState(false);
   const [timerDuration, setTimerDuration] = useState(90);
   
-  const toggleRound = (exerciseId: string, roundNumber: number) => {
+  const toggleNextRound = (exerciseId: string) => {
     setCompletedRounds((prev) => {
       const exerciseRounds = prev[exerciseId] || [];
-      if (exerciseRounds.includes(roundNumber)) {
-        // Remove this round
+      
+      // If all rounds are complete, clear all
+      if (exerciseRounds.length === totalRounds) {
         return {
           ...prev,
-          [exerciseId]: exerciseRounds.filter((r) => r !== roundNumber),
-        };
-      } else {
-        // Add this round
-        return {
-          ...prev,
-          [exerciseId]: [...exerciseRounds, roundNumber].sort((a, b) => a - b),
+          [exerciseId]: [],
         };
       }
+      
+      // Otherwise, add the next round
+      const nextRound = exerciseRounds.length + 1;
+      return {
+        ...prev,
+        [exerciseId]: [...exerciseRounds, nextRound].sort((a, b) => a - b),
+      };
     });
   };
   
@@ -122,7 +124,8 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
           {exercises.map((ex: Exercise) => (
             <Card
               key={ex.id}
-              className="p-4 border-2"
+              className="p-4 border-2 cursor-pointer hover:bg-muted/50 transition-all"
+              onClick={() => toggleNextRound(ex.id)}
             >
               <div className="space-y-3">
                 {/* Exercise Name and Details */}
@@ -135,20 +138,19 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                   </p>
                 </div>
                 
-                {/* Round Circles */}
+                {/* Round Circles - indicators only, not buttons */}
                 <div className="flex items-center gap-3">
                   {Array.from({ length: totalRounds }, (_, idx) => {
                     const roundNumber = idx + 1;
                     const isComplete = isRoundComplete(ex.id, roundNumber);
                     
                     return (
-                      <button
+                      <div
                         key={roundNumber}
-                        onClick={() => toggleRound(ex.id, roundNumber)}
                         className={`w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all ${
                           isComplete
                             ? "border-green-500 bg-green-500"
-                            : "border-muted-foreground hover:border-orange-500 hover:bg-orange-500/10"
+                            : "border-muted-foreground"
                         }`}
                       >
                         {isComplete ? (
@@ -156,7 +158,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                         ) : (
                           <span className="text-sm font-bold text-muted-foreground">{roundNumber}</span>
                         )}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
