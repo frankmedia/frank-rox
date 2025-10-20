@@ -28,6 +28,8 @@ const ExerciseDetail = () => {
   const [notes, setNotes] = useState("");
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(60);
+  const [showWorkoutTimer, setShowWorkoutTimer] = useState(false);
+  const [workoutDuration, setWorkoutDuration] = useState(0);
 
   useEffect(() => {
     const loadExercises = async () => {
@@ -134,6 +136,13 @@ const ExerciseDetail = () => {
   const handleRestTimer = (seconds: number) => {
     setRestDuration(seconds);
     setShowRestTimer(true);
+  };
+
+  const handleStartWorkout = () => {
+    if (exercise?.durationMin) {
+      setWorkoutDuration(exercise.durationMin * 60); // Convert minutes to seconds
+      setShowWorkoutTimer(true);
+    }
   };
 
   const handlePrevious = () => {
@@ -250,6 +259,50 @@ const ExerciseDetail = () => {
             )}
           </div>
         </Card>
+
+        {/* Workout Countdown Timer (for cardio/mobility with duration) */}
+        {(exercise.type === "cardio" || exercise.type === "mobility") && exercise.durationMin && (
+          <>
+            {showWorkoutTimer ? (
+              <Card className="p-6 bg-primary/5 border-primary">
+                <h3 className="text-2xl font-bold mb-4 text-center text-primary">Workout Timer</h3>
+                <Timer
+                  mode="countdown"
+                  initialSeconds={workoutDuration}
+                  onComplete={() => {
+                    toast.success("🎉 Workout Complete!", {
+                      description: `${exercise.durationMin} minutes completed!`,
+                      duration: 3000,
+                    });
+                    setTodaysDuration(exercise.durationMin.toString());
+                    setShowWorkoutTimer(false);
+                  }}
+                />
+                <div className="flex justify-center mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowWorkoutTimer(false)}
+                  >
+                    Cancel Timer
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              <Card className="p-8 bg-gradient-to-r from-primary/10 to-secondary/10 border-2 border-primary">
+                <div className="text-center">
+                  <p className="text-lg text-muted-foreground mb-4">Ready to start?</p>
+                  <Button
+                    size="lg"
+                    onClick={handleStartWorkout}
+                    className="h-20 px-12 text-2xl font-bold"
+                  >
+                    START {exercise.durationMin} MIN COUNTDOWN
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </>
+        )}
 
         {/* Rest Timer */}
         {showRestTimer ? (
