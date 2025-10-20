@@ -140,11 +140,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
                   title = `${ex.name} [${meters}m]`;
                 }
                 
-                // Build subtitle with other info
-                if (ex.reps) {
-                  parts.push(`${ex.reps} reps`);
-                }
-                
+                // Build subtitle with other info (reps in AMRAP are just the target, don't display)
                 if (ex.suggestedKg) {
                   parts.push(`${ex.suggestedKg}kg`);
                 }
