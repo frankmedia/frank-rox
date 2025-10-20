@@ -528,12 +528,14 @@ export async function logExercise(
       notes: data.notes,
     };
     
+    // Google Apps Script CORS workaround: use form data instead of JSON
+    const formData = new URLSearchParams();
+    formData.append("data", JSON.stringify(payload));
+    
     const response = await fetch(appsScriptUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+      body: formData,
+      redirect: "follow",
     });
     
     if (!response.ok) {

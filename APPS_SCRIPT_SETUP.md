@@ -24,7 +24,16 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    const data = JSON.parse(e.postData.contents);
+    // Handle both JSON and form data submissions
+    let data;
+    if (e.postData.type === "application/x-www-form-urlencoded") {
+      // Form data submission (CORS workaround)
+      const params = e.parameter;
+      data = JSON.parse(params.data || "{}");
+    } else {
+      // JSON submission
+      data = JSON.parse(e.postData.contents);
+    }
     
     // Validate required fields
     if (!data.username || !data.exerciseName) {
