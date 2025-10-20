@@ -52,15 +52,18 @@ const ExerciseDetail = () => {
             name: ex.name,
             type: ex.type,
             durationMin: ex.durationMin,
-            willShowTimer: (ex.type === "cardio" || ex.type === "mobility") && !!ex.durationMin
+            willShowTimer: !!ex.durationMin && ex.durationMin > 0
           });
           
+          // Pre-populate fields based on exercise data
           if (ex.type === "weights" && ex.suggestedKg) {
             setTodaysKg(ex.suggestedKg.toString());
           }
-          if (ex.type === "cardio" || ex.type === "mobility") {
-            if (ex.targetDistanceKm) setTodaysDistance(ex.targetDistanceKm.toString());
-            if (ex.durationMin) setTodaysDuration(ex.durationMin.toString());
+          if (ex.targetDistanceKm) {
+            setTodaysDistance(ex.targetDistanceKm.toString());
+          }
+          if (ex.durationMin) {
+            setTodaysDuration(ex.durationMin.toString());
           }
         }
       } catch (error) {
@@ -269,16 +272,8 @@ const ExerciseDetail = () => {
           </div>
         </Card>
 
-        {/* DEBUG INFO - Remove after testing */}
-        <Card className="p-4 bg-yellow-500/10 border-yellow-500">
-          <p className="text-sm font-mono">
-            DEBUG: type={exercise.type} | duration={exercise.durationMin} | 
-            shouldShow={(exercise.type === "cardio" || exercise.type === "mobility") && !!exercise.durationMin ? "YES" : "NO"}
-          </p>
-        </Card>
-
-        {/* Workout Countdown Timer (for cardio/mobility with duration) */}
-        {(exercise.type === "cardio" || exercise.type === "mobility") && exercise.durationMin && (
+        {/* Workout Countdown Timer (for any exercise with duration) */}
+        {exercise.durationMin && exercise.durationMin > 0 && (
           <>
             {showWorkoutTimer ? (
               <Card className="p-6 bg-primary/5 border-primary">
