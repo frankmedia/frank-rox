@@ -77,27 +77,56 @@ const ExerciseDetail = () => {
       data.duration = todaysDuration ? parseInt(todaysDuration) : undefined;
     } else if (exercise.type === "weights") {
       data.weight = todaysKg ? parseFloat(todaysKg) : undefined;
+      data.sets = exercise.sets;
+      data.reps = exercise.reps;
+    } else if (exercise.type === "bodyweight") {
+      // Bodyweight exercises track sets and reps, but no weight
+      data.sets = exercise.sets;
+      data.reps = exercise.reps;
     }
-    // For bodyweight, no weight is needed
 
-    await logExercise(exercise.name, data);
+    // Log the exercise and check for PB
+    const result = await logExercise(exercise.name, data);
+    
+    if (!result.success) {
+      toast.error("❌ Failed to log exercise", {
+        description: result.message || "Please try again",
+      });
+      return;
+    }
+    
+    // Show PB celebration if applicable
+    if (result.isPB) {
+      toast.success("🏆 NEW PERSONAL BEST!", {
+        description: result.message || `You beat your previous best!`,
+        duration: 3000,
+      });
+    }
     
     // Navigate to next exercise or back to home
     if (currentIndex < exercises.length - 1) {
       const nextExercise = exercises[currentIndex + 1];
-      toast.success("✅ Exercise completed!", {
-        description: `Moving to: ${nextExercise.name}`,
-      });
+      if (!result.isPB) {
+        toast.success("✅ Exercise completed!", {
+          description: `Moving to: ${nextExercise.name}`,
+        });
+      }
       setTimeout(() => {
         navigate(`/exercise/${nextExercise.id}`);
-      }, 500); // Small delay so user sees the toast
+      }, result.isPB ? 2000 : 500); // Longer delay for PB celebration
     } else {
-      toast.success("🎉 All exercises complete!", {
-        description: "Great workout! Returning home...",
-      });
+      if (!result.isPB) {
+        toast.success("🎉 All exercises complete!", {
+          description: "Great workout! Returning home...",
+        });
+      } else {
+        toast.success("🎉 Workout complete + NEW PB!", {
+          description: "Amazing session! Returning home...",
+        });
+      }
       setTimeout(() => {
         navigate("/");
-      }, 1000); // Longer delay to celebrate completion
+      }, result.isPB ? 2500 : 1000);
     }
   };
 

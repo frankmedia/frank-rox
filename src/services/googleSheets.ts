@@ -490,36 +490,74 @@ export async function fetchUserStats(username: string = USER_NAME): Promise<User
  * Log a completed exercise
  * Note: This is a placeholder - actual implementation requires OAuth2
  */
+/**
+ * Log exercise via Google Apps Script (handles PB tracking automatically)
+ */
 export async function logExercise(
   exerciseName: string,
   data: {
     weight?: number;
+    sets?: number;
+    reps?: number;
     rpe?: number;
     duration?: number;
     distance?: number;
     notes?: string;
   },
   username: string = USER_NAME
-): Promise<boolean> {
-  const userSheet = await getUserSheet(username);
+): Promise<{ success: boolean; message?: string; isPB?: boolean; oldPB?: number; newPB?: number }> {
+  const appsScriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
   
-  if (!userSheet) {
-    console.error("User sheet not found");
-    return false;
+  if (!appsScriptUrl) {
+    console.error("❌ VITE_APPS_SCRIPT_URL not configured in .env");
+    return { success: false, message: "Apps Script URL not configured" };
   }
-
-  const date = new Date().toLocaleString();
-  const row = [
-    exerciseName,
-    date,
-    data.weight || "",
-    data.rpe || "",
-    "", // isPB - would need to calculate
-    data.duration || "",
-    data.distance || "",
-    data.notes || "",
-  ];
-
-  return await appendSheetData(userSheet.sheetId, "History!A:H", [row]);
+  
+  try {
+    console.log("📝 Logging exercise:", exerciseName, data);
+    
+    const payload = {
+      username,
+      exerciseName,
+      weight: data.weight,
+      sets: data.sets,
+      reps: data.reps,
+      rpe: data.rpe,
+      duration: data.duration,
+      distance: data.distance,
+      notes: data.notes,
+    };
+    
+    const response = await fetch(appsScriptUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log("✅ Exercise logged successfully:", result);
+      return {
+        success: true,
+        message: result.message,
+        isPB: result.isPB,
+        oldPB: result.oldPB,
+        newPB: result.newPB,
+      };
+    } else {
+      console.error("❌ Failed to log exercise:", result.error);
+      return { success: false, message: result.error };
+    }
+  } catch (error) {
+    console.error("❌ Error logging exercise:", error);
+    return { success: false, message: error instanceof Error ? error.message : "Unknown error" };
+  }
 }
 

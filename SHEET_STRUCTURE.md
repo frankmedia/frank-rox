@@ -59,20 +59,40 @@ Row 5: Tuesday | Row-Bike-SkiErg Rotation (Zone 2) | cardio | | | | 6:00 | 36 | 
 
 ---
 
-### Tab 2: `History` (Optional - for logging)
+### Tab 2: `History` 🏆 (Auto-created by Apps Script)
 
-This tab stores completed workout logs. Currently, the app logs to console (write operations need OAuth2).
+This tab stores all your completed workouts. **Created automatically** when you log your first exercise!
 
 | Column | Name | Description | Example |
 |--------|------|-------------|---------|
-| **A** | Exercise | Exercise name | Goblet Squat |
-| **B** | Date | Timestamp | Sun, 21 Jan 2024 at 12:44 AM |
-| **C** | Weight | Weight used (kg) | 16 |
-| **D** | RPE | Rate of Perceived Exertion (1-10) | 7 |
-| **E** | Is PB | TRUE/FALSE for personal best | TRUE |
-| **F** | Duration | Minutes (for cardio) | 36 |
-| **G** | Distance | Kilometers (for cardio) | 6.0 |
-| **H** | Notes | Workout notes | Felt strong today |
+| **A** | Exercise | Exercise name | Goblet Squat (tempo 3-1-1) |
+| **B** | Date | Timestamp (DD/MM/YYYY HH:MM) | 20/10/2025 14:30 |
+| **C** | Weight (kg) | Weight lifted | 18 |
+| **D** | Sets | Sets completed | 5 |
+| **E** | Reps | Reps completed | 12 |
+| **F** | RPE | Rate of Perceived Exertion (1-10) | 7 |
+| **G** | Is PB | 🏆 YES if you beat your PB | 🏆 YES |
+| **H** | Duration (min) | Minutes (for cardio) | 36 |
+| **I** | Distance (km) | Kilometers (for cardio) | 6.0 |
+| **J** | Notes | Workout notes | Felt strong today! |
+
+#### How It Works:
+1. **First time:** Apps Script creates the History tab automatically
+2. **Every workout:** New row is appended with all your data
+3. **Personal Best:** Compares weight to Plan tab Column G
+4. **If you beat it:** Updates Plan tab PB + marks History row as 🏆 YES
+5. **PB rows:** Highlighted in light yellow (#FFF9E6)
+
+#### Example History Rows:
+
+```
+Exercise                    | Date          | Weight | Sets | Reps | RPE | Is PB   | Duration | Distance | Notes
+Goblet Squat (tempo 3-1-1) | 20/10/2025 14:30 | 18  | 5    | 12   | 7   | 🏆 YES  |          |          | New PR!
+Step-Ups (weighted)        | 20/10/2025 14:35 | 24  | 4    | 10   | 8   |         |          |          | Left leg harder
+Bulgarian Split Squat      | 20/10/2025 14:42 | 20  | 3    | 10   | 9   |         |          |          | Tough set
+```
+
+**Note:** You never need to manually create or edit the History tab - the Apps Script handles everything!
 
 ---
 
