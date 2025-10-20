@@ -14,6 +14,14 @@ This allows your app to write workout history to Google Sheets without OAuth!
 
 ```javascript
 // Frank Rock - Workout History Logger API with Personal Best Tracking
+
+// Handle CORS preflight requests
+function doGet(e) {
+  return ContentService.createTextOutput(
+    JSON.stringify({ status: "OK", message: "Frank Rock API is running" })
+  ).setMimeType(ContentService.MimeType.JSON);
+}
+
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
@@ -153,7 +161,7 @@ function doPost(e) {
       historySheet.getRange(lastRow, 1, 1, 10).setBackground("#FFF9E6"); // Light yellow
     }
     
-    return ContentService.createTextOutput(
+    const response = ContentService.createTextOutput(
       JSON.stringify({ 
         success: true, 
         message: isPB ? `🏆 New Personal Best! ${oldPB ? oldPB + ' → ' : ''}${data.weight} kg` : "Workout logged successfully",
@@ -164,13 +172,17 @@ function doPost(e) {
       })
     ).setMimeType(ContentService.MimeType.JSON);
     
+    return response;
+    
   } catch (error) {
-    return ContentService.createTextOutput(
+    const response = ContentService.createTextOutput(
       JSON.stringify({ 
         success: false, 
         error: error.toString() 
       })
     ).setMimeType(ContentService.MimeType.JSON);
+    
+    return response;
   }
 }
 
@@ -197,19 +209,33 @@ function testLog() {
 
 ## Step 2: Deploy as Web App
 
-1. **Click the Deploy button** (top right)
-2. **Select "New deployment"**
-3. **Settings:**
-   - Type: **Web app**
-   - Description: **Frank Rock History Logger**
-   - Execute as: **Me** (your account)
-   - Who has access: **Anyone** (no Google sign-in required)
-4. **Click "Deploy"**
-5. **Authorize** the script (review permissions and allow)
-6. **Copy the Web App URL** - it will look like:
-   ```
-   https://script.google.com/macros/s/AKfycbz.../exec
-   ```
+1. **Save the script first!** Click the disk icon or Ctrl+S
+
+2. **Click the Deploy button** (top right)
+
+3. **If you already deployed before:**
+   - Click "Manage deployments"
+   - Click the pencil icon (Edit) on your existing deployment
+   - Change "Version" to "New version"
+   - Click "Deploy"
+   - Copy the SAME URL (it doesn't change)
+
+4. **If this is your first deployment:**
+   - Select "New deployment"
+   - Click the gear icon next to "Select type"
+   - Choose "Web app"
+   - Settings:
+     - Description: **Frank Rock History Logger**
+     - Execute as: **Me** (your Google account)
+     - Who has access: **Anyone** (IMPORTANT!)
+   - Click "Deploy"
+   - **Authorize** the script (review permissions and allow)
+   - **Copy the Web App URL** - it will look like:
+     ```
+     https://script.google.com/macros/s/AKfycbz.../exec
+     ```
+
+**⚠️ IMPORTANT:** The "Who has access: Anyone" setting is what allows CORS to work!
 
 ## Step 3: Add URL to Your App
 
