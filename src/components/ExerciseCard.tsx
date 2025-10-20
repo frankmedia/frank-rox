@@ -51,11 +51,11 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
         <div className="space-y-2">
           {exercise.type === "strength" && (
             <div className="flex items-center gap-4 text-muted-foreground">
-              <span className="text-2xl font-bold text-foreground">
+              <span className="text-4xl font-bold text-foreground">
                 {exercise.sets} × {exercise.reps}
               </span>
               {exercise.suggestedKg && (
-                <span className="text-sm">
+                <span className="text-lg">
                   Target: <span className="font-semibold text-secondary">{exercise.suggestedKg}kg</span>
                 </span>
               )}
@@ -65,12 +65,12 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
           {exercise.type === "cardio" && (
             <div className="flex items-center gap-4 text-muted-foreground">
               {exercise.durationMin && (
-                <span className="text-2xl font-bold text-foreground">
+                <span className="text-4xl font-bold text-foreground">
                   {exercise.durationMin} min
                 </span>
               )}
               {exercise.targetDistanceKm && (
-                <span className="text-sm">
+                <span className="text-lg">
                   Target: <span className="font-semibold text-secondary">{exercise.targetDistanceKm}km</span>
                 </span>
               )}

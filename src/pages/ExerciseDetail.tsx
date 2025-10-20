@@ -74,10 +74,10 @@ const ExerciseDetail = () => {
         <Card className="p-6 bg-secondary/10 border-secondary">
           <div className="text-center">
             <p className="text-sm text-muted-foreground mb-2">Target</p>
-            <p className="text-5xl font-bold text-foreground mb-4">
+            <p className="text-7xl font-bold text-foreground mb-4">
               {exercise.sets} × {exercise.reps}
             </p>
-            <p className="text-lg text-secondary font-semibold">
+            <p className="text-2xl text-secondary font-semibold">
               Suggested: {exercise.suggestedKg}kg
             </p>
           </div>
@@ -105,19 +105,19 @@ const ExerciseDetail = () => {
         {/* Input Form */}
         <div className="space-y-4">
           <div>
-            <Label htmlFor="weight" className="text-base">Today's Weight (kg)</Label>
+            <Label htmlFor="weight" className="text-lg font-semibold">Today's Weight (kg)</Label>
             <Input
               id="weight"
               type="number"
               value={todaysKg}
               onChange={(e) => setTodaysKg(e.target.value)}
-              className="text-2xl font-bold h-14 mt-2"
+              className="text-5xl font-bold h-24 mt-2 text-center"
               placeholder="100"
             />
           </div>
 
           <div>
-            <Label htmlFor="rpe" className="text-base">
+            <Label htmlFor="rpe" className="text-lg font-semibold">
               RPE (1-10) <span className="text-muted-foreground text-sm">- Rate of Perceived Exertion</span>
             </Label>
             <Input
@@ -127,7 +127,7 @@ const ExerciseDetail = () => {
               max="10"
               value={rpe}
               onChange={(e) => setRpe(e.target.value)}
-              className="text-2xl font-bold h-14 mt-2"
+              className="text-5xl font-bold h-24 mt-2 text-center"
               placeholder="7"
             />
           </div>

@@ -55,7 +55,7 @@ export function Timer({ mode, initialSeconds = 0, onComplete }: TimerProps) {
 
   return (
     <div className="flex flex-col items-center gap-6">
-      <div className="text-7xl font-bold tabular-nums text-primary">
+      <div className="text-8xl font-bold tabular-nums text-primary">
         {formatTime(seconds)}
       </div>
       <div className="flex gap-3">
