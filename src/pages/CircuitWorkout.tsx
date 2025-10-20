@@ -124,14 +124,14 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
           {exercises.map((ex: Exercise) => (
             <Card
               key={ex.id}
-              className="p-4 border-2 cursor-pointer hover:bg-muted/50 transition-all"
+              className="p-6 border-2 cursor-pointer hover:bg-muted/50 transition-all"
               onClick={() => toggleNextRound(ex.id)}
             >
-              <div className="space-y-3">
+              <div className="flex items-center gap-6">
                 {/* Exercise Name and Details */}
-                <div>
-                  <h3 className="text-lg font-bold">{ex.name}</h3>
-                  <p className="text-sm text-muted-foreground">
+                <div className="flex-1">
+                  <h3 className="text-3xl font-bold mb-1">{ex.name}</h3>
+                  <p className="text-lg text-muted-foreground">
                     {ex.reps && `${ex.reps} reps`}
                     {ex.sets && ` • ${ex.sets} sets`}
                     {ex.suggestedKg && ` • ${ex.suggestedKg}kg`}
@@ -139,7 +139,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                 </div>
                 
                 {/* Round Circles - indicators only, not buttons */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   {Array.from({ length: totalRounds }, (_, idx) => {
                     const roundNumber = idx + 1;
                     const isComplete = isRoundComplete(ex.id, roundNumber);
@@ -147,16 +147,16 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                     return (
                       <div
                         key={roundNumber}
-                        className={`w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all ${
+                        className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all ${
                           isComplete
                             ? "border-green-500 bg-green-500"
                             : "border-muted-foreground"
                         }`}
                       >
                         {isComplete ? (
-                          <Check className="w-6 h-6 text-white" />
+                          <Check className="w-10 h-10 text-white" />
                         ) : (
-                          <span className="text-sm font-bold text-muted-foreground">{roundNumber}</span>
+                          <span className="text-2xl font-bold text-muted-foreground">{roundNumber}</span>
                         )}
                       </div>
                     );
