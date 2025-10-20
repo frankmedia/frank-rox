@@ -55,18 +55,24 @@ const Today = () => {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="container max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
+          <div className="flex flex-col items-center mb-3">
+            <div className="flex items-center gap-3 mb-2">
+              <img 
+                src="https://www.svgrepo.com/show/461257/dumbbell-3.svg" 
+                alt="Dumbbell" 
+                className="w-10 h-10"
+                style={{ filter: 'brightness(0) saturate(100%) invert(85%) sepia(78%) saturate(2476%) hue-rotate(359deg) brightness(104%) contrast(104%)' }}
+              />
               <h1 className="text-3xl font-bold text-foreground">Frank Rock</h1>
-              <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                <Calendar className="w-4 h-4" />
-                {today}
-              </p>
             </div>
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              {today}
+            </p>
           </div>
           
           {/* Training Day Selector */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             <TrainingDaySelector onDayChange={setCurrentTrainingDay} />
           </div>
         </div>
