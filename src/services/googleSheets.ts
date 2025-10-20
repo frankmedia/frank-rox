@@ -327,14 +327,20 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           mediaUrl: finalMediaUrl,
         };
 
+        // ALWAYS parse duration if it exists (for timer)
+        if (durationMin) {
+          exercise.durationMin = parseInt(durationMin);
+        }
+        
+        // ALWAYS parse distance if it exists
+        if (targetDistanceKm) {
+          exercise.targetDistanceKm = parseFloat(targetDistanceKm);
+        }
+
         if (exercise.type === "cardio") {
-          exercise.durationMin = durationMin ? parseInt(durationMin) : 20;
-          exercise.targetDistanceKm = targetDistanceKm ? parseFloat(targetDistanceKm) : 0;
           exercise.personalBest = personalBest || undefined;
         } else if (exercise.type === "mobility") {
-          // Mobility exercises: duration-based, no PB
-          exercise.durationMin = durationMin ? parseInt(durationMin) : 10;
-          // No PB for mobility
+          // Mobility: no PB
         } else {
           // For weights and bodyweight exercises
           exercise.sets = sets ? parseInt(sets) : 3;
@@ -404,14 +410,20 @@ export async function fetchAllPlannedExercises(username: string = getCurrentUser
           mediaUrl: mediaUrl || undefined,
         };
 
+        // ALWAYS parse duration if it exists (for timer)
+        if (durationMin) {
+          exercise.durationMin = parseInt(durationMin);
+        }
+        
+        // ALWAYS parse distance if it exists
+        if (targetDistanceKm) {
+          exercise.targetDistanceKm = parseFloat(targetDistanceKm);
+        }
+
         if (exercise.type === "cardio") {
-          exercise.durationMin = durationMin ? parseInt(durationMin) : 20;
-          exercise.targetDistanceKm = targetDistanceKm ? parseFloat(targetDistanceKm) : 0;
           exercise.personalBest = personalBest || undefined;
         } else if (exercise.type === "mobility") {
-          // Mobility exercises: duration-based, no PB
-          exercise.durationMin = durationMin ? parseInt(durationMin) : 10;
-          // No PB for mobility
+          // Mobility: no PB
         } else {
           // For weights and bodyweight exercises
           exercise.sets = sets ? parseInt(sets) : 3;
