@@ -364,7 +364,7 @@ const ExerciseDetail = () => {
                 <div className="flex items-center gap-3 mt-3">
                   <Button
                     type="button"
-                    onClick={() => setTodaysDistance((prev) => Math.max(0, parseFloat(prev || "0") - 1).toString())}
+                    onClick={() => setTodaysDistance((prev) => Math.max(0, parseFloat(prev || "0") - 0.1).toFixed(1))}
                     className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
                   >
@@ -381,7 +381,7 @@ const ExerciseDetail = () => {
                   />
                   <Button
                     type="button"
-                    onClick={() => setTodaysDistance((prev) => (parseFloat(prev || "0") + 1).toString())}
+                    onClick={() => setTodaysDistance((prev) => (parseFloat(prev || "0") + 0.1).toFixed(1))}
                     className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
                   >
