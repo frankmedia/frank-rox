@@ -107,7 +107,7 @@ const Overview = () => {
         <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center justify-center gap-2">
             <Flame className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#FFCC00' }} />
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">RoxPT Training Programme</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">RoxPT</h1>
           </div>
         </div>
       </header>
