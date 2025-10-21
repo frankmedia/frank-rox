@@ -244,34 +244,34 @@ const ExerciseDetail = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+        <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-1 sm:gap-2">
             <Button
               variant="outline"
-              size="lg"
+              size="sm"
               onClick={() => navigate("/")}
-              className="h-14 w-14 p-0 [&_svg]:!w-10 [&_svg]:!h-10"
+              className="h-10 w-10 sm:h-12 sm:w-12 p-0 [&_svg]:!w-6 [&_svg]:!h-6 sm:[&_svg]:!w-8 sm:[&_svg]:!h-8 flex-shrink-0"
               title="Back to today's exercises"
             >
               <List strokeWidth={3} />
             </Button>
-            <h1 className="text-2xl font-bold text-foreground flex-1 text-center px-2">{exercise.name}</h1>
-            <div className="flex items-center gap-3">
+            <h1 className="text-base sm:text-xl md:text-2xl font-bold text-foreground flex-1 text-center px-1 truncate">{exercise.name}</h1>
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               <Button
                 variant="outline"
-                size="lg"
+                size="sm"
                 onClick={handlePrevious}
                 disabled={currentIndex === 0}
-                className="h-14 w-14 p-0 [&_svg]:!w-10 [&_svg]:!h-10"
+                className="h-10 w-10 sm:h-12 sm:w-12 p-0 [&_svg]:!w-6 [&_svg]:!h-6 sm:[&_svg]:!w-8 sm:[&_svg]:!h-8"
               >
                 <ArrowLeft strokeWidth={3} />
               </Button>
               <Button
                 variant="outline"
-                size="lg"
+                size="sm"
                 onClick={handleNext}
                 disabled={currentIndex === exercises.length - 1}
-                className="h-14 w-14 p-0 [&_svg]:!w-10 [&_svg]:!h-10"
+                className="h-10 w-10 sm:h-12 sm:w-12 p-0 [&_svg]:!w-6 [&_svg]:!h-6 sm:[&_svg]:!w-8 sm:[&_svg]:!h-8"
               >
                 <ArrowRight strokeWidth={3} />
               </Button>
@@ -280,7 +280,7 @@ const ExerciseDetail = () => {
         </div>
       </header>
 
-      <main className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <main className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6 pb-24">
         {/* Exercise Info */}
         <Card className="p-6 bg-secondary/10 border-secondary">
           <div className="text-center">

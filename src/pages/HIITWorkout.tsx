@@ -110,25 +110,25 @@ export function HIITWorkout({ exercise, onComplete }: HIITWorkoutProps) {
   const progress = ((currentInterval / totalIntervals) * 100).toFixed(0);
   
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background border-b border-border p-4">
+      <div className="sticky top-0 z-10 bg-background border-b border-border px-2 sm:px-4 py-2 sm:py-4">
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate(-1)}
-            className="rounded-full"
+            className="rounded-full h-8 w-8 sm:h-10 sm:w-10"
           >
-            <ArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-4 h-4 sm:w-6 sm:h-6" />
           </Button>
-          <h1 className="text-xl font-bold">HIIT Workout</h1>
-          <div className="w-10" />
+          <h1 className="text-base sm:text-lg md:text-xl font-bold">HIIT Workout</h1>
+          <div className="w-8 sm:w-10" />
         </div>
       </div>
       
       {/* Content */}
-      <div className="container mx-auto p-4 space-y-6">
+      <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6">
         {/* Exercise Name */}
         <Card className="p-6 border-4" style={{ borderColor: "#FF00B2" }}>
           <h2 className="text-3xl font-bold text-center mb-2">{exercise.name}</h2>

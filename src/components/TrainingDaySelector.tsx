@@ -87,25 +87,25 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 sm:gap-2">
       <Button
         variant="outline"
         onClick={goToPreviousDay}
         disabled={loading}
         title="Previous day (wraps around to last day)"
-        className="h-14 w-14 text-4xl flex items-center justify-center"
+        className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 text-2xl sm:text-3xl md:text-4xl flex items-center justify-center flex-shrink-0"
       >
         ←
       </Button>
 
       <Select value={currentDay} onValueChange={handleDayChange} disabled={loading}>
-        <SelectTrigger className="w-[180px] h-14 text-xl font-bold">
-          <RotateCw className="w-5 h-5 mr-2" />
-          <SelectValue placeholder="Training Day" />
+        <SelectTrigger className="w-[120px] sm:w-[140px] md:w-[180px] h-10 sm:h-12 md:h-14 text-sm sm:text-base md:text-xl font-bold">
+          <RotateCw className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1 sm:mr-2" />
+          <SelectValue placeholder="Day" />
         </SelectTrigger>
         <SelectContent className="max-h-[300px]">
           {trainingDays.map((day) => (
-            <SelectItem key={day} value={day} className="text-xl font-bold py-3">
+            <SelectItem key={day} value={day} className="text-base sm:text-lg md:text-xl font-bold py-2 sm:py-3">
               Day {day} / {maxDay}
             </SelectItem>
           ))}
@@ -117,7 +117,7 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
         onClick={goToNextDay}
         disabled={loading}
         title={`Next day (Day ${parseInt(currentDay) >= maxDay ? '1' : parseInt(currentDay) + 1})`}
-        className="h-14 w-14 text-4xl flex items-center justify-center"
+        className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 text-2xl sm:text-3xl md:text-4xl flex items-center justify-center flex-shrink-0"
       >
         →
       </Button>

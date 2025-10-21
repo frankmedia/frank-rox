@@ -66,38 +66,38 @@ const Today = () => {
   }, [error, loading, exercises]);
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="container max-w-2xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
+        <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Logo - Left Side */}
             <div 
-              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+              className="flex items-center gap-1 sm:gap-2 cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
               onClick={() => navigate("/")}
             >
-              <Flame className="w-8 h-8" style={{ color: '#FFCC00' }} />
-              <h1 className="text-2xl font-bold text-foreground">RoxPT</h1>
+              <Flame className="w-6 h-6 sm:w-8 sm:h-8" style={{ color: '#FFCC00' }} />
+              <h1 className="text-lg sm:text-2xl font-bold text-foreground">RoxPT</h1>
             </div>
             
-            {/* Training Day Selector - Center */}
+            {/* Training Day Selector - Right */}
             <TrainingDaySelector onDayChange={setCurrentTrainingDay} />
           </div>
         </div>
       </header>
 
       {/* Today's Workout */}
-      <main className="container max-w-2xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Training Day {currentTrainingDay}</h2>
+      <main className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
+        <div className="flex items-center justify-between mb-3 sm:mb-6">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Training Day {currentTrainingDay}</h2>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate("/history")}
-            className="text-primary"
+            className="text-primary text-xs sm:text-sm"
           >
-            <Trophy className="w-4 h-4 mr-2" />
-            History
+            <Trophy className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">History</span>
           </Button>
         </div>
 
