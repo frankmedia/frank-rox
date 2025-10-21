@@ -473,10 +473,6 @@ const Overview = () => {
               </DialogContent>
             </Dialog>
           </div>
-          
-          <p className="text-muted-foreground">
-            Select any day to view and complete your workout
-          </p>
         </div>
 
         {/* Hero Image */}
