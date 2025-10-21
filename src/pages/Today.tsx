@@ -141,7 +141,7 @@ const Today = () => {
                     {/* Phase 1 */}
                     <Card className="p-4 border-2 border-primary/20">
                       <div className="flex items-start gap-3">
-                        <div className="text-2xl font-bold" style={{ color: '#FFCC00' }}>1️⃣</div>
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold" style={{ backgroundColor: '#FFCC00', color: '#000' }}>1</div>
                         <div className="flex-1">
                           <h4 className="font-bold text-lg text-foreground mb-1">Base Phase (Weeks 1–2)</h4>
                           <p className="text-sm text-muted-foreground mb-2">
@@ -158,7 +158,7 @@ const Today = () => {
                     {/* Phase 2 */}
                     <Card className="p-4 border-2 border-primary/20">
                       <div className="flex items-start gap-3">
-                        <div className="text-2xl font-bold" style={{ color: '#FFCC00' }}>2️⃣</div>
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold" style={{ backgroundColor: '#FFCC00', color: '#000' }}>2</div>
                         <div className="flex-1">
                           <h4 className="font-bold text-lg text-foreground mb-1">Build Phase (Weeks 3–4)</h4>
                           <p className="text-sm text-muted-foreground mb-2">
@@ -175,7 +175,7 @@ const Today = () => {
                     {/* Phase 3 */}
                     <Card className="p-4 border-2 border-primary/20">
                       <div className="flex items-start gap-3">
-                        <div className="text-2xl font-bold" style={{ color: '#FFCC00' }}>3️⃣</div>
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold" style={{ backgroundColor: '#FFCC00', color: '#000' }}>3</div>
                         <div className="flex-1">
                           <h4 className="font-bold text-lg text-foreground mb-1">Peak Phase (Weeks 5–6)</h4>
                           <p className="text-sm text-muted-foreground mb-2">
@@ -192,7 +192,7 @@ const Today = () => {
                     {/* Phase 4 */}
                     <Card className="p-4 border-2 border-primary/20">
                       <div className="flex items-start gap-3">
-                        <div className="text-2xl font-bold" style={{ color: '#FFCC00' }}>4️⃣</div>
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold" style={{ backgroundColor: '#FFCC00', color: '#000' }}>4</div>
                         <div className="flex-1">
                           <h4 className="font-bold text-lg text-foreground mb-1">Taper Phase (Final Week)</h4>
                           <p className="text-sm text-muted-foreground mb-2">
