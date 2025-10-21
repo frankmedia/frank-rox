@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Dumbbell, Loader2 } from "lucide-react";
+import { Flame, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -50,13 +50,8 @@ const Login = () => {
         {/* Logo/Header */}
         <div className="flex flex-col items-center mb-10">
           {/* Dumbbell SVG */}
-          <div className="w-32 h-32 mb-6">
-            <img 
-              src="https://www.svgrepo.com/show/461257/dumbbell-3.svg" 
-              alt="Dumbbell" 
-              className="w-full h-full"
-              style={{ filter: 'brightness(0) saturate(100%) invert(85%) sepia(78%) saturate(2476%) hue-rotate(359deg) brightness(104%) contrast(104%)' }}
-            />
+          <div className="w-32 h-32 mb-6 flex items-center justify-center">
+            <Flame className="w-full h-full" style={{ color: '#FFCC00' }} />
           </div>
           <h1 className="text-5xl font-bold text-white mb-2">RoxPT</h1>
           <p className="text-2xl font-bold mb-2" style={{ color: '#FFCC00' }}>

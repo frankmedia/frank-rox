@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ExerciseCard } from "@/components/ExerciseCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Trophy, Loader2, ClipboardList } from "lucide-react";
+import { Trophy, Loader2, ClipboardList, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingDaySelector } from "@/components/TrainingDaySelector";
 import { useData } from "@/contexts/DataContext";
@@ -76,12 +76,7 @@ const Today = () => {
               className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => navigate("/")}
             >
-              <img 
-                src="https://www.svgrepo.com/show/461257/dumbbell-3.svg" 
-                alt="Dumbbell" 
-                className="w-8 h-8"
-                style={{ filter: 'brightness(0) saturate(100%) invert(85%) sepia(78%) saturate(2476%) hue-rotate(359deg) brightness(104%) contrast(104%)' }}
-              />
+              <Flame className="w-8 h-8" style={{ color: '#FFCC00' }} />
               <h1 className="text-2xl font-bold text-foreground">RoxPT</h1>
             </div>
             
