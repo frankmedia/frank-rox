@@ -87,7 +87,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
       {/* Content */}
       <div className="container mx-auto p-4 space-y-6">
         {/* Exercise Name */}
-        <Card className="p-6 border-4" style={{ borderColor: "#00FF4D" }}>
+        <Card className="p-6 border-4" style={{ borderColor: "#00E676" }}>
           <h2 className="text-3xl font-bold text-center mb-2">{exercise.name}</h2>
           <p className="text-center text-muted-foreground">
             {timeCap} minute time cap • As many rounds as possible
@@ -100,20 +100,20 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
             size="lg"
             onClick={handleStart}
             className="h-24 px-16 text-3xl font-bold w-full"
-            style={{ backgroundColor: "#00FF4D", color: "#000" }}
+            style={{ backgroundColor: "#00E676", color: "#000" }}
           >
             START AMRAP
           </Button>
         ) : (
           <>
             {/* Timer Display */}
-            <Card className="p-8 bg-primary/5" style={{ borderColor: "#00FF4D", borderWidth: "4px" }}>
+            <Card className="p-8 bg-primary/5" style={{ borderColor: "#00E676", borderWidth: "4px" }}>
               <div className="text-center space-y-4">
-                <div className="text-sm font-bold uppercase tracking-wider" style={{ color: "#00FF4D" }}>
+                <div className="text-sm font-bold uppercase tracking-wider" style={{ color: "#00E676" }}>
                   Time Remaining
                 </div>
                 
-                <div className="text-9xl font-bold" style={{ color: timeRemaining <= 60 ? "#FF0000" : "#00FF4D" }}>
+                <div className="text-9xl font-bold" style={{ color: timeRemaining <= 60 ? "#FF0000" : "#00E676" }}>
                   {formatTime(timeRemaining)}
                 </div>
                 
@@ -121,7 +121,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
                 <div className="w-full bg-secondary/20 rounded-full h-4 overflow-hidden">
                   <div
                     className="h-full transition-all duration-300"
-                    style={{ width: `${progress}%`, backgroundColor: "#00FF4D" }}
+                    style={{ width: `${progress}%`, backgroundColor: "#00E676" }}
                   />
                 </div>
               </div>
@@ -194,7 +194,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
                     size="lg"
                     onClick={handleResume}
                     className="h-20 text-2xl font-bold flex-1"
-                    style={{ backgroundColor: "#00FF4D", color: "#000" }}
+                    style={{ backgroundColor: "#00E676", color: "#000" }}
                   >
                     Resume
                   </Button>

@@ -34,7 +34,7 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
     switch (exercise.type) {
       case "hiit": return "border-[#FF00B2]"; // Hot pink
       case "circuit": return "border-[#FF6600]"; // Orange
-      case "amrap": return "border-[#00FF4D]"; // Bright green
+      case "amrap": return "border-[#00E676]"; // Material green (better contrast)
       default: return "border-border hover:border-secondary/50";
     }
   };
@@ -44,7 +44,7 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
     switch (exercise.type) {
       case "hiit": return <Zap className="w-5 h-5" style={{ color: "#FF00B2" }} />;
       case "circuit": return <Repeat className="w-5 h-5" style={{ color: "#FF6600" }} />;
-      case "amrap": return <Target className="w-5 h-5" style={{ color: "#00FF4D" }} />;
+      case "amrap": return <Target className="w-5 h-5" style={{ color: "#00E676" }} />;
       case "cardio": return <Clock className="w-5 h-5 text-primary" />;
       case "mobility": return <Activity className="w-5 h-5 text-primary" />;
       default: return <Dumbbell className="w-5 h-5 text-primary" />;
