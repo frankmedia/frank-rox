@@ -8,6 +8,7 @@ interface WorkoutData {
   username: string;
   exerciseName: string;
   weight?: number;
+  weights?: number[]; // Array of weights per set
   sets?: number;
   reps?: number;
   rpe?: number;

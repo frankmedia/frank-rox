@@ -758,6 +758,7 @@ export async function logExercise(
   exerciseName: string,
   data: {
     weight?: number;
+    weights?: number[];
     sets?: number;
     reps?: number;
     duration?: number;
@@ -773,6 +774,7 @@ export async function logExercise(
       username,
       exerciseName,
       weight: data.weight,
+      weights: data.weights, // Array of weights per set
       sets: data.sets,
       reps: data.reps,
       duration: data.duration,

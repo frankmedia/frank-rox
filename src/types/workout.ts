@@ -27,6 +27,7 @@ export interface WorkoutLog {
   exercise: string;
   date: string;
   weight?: number;
+  weights?: number[]; // Array of weights per set
   isPB?: boolean;
   duration?: number;
   distance?: number;

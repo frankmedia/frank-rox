@@ -25,7 +25,7 @@ const ExerciseDetail = () => {
   const [loading, setLoading] = useState(true);
   const [exercise, setExercise] = useState<Exercise | null>(null);
 
-  const [todaysKg, setTodaysKg] = useState("");
+  const [setWeights, setSetWeights] = useState<string[]>([]);
   const [todaysDistance, setTodaysDistance] = useState("");
   const [todaysDuration, setTodaysDuration] = useState("");
   const [notes, setNotes] = useState("");
@@ -59,8 +59,10 @@ const ExerciseDetail = () => {
           });
           
           // Pre-populate fields based on exercise data
-          if (ex.type === "weights" && ex.suggestedKg) {
-            setTodaysKg(ex.suggestedKg.toString());
+          if (ex.type === "weights" && ex.sets) {
+            // Initialize array with suggested weight for each set
+            const initialWeights = Array(ex.sets).fill(ex.suggestedKg?.toString() || "");
+            setSetWeights(initialWeights);
           }
           if (ex.targetDistanceKm) {
             setTodaysDistance(ex.targetDistanceKm.toString());
@@ -94,7 +96,8 @@ const ExerciseDetail = () => {
       // Mobility exercises: duration only, no PB tracking
       data.duration = todaysDuration ? parseInt(todaysDuration) : undefined;
     } else if (exercise.type === "weights") {
-      data.weight = todaysKg ? parseFloat(todaysKg) : undefined;
+      // Send array of weights for each set
+      data.weights = setWeights.map(w => w ? parseFloat(w) : 0);
       data.sets = exercise.sets;
       data.reps = exercise.reps;
     } else if (exercise.type === "bodyweight") {
@@ -356,56 +359,56 @@ const ExerciseDetail = () => {
           </>
         )}
 
-        {/* Rest Timer */}
-        {showRestTimer ? (
-          <Card className="p-6">
-            <h3 className="text-lg font-bold mb-4 text-center">Rest Timer</h3>
-            <Timer
-              mode="countdown"
-              initialSeconds={restDuration}
-              onComplete={() => {
-                toast.success("Rest complete!", {
-                  description: "Ready for next set",
-                });
-                setShowRestTimer(false);
-              }}
-            />
-          </Card>
-        ) : (
-          <RestTimer onSelectDuration={handleRestTimer} exerciseType={exercise.type} />
-        )}
-
         {/* Input Form */}
         <div className="space-y-4">
           {exercise.type === "weights" && (
-            <div>
-              <Label htmlFor="weight" className="text-xl font-bold">Today's Weight (kg)</Label>
-              <div className="flex items-center gap-3 mt-3">
-                <Button
-                  type="button"
-                  onClick={() => setTodaysKg((prev) => Math.max(0, parseFloat(prev || "0") - 1).toString())}
-                  className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                  variant="default"
-                >
-                  -
-                </Button>
-                <Input
-                  id="weight"
-                  type="number"
-                  value={todaysKg}
-                  onChange={(e) => setTodaysKg(e.target.value)}
-                  className="text-6xl font-bold h-32 text-center border-2 flex-1"
-                  placeholder="100"
-                />
-                <Button
-                  type="button"
-                  onClick={() => setTodaysKg((prev) => (parseFloat(prev || "0") + 1).toString())}
-                  className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                  variant="default"
-                >
-                  +
-                </Button>
-              </div>
+            <div className="space-y-3">
+              <Label className="text-xl font-bold">Weight per Set (kg)</Label>
+              {setWeights.map((weight, index) => (
+                <div key={index}>
+                  <Label htmlFor={`set-${index}`} className="text-xl font-semibold text-foreground mb-3 block">
+                    Set {index + 1} of {exercise.sets}
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const newWeights = [...setWeights];
+                        newWeights[index] = Math.max(0, parseFloat(newWeights[index] || "0") - 1).toString();
+                        setSetWeights(newWeights);
+                      }}
+                      className="h-16 w-16 text-3xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black flex-shrink-0"
+                      variant="default"
+                    >
+                      -
+                    </Button>
+                    <Input
+                      id={`set-${index}`}
+                      type="number"
+                      value={weight}
+                      onChange={(e) => {
+                        const newWeights = [...setWeights];
+                        newWeights[index] = e.target.value;
+                        setSetWeights(newWeights);
+                      }}
+                      className="text-3xl font-bold h-16 text-center border-2 flex-1"
+                      placeholder="0"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const newWeights = [...setWeights];
+                        newWeights[index] = (parseFloat(newWeights[index] || "0") + 1).toString();
+                        setSetWeights(newWeights);
+                      }}
+                      className="h-16 w-16 text-3xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black flex-shrink-0"
+                      variant="default"
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
           
@@ -511,6 +514,25 @@ const ExerciseDetail = () => {
             </div>
           )}
         </div>
+
+        {/* Rest Timer */}
+        {showRestTimer ? (
+          <Card className="p-6">
+            <h3 className="text-lg font-bold mb-4 text-center">Rest Timer</h3>
+            <Timer
+              mode="countdown"
+              initialSeconds={restDuration}
+              onComplete={() => {
+                toast.success("Rest complete!", {
+                  description: "Ready for next set",
+                });
+                setShowRestTimer(false);
+              }}
+            />
+          </Card>
+        ) : (
+          <RestTimer onSelectDuration={handleRestTimer} exerciseType={exercise.type} />
+        )}
 
         {/* Mark as Done */}
         <Button

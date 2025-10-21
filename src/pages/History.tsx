@@ -189,11 +189,16 @@ const History = () => {
                       <p className="text-xs text-muted-foreground">{entry.date}</p>
                     </div>
                     <div className="text-right">
-                      {entry.weight && (
-                        <>
-                          <p className="text-2xl font-bold text-secondary">{entry.weight}kg</p>
-                        </>
-                      )}
+                      {entry.weights && entry.weights.length > 0 ? (
+                        <div>
+                          <p className="text-sm font-semibold text-foreground mb-1">Sets:</p>
+                          <p className="text-lg font-bold text-secondary">
+                            {entry.weights.map((w, i) => `${w}kg`).join(" → ")}
+                          </p>
+                        </div>
+                      ) : entry.weight ? (
+                        <p className="text-2xl font-bold text-secondary">{entry.weight}kg</p>
+                      ) : null}
                       {entry.distance && (
                         <>
                           <p className="text-2xl font-bold text-secondary">{entry.distance.toFixed(1)}km</p>
