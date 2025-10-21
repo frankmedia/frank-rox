@@ -20,7 +20,6 @@ const BookPT = () => {
     email: "",
     time: "",
     goals: "",
-    packageType: "single", // single or recurring
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -44,19 +43,18 @@ const BookPT = () => {
       email: "",
       time: "",
       goals: "",
-      packageType: "single",
     });
     setDate(undefined);
     setIsSubmitting(false);
   };
 
   const benefits = [
-    "Personalized form checks & technique coaching",
-    "Custom programme adjustments for your goals",
-    "Race-day strategy & pacing plans",
-    "Injury prevention & recovery guidance",
-    "Direct WhatsApp support between sessions",
-    "Video analysis of your movements",
+    "Custom-tailored training programme for your goals",
+    "Weekly 20-minute check-in sessions",
+    "Nutrition advice & meal planning guidance",
+    "Training progress review & adjustments",
+    "Form checks & technique analysis",
+    "Direct WhatsApp support between check-ins",
   ];
 
   return (
@@ -66,7 +64,7 @@ const BookPT = () => {
         <div className="container max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
             <Video className="w-8 h-8" style={{ color: '#FFCC00' }} />
-            <h1 className="text-2xl font-bold text-foreground">Book 1-on-1 Coaching</h1>
+            <h1 className="text-2xl font-bold text-foreground">Weekly Check-In Coaching</h1>
           </div>
         </div>
       </header>
@@ -77,15 +75,15 @@ const BookPT = () => {
         <Card className="p-6 border-2" style={{ borderColor: '#FFCC00' }}>
           <div className="text-center space-y-4">
             <h2 className="text-3xl font-bold text-foreground">
-              Level Up Your Training
+              Weekly Check-In Coaching
             </h2>
             <p className="text-lg text-muted-foreground">
-              Get personalized coaching from Frank the Tank
+              20-minute weekly sessions covering nutrition, training & progress
             </p>
             <div className="flex items-center justify-center gap-4 pt-2">
               <div className="text-center">
-                <p className="text-4xl font-bold" style={{ color: '#FFCC00' }}>£100</p>
-                <p className="text-sm text-muted-foreground">per session</p>
+                <p className="text-4xl font-bold" style={{ color: '#FFCC00' }}>£99.99</p>
+                <p className="text-sm text-muted-foreground">per month</p>
               </div>
             </div>
           </div>
@@ -106,35 +104,17 @@ const BookPT = () => {
 
         {/* Booking Form */}
         <Card className="p-6">
-          <h3 className="text-xl font-bold text-foreground mb-4">Book Your Session</h3>
+          <h3 className="text-xl font-bold text-foreground mb-4">Book Your First Check-In</h3>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Package Type */}
-            <div className="space-y-3">
-              <Label className="text-base font-bold">Select Package:</Label>
-              <RadioGroup
-                value={formData.packageType}
-                onValueChange={(value) => setFormData({ ...formData, packageType: value })}
-              >
-                <div className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg hover:border-primary transition-colors">
-                  <RadioGroupItem value="single" id="single" />
-                  <Label htmlFor="single" className="flex-1 cursor-pointer">
-                    <div>
-                      <p className="font-bold">Single Session</p>
-                      <p className="text-sm text-muted-foreground">£100 one-time payment</p>
-                    </div>
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-3 p-4 border-2 rounded-lg hover:border-primary transition-colors" style={{ borderColor: '#FFCC00' }}>
-                  <RadioGroupItem value="recurring" id="recurring" />
-                  <Label htmlFor="recurring" className="flex-1 cursor-pointer">
-                    <div>
-                      <p className="font-bold">Monthly Coaching Package</p>
-                      <p className="text-sm text-muted-foreground">£100/month • Recurring check-ins & support</p>
-                    </div>
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
+            {/* Info Card */}
+            <Card className="p-4 border-2" style={{ borderColor: '#FFCC00' }}>
+              <div className="space-y-2">
+                <p className="font-bold text-foreground">Monthly Check-In Programme</p>
+                <p className="text-sm text-muted-foreground">
+                  £99.99/month • 4 weekly 20-minute video sessions covering nutrition, training progress, and custom programme adjustments
+                </p>
+              </div>
+            </Card>
 
             {/* Name */}
             <div className="space-y-2">
@@ -221,7 +201,7 @@ const BookPT = () => {
               style={{ backgroundColor: '#FFCC00', color: '#000' }}
             >
               <CreditCard className="w-5 h-5 mr-2" />
-              {isSubmitting ? "Processing..." : `Pay £100 & Book ${formData.packageType === 'recurring' ? 'Monthly Package' : 'Session'}`}
+              {isSubmitting ? "Processing..." : "Subscribe for £99.99/month"}
             </Button>
           </form>
         </Card>
