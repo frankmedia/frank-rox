@@ -50,15 +50,14 @@ const Login = () => {
         {/* Logo/Header */}
         <div className="flex flex-col items-center mb-10">
           {/* Dumbbell SVG */}
-          <div className="w-32 h-32 mb-6" style={{ 
-            backgroundColor: '#FFCC00',
-            WebkitMaskImage: 'url(https://www.svgrepo.com/show/461257/dumbbell-3.svg)',
-            WebkitMaskSize: 'contain',
-            WebkitMaskRepeat: 'no-repeat',
-            maskImage: 'url(https://www.svgrepo.com/show/461257/dumbbell-3.svg)',
-            maskSize: 'contain',
-            maskRepeat: 'no-repeat'
-          }} />
+          <div className="w-32 h-32 mb-6">
+            <img 
+              src="https://www.svgrepo.com/show/461257/dumbbell-3.svg" 
+              alt="Dumbbell" 
+              className="w-full h-full"
+              style={{ filter: 'brightness(0) saturate(100%) invert(85%) sepia(78%) saturate(2476%) hue-rotate(359deg) brightness(104%) contrast(104%)' }}
+            />
+          </div>
           <h1 className="text-5xl font-bold text-white mb-2">RoxPT</h1>
           <p className="text-2xl font-bold mb-2" style={{ color: '#FFCC00' }}>
             Train with Frank the Tank
