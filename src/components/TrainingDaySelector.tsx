@@ -93,13 +93,13 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
         onClick={goToPreviousDay}
         disabled={loading}
         title="Previous day (wraps around to last day)"
-        className="h-16 w-16 text-4xl"
+        className="h-14 w-14 text-4xl flex items-center justify-center"
       >
         ←
       </Button>
 
       <Select value={currentDay} onValueChange={handleDayChange} disabled={loading}>
-        <SelectTrigger className="w-[180px] h-12 text-base">
+        <SelectTrigger className="w-[180px] h-14 text-base">
           <RotateCw className="w-5 h-5 mr-2" />
           <SelectValue placeholder="Training Day" />
         </SelectTrigger>
@@ -117,7 +117,7 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
         onClick={goToNextDay}
         disabled={loading}
         title={`Next day (Day ${parseInt(currentDay) >= maxDay ? '1' : parseInt(currentDay) + 1})`}
-        className="h-16 w-16 text-4xl"
+        className="h-14 w-14 text-4xl flex items-center justify-center"
       >
         →
       </Button>
