@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Medal, TrendingUp, Loader2, Calendar, Dumbbell, Clock } from "lucide-react";
+import { ArrowLeft, Medal, TrendingUp, Loader2, Calendar, Dumbbell, Clock, BookOpen, Trophy } from "lucide-react";
 import { fetchWorkoutHistory, fetchUserStats } from "@/services/googleSheets";
 import { WorkoutLog, UserStats } from "@/types/workout";
 import { toast } from "sonner";
@@ -279,8 +279,14 @@ const History = () => {
       <main className="container max-w-2xl mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="history">Logbook</TabsTrigger>
-            <TabsTrigger value="pb">Personal Bests</TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              Logbook
+            </TabsTrigger>
+            <TabsTrigger value="pb" className="flex items-center gap-2">
+              <Trophy className="w-4 h-4" />
+              Personal Bests
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="pb" className="space-y-6">
