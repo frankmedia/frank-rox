@@ -56,11 +56,11 @@ const BottomNav = () => {
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors",
                   "hover:bg-accent/50 rounded-lg",
-                  active ? "text-primary" : "text-muted-foreground"
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Icon className={cn("w-5 h-5", active && "fill-primary")} />
-                <span className={cn("text-xs font-medium", active && "font-semibold")}>
+                <Icon className={cn("w-5 h-5 transition-colors", active && "fill-primary")} />
+                <span className={cn("text-xs font-medium transition-colors", active && "font-semibold")}>
                   {tab.label}
                 </span>
               </button>
