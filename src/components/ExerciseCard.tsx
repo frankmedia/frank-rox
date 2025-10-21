@@ -120,19 +120,14 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
           
           {exercise.type === "hiit" && (
             <div className="space-y-2">
-              <div className="flex items-center gap-4">
-                <span className="text-4xl font-bold text-foreground">
+              <div>
+                <span className="text-4xl font-bold text-foreground block mb-2">
                   {exercise.totalRounds || 8} intervals
                 </span>
-                <span className="text-lg text-muted-foreground">
-                  {exercise.workRestRatio || "20s/10s"}
+                <span className="text-lg text-foreground/70">
+                  {exercise.notes || exercise.workRestRatio || "20s/10s"}
                 </span>
               </div>
-              {exercise.durationMin && (
-                <span className="text-sm text-muted-foreground">
-                  Total: {exercise.durationMin} min
-                </span>
-              )}
             </div>
           )}
           
