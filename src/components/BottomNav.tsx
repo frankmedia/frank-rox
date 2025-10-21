@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, History, User } from "lucide-react";
+import { Home, History, User, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const BottomNav = () => {
@@ -24,6 +24,12 @@ const BottomNav = () => {
       label: "Profile",
       icon: User,
       path: "/profile",
+    },
+    {
+      id: "book-pt",
+      label: "Book PT",
+      icon: CalendarDays,
+      path: "/book-pt",
     },
   ];
 

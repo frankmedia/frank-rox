@@ -14,6 +14,7 @@ import Today from "./pages/Today";
 import ExerciseDetail from "./pages/ExerciseDetail";
 import History from "./pages/History";
 import Profile from "./pages/Profile";
+import BookPT from "./pages/BookPT";
 import AccessDenied from "./pages/AccessDenied";
 import NotFound from "./pages/NotFound";
 
@@ -78,6 +79,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AuthenticatedLayout>
                     <Profile />
+                  </AuthenticatedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/book-pt"
+              element={
+                <ProtectedRoute>
+                  <AuthenticatedLayout>
+                    <BookPT />
                   </AuthenticatedLayout>
                 </ProtectedRoute>
               }
