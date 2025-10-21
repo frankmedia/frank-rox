@@ -506,17 +506,6 @@ const ExerciseDetail = () => {
               </div>
             </div>
           )}
-
-          <div>
-            <Label htmlFor="notes" className="text-base">Notes (optional)</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="How did it feel? Any observations..."
-              className="mt-2 min-h-[100px]"
-            />
-          </div>
         </div>
 
         {/* Mark as Done */}
@@ -528,6 +517,18 @@ const ExerciseDetail = () => {
           <CheckCircle2 className="w-6 h-6 mr-2" />
           Mark as Done
         </Button>
+
+        {/* Notes Input - Below Complete Button */}
+        <div>
+          <Label htmlFor="notes" className="text-base">Notes (optional)</Label>
+          <Textarea
+            id="notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="How did it feel? Any observations..."
+            className="mt-2 min-h-[100px]"
+          />
+        </div>
 
         {/* Exercise Notes/Instructions - At Bottom */}
         {(exercise.notes || exercise.mediaUrl) && (
