@@ -250,10 +250,10 @@ const ExerciseDetail = () => {
               variant="outline"
               size="lg"
               onClick={() => navigate("/")}
-              className="h-20 w-20 p-0"
+              className="h-14 w-14 p-0 [&_svg]:!w-10 [&_svg]:!h-10"
               title="Back to today's exercises"
             >
-              <List className="w-14 h-14" strokeWidth={3} />
+              <List strokeWidth={3} />
             </Button>
             <h1 className="text-2xl font-bold text-foreground flex-1 text-center px-2">{exercise.name}</h1>
             <div className="flex items-center gap-3">
@@ -262,18 +262,18 @@ const ExerciseDetail = () => {
                 size="lg"
                 onClick={handlePrevious}
                 disabled={currentIndex === 0}
-                className="h-20 w-20 p-0"
+                className="h-14 w-14 p-0 [&_svg]:!w-10 [&_svg]:!h-10"
               >
-                <ArrowLeft className="w-14 h-14" strokeWidth={3} />
+                <ArrowLeft strokeWidth={3} />
               </Button>
               <Button
                 variant="outline"
                 size="lg"
                 onClick={handleNext}
                 disabled={currentIndex === exercises.length - 1}
-                className="h-20 w-20 p-0"
+                className="h-14 w-14 p-0 [&_svg]:!w-10 [&_svg]:!h-10"
               >
-                <ArrowRight className="w-14 h-14" strokeWidth={3} />
+                <ArrowRight strokeWidth={3} />
               </Button>
             </div>
           </div>
