@@ -98,7 +98,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
         {/* Exercise Name */}
         <Card className="p-6 border-4" style={{ borderColor: "#FFB74D" }}>
           <h2 className="text-3xl font-bold text-center mb-2">{exercise.name}</h2>
-          <p className="text-center text-muted-foreground">
+          <p className="text-center text-foreground/70 text-lg">
             {totalRounds} rounds • {exercises.length} exercises per round
           </p>
         </Card>
@@ -108,7 +108,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
           <div className="text-5xl font-bold" style={{ color: "#FFB74D" }}>
             {getTotalCompleted()} / {getTotalRequired()}
           </div>
-          <p className="text-sm text-muted-foreground">Sets completed</p>
+          <p className="text-base text-foreground/70">Sets completed</p>
           
           {/* Progress Bar */}
           <div className="w-full bg-secondary/20 rounded-full h-4 overflow-hidden">
@@ -154,9 +154,9 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                     <div className="flex items-center gap-4">
                       {/* Exercise Name and Details */}
                       <div className="flex-1">
-                        <h3 className="text-2xl font-bold mb-1">{title}</h3>
+                        <h3 className="text-2xl font-bold mb-1 text-foreground">{title}</h3>
                         {parts.length > 0 && (
-                          <p className="text-lg text-muted-foreground">
+                          <p className="text-lg text-foreground/70">
                             {parts.join(" • ")}
                           </p>
                         )}
@@ -180,7 +180,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                               {isComplete ? (
                                 <Check className="w-6 h-6 text-white" />
                               ) : (
-                                <span className="text-lg font-bold text-muted-foreground">{roundNumber}</span>
+                                <span className="text-lg font-bold text-foreground/80">{roundNumber}</span>
                               )}
                             </div>
                           );

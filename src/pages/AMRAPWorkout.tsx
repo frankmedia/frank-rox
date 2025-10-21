@@ -89,7 +89,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
         {/* Exercise Name */}
         <Card className="p-6 border-4" style={{ borderColor: "#00E676" }}>
           <h2 className="text-3xl font-bold text-center mb-2">{exercise.name}</h2>
-          <p className="text-center text-muted-foreground">
+          <p className="text-center text-foreground/70 text-lg">
             {timeCap} minute time cap • As many rounds as possible
           </p>
         </Card>
@@ -155,9 +155,9 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
                     className="p-6 border-2"
                   >
                     <div>
-                      <h3 className="text-3xl font-bold mb-1">{title}</h3>
+                      <h3 className="text-3xl font-bold mb-1 text-foreground">{title}</h3>
                       {parts.length > 0 && (
-                        <p className="text-lg text-muted-foreground">
+                        <p className="text-lg text-foreground/70">
                           {parts.join(" • ")}
                         </p>
                       )}
@@ -224,7 +224,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
         {/* Notes */}
         {exercise.notes && (
           <Card className="p-4 bg-muted/50">
-            <p className="text-sm text-muted-foreground">{exercise.notes}</p>
+            <p className="text-base text-foreground/70">{exercise.notes}</p>
           </Card>
         )}
       </div>
