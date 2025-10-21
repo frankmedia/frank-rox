@@ -32,6 +32,7 @@ const Profile = () => {
         const sheet = await getUserSheet();
         setUserSheet(sheet);
       } catch (error) {
+        console.error("Error loading user sheet:", error);
       } finally {
         setLoading(false);
       }

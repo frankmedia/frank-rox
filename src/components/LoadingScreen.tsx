@@ -16,11 +16,29 @@ const motivationalQuotes = [
 
 export function LoadingScreen() {
   const [quoteIndex, setQuoteIndex] = useState(0);
+  const [displayedText, setDisplayedText] = useState("");
+  const [charIndex, setCharIndex] = useState(0);
 
+  const currentQuote = motivationalQuotes[quoteIndex];
+
+  // Typewriter effect
+  useEffect(() => {
+    if (charIndex < currentQuote.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(currentQuote.substring(0, charIndex + 1));
+        setCharIndex(charIndex + 1);
+      }, 50); // 50ms per character
+      return () => clearTimeout(timeout);
+    }
+  }, [charIndex, currentQuote]);
+
+  // Change quote every 10 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setQuoteIndex((prev) => (prev + 1) % motivationalQuotes.length);
-    }, 2000); // Change quote every 2 seconds
+      setCharIndex(0);
+      setDisplayedText("");
+    }, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -28,10 +46,10 @@ export function LoadingScreen() {
   return (
     <div className="flex flex-col items-center justify-center py-12 space-y-6">
       <Loader2 className="w-12 h-12 animate-spin text-primary" />
-      <p className="text-lg sm:text-xl font-semibold text-foreground animate-pulse">
-        {motivationalQuotes[quoteIndex]}
+      <p className="text-lg sm:text-xl font-semibold text-foreground min-h-[2rem] px-4 text-center">
+        {displayedText}
+        <span className="animate-pulse">|</span>
       </p>
     </div>
   );
 }
-

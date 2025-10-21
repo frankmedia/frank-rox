@@ -51,6 +51,7 @@ const ExerciseDetail = () => {
           setExercise(ex);
           
           // Debug: Check if timer should show
+          console.log("🔍 Exercise Debug:", {
             name: ex.name,
             type: ex.type,
             durationMin: ex.durationMin,
@@ -69,6 +70,7 @@ const ExerciseDetail = () => {
           }
         }
       } catch (error) {
+        console.error("Error loading exercise:", error);
         toast.error("Failed to load exercise");
       } finally {
         setLoading(false);

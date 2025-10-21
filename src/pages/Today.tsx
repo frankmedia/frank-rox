@@ -21,6 +21,7 @@ const Today = () => {
         return localStorage.getItem(userKey) || "1";
       }
     } catch (e) {
+      console.error("Error loading training day:", e);
     }
     return "1";
   });
@@ -49,6 +50,7 @@ const Today = () => {
         }
       }
     } catch (e) {
+      console.error("Error loading completed exercises:", e);
     }
   }, [exercises]); // Re-check when exercises change
 
