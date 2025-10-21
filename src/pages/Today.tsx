@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ExerciseCard } from "@/components/ExerciseCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Calendar, Trophy, User, Loader2, ClipboardList } from "lucide-react";
+import { Trophy, Loader2, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingDaySelector } from "@/components/TrainingDaySelector";
 import { useData } from "@/contexts/DataContext";
@@ -25,12 +25,6 @@ const Today = () => {
     return "1";
   });
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
-  
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  });
 
   // Load completed exercises from today (user-specific)
   useEffect(() => {
@@ -76,7 +70,8 @@ const Today = () => {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="container max-w-2xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-center gap-2 mb-2">
+          <div className="flex items-center justify-between gap-4">
+            {/* Logo - Left Side */}
             <div 
               className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => navigate("/")}
@@ -89,14 +84,8 @@ const Today = () => {
               />
               <h1 className="text-2xl font-bold text-foreground">roxPT</h1>
             </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-1 ml-2">
-              <Calendar className="w-3 h-3" />
-              {today}
-            </p>
-          </div>
-          
-          {/* Training Day Selector */}
-          <div className="flex items-center justify-center gap-2">
+            
+            {/* Training Day Selector - Center */}
             <TrainingDaySelector onDayChange={setCurrentTrainingDay} />
           </div>
         </div>
