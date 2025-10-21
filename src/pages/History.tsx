@@ -101,11 +101,19 @@ const groupWorkoutsByDate = (logs: WorkoutLog[]): DailyWorkout[] => {
   );
 };
 
+interface PersonalBest {
+  exercise: string;
+  type: "weight" | "time" | "distance";
+  value: string;
+  date: string;
+}
+
 const History = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("history");
   const [history, setHistory] = useState<WorkoutLog[]>([]);
   const [dailyWorkouts, setDailyWorkouts] = useState<DailyWorkout[]>([]);
+  const [personalBests, setPersonalBests] = useState<PersonalBest[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -144,6 +152,77 @@ const History = () => {
         // Group workouts by date
         const grouped = groupWorkoutsByDate(historyData);
         setDailyWorkouts(grouped);
+        
+        // Calculate Personal Bests
+        const pbs: PersonalBest[] = [];
+        const exerciseMap = new Map<string, WorkoutLog[]>();
+        
+        // Group by exercise name
+        historyData.forEach(log => {
+          if (!exerciseMap.has(log.exercise)) {
+            exerciseMap.set(log.exercise, []);
+          }
+          exerciseMap.get(log.exercise)!.push(log);
+        });
+        
+        // Calculate PBs for each exercise
+        exerciseMap.forEach((logs, exerciseName) => {
+          // Weight-based exercises: find max weight
+          const weightLogs = logs.filter(l => l.weight || (l.weights && l.weights.length > 0));
+          if (weightLogs.length > 0) {
+            let maxWeight = 0;
+            let maxDate = "";
+            
+            weightLogs.forEach(log => {
+              let weight = 0;
+              if (log.weights && log.weights.length > 0) {
+                weight = Math.max(...log.weights);
+              } else if (log.weight) {
+                weight = log.weight;
+              }
+              
+              if (weight > maxWeight) {
+                maxWeight = weight;
+                maxDate = log.date;
+              }
+            });
+            
+            if (maxWeight > 0) {
+              pbs.push({
+                exercise: exerciseName,
+                type: "weight",
+                value: `${maxWeight}kg`,
+                date: maxDate,
+              });
+            }
+          }
+          
+          // Distance-based exercises: find fastest time for each distance
+          const distanceLogs = logs.filter(l => l.distance && l.duration);
+          const distanceMap = new Map<number, { time: number; date: string }>();
+          
+          distanceLogs.forEach(log => {
+            const dist = log.distance!;
+            const time = log.duration!;
+            
+            if (!distanceMap.has(dist) || time < distanceMap.get(dist)!.time) {
+              distanceMap.set(dist, { time, date: log.date });
+            }
+          });
+          
+          distanceMap.forEach((best, distance) => {
+            pbs.push({
+              exercise: `${exerciseName} (${distance.toFixed(1)}km)`,
+              type: "time",
+              value: `${best.time} min`,
+              date: best.date,
+            });
+          });
+        });
+        
+        // Sort PBs by date (most recent first)
+        pbs.sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
+        setPersonalBests(pbs);
         
         // Calculate basic stats from logs
         const thisWeekLogs = logs.filter((log: any) => {
@@ -198,117 +277,50 @@ const History = () => {
       </header>
 
       <main className="container max-w-2xl mx-auto px-4 py-6">
-        {/* Debug Info */}
-        <Card className="p-4 mb-4 bg-yellow-500/10 border-yellow-500">
-          <h3 className="font-bold text-foreground mb-2">🔍 Debug Info</h3>
-          <div className="text-sm space-y-1">
-            <p className="text-foreground">
-              <strong>Logged in as:</strong> {localStorage.getItem("frank_rock_user") ? JSON.parse(localStorage.getItem("frank_rock_user")!).username : "Not logged in"}
-            </p>
-            <p className="text-foreground">
-              <strong>Storage key:</strong> workoutHistory_{localStorage.getItem("frank_rock_user") ? JSON.parse(localStorage.getItem("frank_rock_user")!).username : "unknown"}
-            </p>
-            <p className="text-foreground">
-              <strong>History entries loaded:</strong> {history.length}
-            </p>
-            <p className="text-foreground">
-              <strong>Daily workouts grouped:</strong> {dailyWorkouts.length}
-            </p>
-            {history.length > 0 && (
-              <div className="mt-2 p-2 bg-secondary/10 rounded text-xs">
-                <p className="font-bold mb-1">First entry sample:</p>
-                <pre className="text-xs overflow-auto">
-                  {JSON.stringify(history[0], null, 2)}
-                </pre>
-              </div>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={() => {
-                const userStr = localStorage.getItem("frank_rock_user");
-                if (userStr) {
-                  const user = JSON.parse(userStr);
-                  const key = `workoutHistory_${user.username}`;
-                  const data = localStorage.getItem(key);
-                  console.log("📊 Raw localStorage data:", data);
-                  console.log("📊 Parsed history:", history);
-                  console.log("📊 Daily workouts:", dailyWorkouts);
-                  alert(data ? `Found ${JSON.parse(data).length} entries. Check console for details.` : "No data found!");
-                }
-              }}
-            >
-              Show Raw Data
-            </Button>
-          </div>
-        </Card>
-
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="history">History</TabsTrigger>
-            <TabsTrigger value="progress">Progress</TabsTrigger>
+            <TabsTrigger value="pb">Personal Bests</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="progress" className="space-y-6">
+          <TabsContent value="pb" className="space-y-6">
             {loading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
-            ) : stats ? (
-              <>
-                {/* Weekly Stats */}
-                <Card className="p-6">
-                  <h3 className="text-sm text-muted-foreground mb-4">This Week</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-foreground">{stats.thisWeek.workouts}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Workouts</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-foreground">{stats.thisWeek.exercises}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Exercises</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-foreground">{stats.thisWeek.totalWeight}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Total kg</p>
-                    </div>
-                  </div>
-                </Card>
-
-                {/* Personal Bests */}
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="w-5 h-5 text-primary" />
-                    <h3 className="text-lg font-bold">Personal Bests</h3>
-                  </div>
-                  {stats.personalBests.length > 0 ? (
-                    <div className="space-y-3">
-                      {stats.personalBests.map((pb, index) => (
-                        <Card key={index} className="p-4 bg-secondary/10 border-secondary/30">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <Medal className="w-5 h-5 text-primary" />
-                              <div>
-                                <p className="font-semibold text-foreground">{pb.exercise}</p>
-                                <p className="text-xs text-muted-foreground">{pb.date}</p>
-                              </div>
-                            </div>
-                            <Badge className="bg-primary text-primary-foreground font-bold text-lg px-3 py-1">
-                              {pb.value}
-                            </Badge>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : (
-                    <Card className="p-6 text-center">
-                      <p className="text-muted-foreground">No personal bests recorded yet</p>
-                    </Card>
-                  )}
+            ) : personalBests.length > 0 ? (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  <h3 className="text-lg font-bold">Your Personal Records</h3>
                 </div>
-              </>
-            ) : null}
+                <div className="space-y-3">
+                  {personalBests.map((pb, index) => (
+                    <Card key={index} className="p-4 bg-secondary/10 border-yellow-500 border-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Medal className="w-6 h-6" style={{ color: '#FFCC00' }} />
+                          <div>
+                            <p className="font-bold text-foreground text-lg">{pb.exercise}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatDisplayDate(pb.date)} • {new Date(pb.date.split(',')[0].split('/').reverse().join('-')).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge className="bg-yellow-500 text-black font-bold text-2xl px-4 py-2">
+                          {pb.value}
+                        </Badge>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <Card className="p-6 text-center">
+                <p className="text-muted-foreground">No personal bests recorded yet</p>
+                <p className="text-sm text-muted-foreground mt-2">Complete some workouts to start tracking your PRs!</p>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">

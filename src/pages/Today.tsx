@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ExerciseCard } from "@/components/ExerciseCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Trophy, ClipboardList, Flame } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Trophy, ClipboardList, Flame, Info } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingDaySelector } from "@/components/TrainingDaySelector";
 import { useData } from "@/contexts/DataContext";
@@ -91,15 +92,153 @@ const Today = () => {
       <main className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
         <div className="flex items-center justify-between mb-3 sm:mb-6">
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Training Day {currentTrainingDay}</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/history")}
-            className="text-primary text-xs sm:text-sm"
-          >
-            <Trophy className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">History</span>
-          </Button>
+          
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-primary text-xs sm:text-sm"
+              >
+                <Info className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Hyrox Training</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                  <Flame className="w-6 h-6" style={{ color: '#FFCC00' }} />
+                  Hyrox Training Methodology
+                </DialogTitle>
+                <DialogDescription className="text-base">
+                  Understanding the science behind your training programme
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-6 mt-4">
+                {/* What is Hyrox */}
+                <div>
+                  <h3 className="text-xl font-bold mb-2 text-foreground">What is Hyrox?</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    HYROX is a fitness race structured as <strong>8 rounds</strong> of: 
+                    <strong> 1km run → 1 functional station</strong> (e.g., SkiErg, sled push, sled pull, burpee broad jumps, row, farmer's carry, sandbag lunges, wall balls).
+                  </p>
+                </div>
+
+                {/* Why It's Different */}
+                <div>
+                  <h3 className="text-xl font-bold mb-2 text-foreground">Why It's Different</h3>
+                  <p className="text-muted-foreground leading-relaxed mb-3">
+                    It's a <strong>"hybrid" event</strong>: part endurance race, part functional fitness. 
+                    This dual demand requires training that covers both <strong>running endurance</strong> and <strong>functional strength & conditioning</strong>.
+                  </p>
+                </div>
+
+                {/* Training Phases */}
+                <div>
+                  <h3 className="text-xl font-bold mb-3 text-foreground">Training Phases</h3>
+                  <div className="space-y-4">
+                    {/* Phase 1 */}
+                    <Card className="p-4 border-2 border-primary/20">
+                      <div className="flex items-start gap-3">
+                        <div className="text-2xl font-bold" style={{ color: '#FFCC00' }}>1️⃣</div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-lg text-foreground mb-1">Base Phase (Weeks 1–2)</h4>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            <strong>Focus:</strong> Aerobic Capacity + Technique<br/>
+                            <strong>Energy System:</strong> Zone 2 / Aerobic
+                          </p>
+                          <p className="text-sm text-foreground">
+                            Build volume safely, improve running & SkiErg efficiency
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* Phase 2 */}
+                    <Card className="p-4 border-2 border-primary/20">
+                      <div className="flex items-start gap-3">
+                        <div className="text-2xl font-bold" style={{ color: '#FFCC00' }}>2️⃣</div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-lg text-foreground mb-1">Build Phase (Weeks 3–4)</h4>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            <strong>Focus:</strong> Strength + Threshold<br/>
+                            <strong>Energy System:</strong> Aerobic + Lactate Threshold
+                          </p>
+                          <p className="text-sm text-foreground">
+                            Introduce faster runs, heavier carries, and circuits
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* Phase 3 */}
+                    <Card className="p-4 border-2 border-primary/20">
+                      <div className="flex items-start gap-3">
+                        <div className="text-2xl font-bold" style={{ color: '#FFCC00' }}>3️⃣</div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-lg text-foreground mb-1">Peak Phase (Weeks 5–6)</h4>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            <strong>Focus:</strong> HIIT + Simulation<br/>
+                            <strong>Energy System:</strong> Anaerobic + Race Specific
+                          </p>
+                          <p className="text-sm text-foreground">
+                            Add short, high-intensity intervals to replicate race fatigue
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* Phase 4 */}
+                    <Card className="p-4 border-2 border-primary/20">
+                      <div className="flex items-start gap-3">
+                        <div className="text-2xl font-bold" style={{ color: '#FFCC00' }}>4️⃣</div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-lg text-foreground mb-1">Taper Phase (Final Week)</h4>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            <strong>Focus:</strong> Sharpness + Recovery<br/>
+                            <strong>Energy System:</strong> All systems
+                          </p>
+                          <p className="text-sm text-foreground">
+                            Maintain performance without overload
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* Key Principles */}
+                <div>
+                  <h3 className="text-xl font-bold mb-2 text-foreground">Key Training Principles</h3>
+                  <ul className="space-y-2 text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <span style={{ color: '#FFCC00' }}>▸</span>
+                      <span><strong>Progressive Overload:</strong> Gradually increase volume and intensity</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span style={{ color: '#FFCC00' }}>▸</span>
+                      <span><strong>Specificity:</strong> Train movements and energy systems used in the race</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span style={{ color: '#FFCC00' }}>▸</span>
+                      <span><strong>Recovery:</strong> Adequate rest between high-intensity sessions</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span style={{ color: '#FFCC00' }}>▸</span>
+                      <span><strong>Consistency:</strong> Regular training builds the base for peak performance</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground text-center italic">
+                    Your Road to the Next Podium Starts Here 🏆
+                  </p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {loading ? (
