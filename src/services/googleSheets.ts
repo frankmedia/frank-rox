@@ -328,7 +328,11 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         console.log(`📝 Parsing exercise "${name}" with type "${type}" (normalized: "${typeValue}")`);
         
         // Simple type detection based on type column only
-        if (typeValue === "circuit") {
+        if (typeValue === "intro") {
+          exerciseType = "intro";
+          isGroupHeader = false;
+          console.log(`📋 INTRO card: "${name}"`);
+        } else if (typeValue === "circuit") {
           exerciseType = "circuit";
           isGroupHeader = true;
           console.log(`🔵 CIRCUIT header: "${name}"`);

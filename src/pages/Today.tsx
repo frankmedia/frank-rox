@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExerciseCard } from "@/components/ExerciseCard";
 import { Button } from "@/components/ui/button";
-import { Calendar, Trophy, User, Loader2 } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Calendar, Trophy, User, Loader2, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingDaySelector } from "@/components/TrainingDaySelector";
 import { useData } from "@/contexts/DataContext";
@@ -122,8 +123,33 @@ const Today = () => {
           </div>
         ) : (
           <>
+            {/* Intro Card (optional) */}
+            {exercises.find(ex => ex.type === "intro") && (
+              <Card 
+                className="p-6 mb-6 border-4"
+                style={{ borderColor: "#FFCC00" }}
+              >
+                <div className="flex items-start gap-4">
+                  <ClipboardList className="w-8 h-8 mt-1 flex-shrink-0" style={{ color: "#FFCC00" }} />
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold mb-3" style={{ color: "#FFCC00" }}>
+                      {exercises.find(ex => ex.type === "intro")?.name}
+                    </h3>
+                    <p className="text-base text-foreground leading-relaxed">
+                      {exercises.find(ex => ex.type === "intro")?.notes || "No description provided."}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
+            
             <div className="space-y-4">
               {exercises.map((exercise) => {
+                // Skip intro cards - they're displayed above
+                if (exercise.type === "intro") {
+                  return null;
+                }
+                
                 // Skip rendering child exercises that are part of a group
                 // They're already displayed inside their parent card
                 if ((exercise as any)._isChildExercise) {
@@ -141,7 +167,7 @@ const Today = () => {
               })}
             </div>
 
-            {exercises.length === 0 && (
+            {exercises.filter(ex => ex.type !== "intro").length === 0 && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No exercises planned for today</p>
                 <p className="text-sm text-muted-foreground mt-2">
