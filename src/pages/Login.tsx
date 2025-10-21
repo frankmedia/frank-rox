@@ -53,9 +53,9 @@ const Login = () => {
           <div className="w-32 h-32 mb-6 flex items-center justify-center">
             <Flame className="w-full h-full" style={{ color: '#FFCC00' }} />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2 text-center">The Smart Way to Crush Your Next Race.</h1>
+          <h1 className="text-4xl font-bold text-white mb-2 text-center">The Smart Way to Crush Your Next Race</h1>
           <p className="text-2xl font-bold mb-2 text-center" style={{ color: '#FFCC00' }}>
-            Built for Hyrox. Tuned for You.
+            Built for Hyrox Tuned for You
           </p>
           <p className="text-base text-gray-300 text-center">
             Your Road to the Next Podium Starts Here
