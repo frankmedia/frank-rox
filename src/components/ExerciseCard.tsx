@@ -144,9 +144,8 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                 </span>
               </div>
               {exercise.exercises && exercise.exercises.length > 0 && (
-                <div className="text-sm text-muted-foreground space-y-1 mt-2">
+                <div className="text-lg space-y-2 mt-3">
                   {exercise.exercises.map((ex: any, idx: number) => {
-                    const parts: string[] = [];
                     let displayName = ex.name;
                     
                     // Add distance to name in brackets
@@ -155,16 +154,19 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                       displayName = `${ex.name} [${meters}m]`;
                     }
                     
-                    // Build description
-                    if (ex.reps) parts.push(`${ex.reps} reps`);
-                    if (ex.suggestedKg) parts.push(`${ex.suggestedKg}kg`);
-                    if (ex.durationMin) parts.push(`${ex.durationMin} min`);
-                    
                     return (
-                      <div key={idx} className="flex items-center gap-2">
-                        <span className="text-foreground">→</span>
-                        <span>{displayName}</span>
-                        {parts.length > 0 && <span className="font-semibold">({parts.join(" • ")})</span>}
+                      <div key={idx} className="flex items-center gap-2 flex-wrap">
+                        <span className="text-foreground text-xl">→</span>
+                        <span className="text-foreground">{displayName}</span>
+                        <span className="font-semibold text-foreground/70">
+                          (
+                          {ex.reps && <span>{ex.reps} reps</span>}
+                          {ex.reps && ex.suggestedKg && <span> • </span>}
+                          {ex.suggestedKg && <span style={{ color: "#FFB74D" }}>{ex.suggestedKg}kg</span>}
+                          {(ex.reps || ex.suggestedKg) && ex.durationMin && <span> • </span>}
+                          {ex.durationMin && <span>{ex.durationMin} min</span>}
+                          )
+                        </span>
                       </div>
                     );
                   })}
@@ -179,12 +181,11 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                 <span className="text-4xl font-bold text-foreground">
                   {exercise.timeCap || 10} min
                 </span>
-                <span className="text-lg text-muted-foreground">AMRAP</span>
+                <span className="text-lg text-foreground/70">AMRAP</span>
               </div>
               {exercise.exercises && exercise.exercises.length > 0 && (
-                <div className="text-sm text-muted-foreground space-y-1 mt-2">
+                <div className="text-lg space-y-2 mt-3">
                   {exercise.exercises.map((ex: any, idx: number) => {
-                    const parts: string[] = [];
                     let displayName = ex.name;
                     
                     // Add distance to name in brackets
@@ -193,15 +194,19 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                       displayName = `${ex.name} [${meters}m]`;
                     }
                     
-                    // Build description (no reps for AMRAP - you do as many as you can)
-                    if (ex.suggestedKg) parts.push(`${ex.suggestedKg}kg`);
-                    if (ex.durationMin) parts.push(`${ex.durationMin} min`);
-                    
                     return (
-                      <div key={idx} className="flex items-center gap-2">
-                        <span className="text-foreground">→</span>
-                        <span>{displayName}</span>
-                        {parts.length > 0 && <span className="font-semibold">({parts.join(" • ")})</span>}
+                      <div key={idx} className="flex items-center gap-2 flex-wrap">
+                        <span className="text-foreground text-xl">→</span>
+                        <span className="text-foreground">{displayName}</span>
+                        {(ex.suggestedKg || ex.durationMin) && (
+                          <span className="font-semibold text-foreground/70">
+                            (
+                            {ex.suggestedKg && <span style={{ color: "#00E676" }}>{ex.suggestedKg}kg</span>}
+                            {ex.suggestedKg && ex.durationMin && <span> • </span>}
+                            {ex.durationMin && <span>{ex.durationMin} min</span>}
+                            )
+                          </span>
+                        )}
                       </div>
                     );
                   })}
