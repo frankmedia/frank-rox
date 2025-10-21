@@ -129,8 +129,8 @@ const Today = () => {
                 className="p-8 mb-6 border-4"
                 style={{ borderColor: "#FFCC00" }}
               >
-                <div className="flex items-start gap-4">
-                  <ClipboardList className="w-12 h-12 mt-1 flex-shrink-0" style={{ color: "#FFCC00" }} />
+                <div className="flex items-start gap-2">
+                  <ClipboardList className="w-10 h-10 mt-1 flex-shrink-0" style={{ color: "#FFCC00" }} />
                   <div className="flex-1">
                     <h3 className="text-4xl font-bold mb-4" style={{ color: "#FFCC00" }}>
                       {exercises.find(ex => ex.type === "intro")?.name}
