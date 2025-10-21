@@ -151,10 +151,10 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                     className="p-6 border-2 cursor-pointer hover:bg-muted/50 transition-all"
                     onClick={() => toggleNextRound(ex.id)}
                   >
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4">
                       {/* Exercise Name and Details */}
                       <div className="flex-1">
-                        <h3 className="text-3xl font-bold mb-1">{title}</h3>
+                        <h3 className="text-2xl font-bold mb-1">{title}</h3>
                         {parts.length > 0 && (
                           <p className="text-lg text-muted-foreground">
                             {parts.join(" • ")}
@@ -163,7 +163,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                       </div>
                 
                       {/* Round Circles - indicators only, not buttons */}
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
                         {Array.from({ length: totalRounds }, (_, idx) => {
                           const roundNumber = idx + 1;
                           const isComplete = isRoundComplete(ex.id, roundNumber);
@@ -171,16 +171,16 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                           return (
                             <div
                               key={roundNumber}
-                              className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all ${
+                              className={`w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all ${
                                 isComplete
                                   ? "border-green-500 bg-green-500"
                                   : "border-muted-foreground"
                               }`}
                             >
                               {isComplete ? (
-                                <Check className="w-10 h-10 text-white" />
+                                <Check className="w-6 h-6 text-white" />
                               ) : (
-                                <span className="text-2xl font-bold text-muted-foreground">{roundNumber}</span>
+                                <span className="text-lg font-bold text-muted-foreground">{roundNumber}</span>
                               )}
                             </div>
                           );
