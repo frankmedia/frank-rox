@@ -58,7 +58,7 @@ const Login = () => {
               style={{ filter: 'brightness(0) saturate(100%) invert(85%) sepia(78%) saturate(2476%) hue-rotate(359deg) brightness(104%) contrast(104%)' }}
             />
           </div>
-          <h1 className="text-5xl font-bold text-white mb-2">Frank Rox</h1>
+          <h1 className="text-5xl font-bold text-white mb-2">roxPT</h1>
           <p className="text-2xl text-yellow-500 font-bold mb-2">
             Train with Frank the Tank
           </p>

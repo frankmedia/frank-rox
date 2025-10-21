@@ -75,22 +75,22 @@ const Today = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="container max-w-2xl mx-auto px-4 py-4">
-          <div className="flex flex-col items-center mb-3">
+        <div className="container max-w-2xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-center gap-2 mb-2">
             <div 
-              className="flex items-center gap-3 mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => navigate("/")}
             >
               <img 
                 src="https://www.svgrepo.com/show/461257/dumbbell-3.svg" 
                 alt="Dumbbell" 
-                className="w-10 h-10"
+                className="w-8 h-8"
                 style={{ filter: 'brightness(0) saturate(100%) invert(85%) sepia(78%) saturate(2476%) hue-rotate(359deg) brightness(104%) contrast(104%)' }}
               />
-              <h1 className="text-3xl font-bold text-foreground">Frank Rox</h1>
+              <h1 className="text-2xl font-bold text-foreground">roxPT</h1>
             </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
+            <p className="text-sm text-muted-foreground flex items-center gap-1 ml-2">
+              <Calendar className="w-3 h-3" />
               {today}
             </p>
           </div>
