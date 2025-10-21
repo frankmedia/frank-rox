@@ -1,20 +1,35 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-const motivationalQuotes = [
-  "💪 Loading your workout...",
-  "🔥 Preparing your training plan...",
-  "⚡ Get ready to dominate!",
-  "🎯 Success is a journey, not a destination",
-  "💥 Today's pain is tomorrow's power",
-  "🏆 Champions are made in training",
-  "🚀 Push yourself, nobody else will",
-  "⭐ Your only limit is you",
-  "💯 Make it happen!",
-  "🔨 Forge your strength",
-];
+const getMotivationalQuotes = () => {
+  // Get username from localStorage
+  let username = "there";
+  try {
+    const userStr = localStorage.getItem("frank_rock_user");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      username = user.username || "there";
+    }
+  } catch (e) {
+    // Ignore
+  }
+
+  return [
+    `👋 Hey ${username}!`,
+    "Let me load your personalised training programme...",
+    "⚡ Get ready to dominate!",
+    "🎯 Success is a journey, not a destination",
+    "💥 Today's pain is tomorrow's power",
+    "🏆 Champions are made in training",
+    "🚀 Push yourself, nobody else will",
+    "⭐ Your only limit is you",
+    "💯 Make it happen!",
+    "🔨 Forge your strength",
+  ];
+};
 
 export function LoadingScreen() {
+  const motivationalQuotes = getMotivationalQuotes();
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [charIndex, setCharIndex] = useState(0);
