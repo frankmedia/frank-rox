@@ -96,7 +96,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
       {/* Content */}
       <div className="container mx-auto p-4 space-y-6">
         {/* Exercise Name */}
-        <Card className="p-6 border-4" style={{ borderColor: "#FF6600" }}>
+        <Card className="p-6 border-4" style={{ borderColor: "#FFB74D" }}>
           <h2 className="text-3xl font-bold text-center mb-2">{exercise.name}</h2>
           <p className="text-center text-muted-foreground">
             {totalRounds} rounds • {exercises.length} exercises per round
@@ -105,7 +105,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
         
         {/* Progress Display */}
         <div className="text-center space-y-2">
-          <div className="text-5xl font-bold" style={{ color: "#FF6600" }}>
+          <div className="text-5xl font-bold" style={{ color: "#FFB74D" }}>
             {getTotalCompleted()} / {getTotalRequired()}
           </div>
           <p className="text-sm text-muted-foreground">Sets completed</p>
@@ -114,7 +114,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
           <div className="w-full bg-secondary/20 rounded-full h-4 overflow-hidden">
             <div
               className="h-full transition-all duration-300"
-              style={{ width: `${progress}%`, backgroundColor: "#FF6600" }}
+              style={{ width: `${progress}%`, backgroundColor: "#FFB74D" }}
             />
           </div>
         </div>
