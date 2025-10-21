@@ -28,12 +28,12 @@ export function ExerciseMedia({ url, alt, className = "" }: ExerciseMediaProps) 
   const youtubeId = getYouTubeVideoId(url);
 
   if (youtubeId) {
-    // YouTube video
+    // YouTube video with minimal controls
     return (
       <Card className={`overflow-hidden ${className}`}>
         <div className="relative w-full aspect-video bg-black">
           <iframe
-            src={`https://www.youtube.com/embed/${youtubeId}`}
+            src={`https://www.youtube.com/embed/${youtubeId}?controls=1&modestbranding=1&rel=0&showinfo=0`}
             title={alt}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
