@@ -253,7 +253,7 @@ const ExerciseDetail = () => {
               className="h-14 w-14 p-0"
               title="Back to today's exercises"
             >
-              <List className="w-8 h-8" />
+              <List className="w-16 h-16" strokeWidth={3} />
             </Button>
             <h1 className="text-2xl font-bold text-foreground flex-1 text-center px-2">{exercise.name}</h1>
             <div className="flex items-center gap-3">
@@ -264,7 +264,7 @@ const ExerciseDetail = () => {
                 disabled={currentIndex === 0}
                 className="h-14 w-14 p-0"
               >
-                <ArrowLeft className="w-8 h-8" />
+                <ArrowLeft className="w-16 h-16" strokeWidth={3} />
               </Button>
               <Button
                 variant="outline"
@@ -273,7 +273,7 @@ const ExerciseDetail = () => {
                 disabled={currentIndex === exercises.length - 1}
                 className="h-14 w-14 p-0"
               >
-                <ArrowRight className="w-8 h-8" />
+                <ArrowRight className="w-16 h-16" strokeWidth={3} />
               </Button>
             </div>
           </div>
