@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import BottomNav from "@/components/BottomNav";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import Login from "./pages/Login";
+import Overview from "./pages/Overview";
 import Today from "./pages/Today";
 import ExerciseDetail from "./pages/ExerciseDetail";
 import History from "./pages/History";
@@ -43,6 +44,16 @@ const App = () => (
             {/* Protected routes with bottom navigation */}
             <Route
               path="/"
+              element={
+                <ProtectedRoute>
+                  <AuthenticatedLayout>
+                    <Overview />
+                  </AuthenticatedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/today"
               element={
                 <ProtectedRoute>
                   <AuthenticatedLayout>

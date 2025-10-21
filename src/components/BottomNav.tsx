@@ -11,7 +11,7 @@ const BottomNav = () => {
       id: "today",
       label: "Today",
       icon: Home,
-      path: "/",
+      path: "/today",
     },
     {
       id: "history",
@@ -28,8 +28,9 @@ const BottomNav = () => {
   ];
 
   const isActive = (path: string) => {
-    if (path === "/") {
-      return location.pathname === "/";
+    // Home button is active for both / (overview) and /today
+    if (path === "/today") {
+      return location.pathname === "/" || location.pathname === "/today";
     }
     return location.pathname.startsWith(path);
   };
