@@ -44,9 +44,9 @@ export function LoadingScreen() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 space-y-6">
-      <Loader2 className="w-12 h-12 animate-spin text-primary" />
-      <p className="text-lg sm:text-xl font-semibold text-foreground min-h-[2rem] px-4 text-center">
+    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8">
+      <Loader2 className="w-16 h-16 sm:w-20 sm:h-20 animate-spin text-primary" />
+      <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground min-h-[3rem] px-4 text-center max-w-2xl">
         {displayedText}
         <span className="animate-pulse">|</span>
       </p>
