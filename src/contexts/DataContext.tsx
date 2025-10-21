@@ -49,9 +49,9 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         throw new Error("User sheet not found in master sheet");
       }
 
-      // 2. Get exercises for current training day (ONE API call)
+      // 2. Get exercises for current training day (passing sheet to avoid duplicate call)
       console.log("2️⃣ Fetching exercises...");
-      const exerciseData = await fetchTodayExercises();
+      const exerciseData = await fetchTodayExercises(currentUser, sheet);
       setExercises(exerciseData);
       setAllExercises(exerciseData);
 
@@ -120,6 +120,12 @@ export const DataProvider = ({ children }: DataProviderProps) => {
   useEffect(() => {
     if (currentUser && currentTrainingDay) {
       loadData();
+    } else if (currentUser || currentTrainingDay) {
+      // If we have partial data, keep loading state
+      setLoading(true);
+    } else {
+      // If we have no data yet, show loading
+      setLoading(true);
     }
   }, [currentUser, currentTrainingDay]);
 

@@ -247,10 +247,11 @@ export async function getMaxTrainingDay(username: string = getCurrentUser()): Pr
  * Parse exercises from user's workout sheet for today
  * Expected format in Plan tab: Weekday | Exercise Name | Type | Sets | Reps | Suggested Weight | Personal Best | Duration | Distance | Notes | Media URL
  */
-export async function fetchTodayExercises(username: string = getCurrentUser()): Promise<Exercise[]> {
+export async function fetchTodayExercises(username: string = getCurrentUser(), providedUserSheet?: UserSheet): Promise<Exercise[]> {
   console.log(`🏋️ Fetching today's exercises for: ${username}`);
   
-  const userSheet = await getUserSheet(username);
+  // Use provided userSheet if available, otherwise fetch it
+  const userSheet = providedUserSheet || await getUserSheet(username);
   
   if (!userSheet) {
     console.error("❌ User sheet not found - cannot fetch exercises");
