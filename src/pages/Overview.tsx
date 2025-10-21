@@ -479,6 +479,15 @@ const Overview = () => {
           </p>
         </div>
 
+        {/* Hero Image */}
+        <div className="mb-6 rounded-lg overflow-hidden">
+          <img 
+            src="/hyrox-home.webp" 
+            alt="Hyrox Training" 
+            className="w-full h-auto object-cover"
+          />
+        </div>
+
         <div className="grid gap-3">
           {daySummaries.map((summary) => (
             <Card
