@@ -146,7 +146,7 @@ const ExerciseDetail = () => {
         });
       }
       setTimeout(() => {
-        navigate("/");
+        navigate("/today");
       }, result.isPB ? 2500 : 1000);
     }
   };
@@ -252,7 +252,7 @@ const ExerciseDetail = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/today")}
               className="h-10 w-10 sm:h-12 sm:w-12 p-0 [&_svg]:!w-6 [&_svg]:!h-6 sm:[&_svg]:!w-8 sm:[&_svg]:!h-8 flex-shrink-0"
               title="Back to today's exercises"
             >

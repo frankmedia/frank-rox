@@ -54,12 +54,15 @@ const BottomNav = () => {
                 key={tab.id}
                 onClick={() => navigate(tab.path)}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors",
+                  "group flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors",
                   "hover:bg-accent/50 rounded-lg",
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Icon className={cn("w-5 h-5 transition-colors", active && "fill-primary")} />
+                <Icon className={cn(
+                  "w-5 h-5 transition-colors",
+                  active ? "fill-primary" : "group-hover:stroke-foreground"
+                )} />
                 <span className={cn("text-xs font-medium transition-colors", active && "font-semibold")}>
                   {tab.label}
                 </span>
