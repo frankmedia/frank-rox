@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Timer } from "@/components/Timer";
 import { RestTimer } from "@/components/RestTimer";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Home } from "lucide-react";
 import { toast } from "sonner";
 import { fetchTodayExercises, logExercise } from "@/services/googleSheets";
 import { Exercise } from "@/types/workout";
@@ -154,8 +154,10 @@ const ExerciseDetail = () => {
   };
 
   const handleStartWorkout = () => {
-    if (exercise?.durationMin) {
-      setWorkoutDuration(exercise.durationMin * 60); // Convert minutes to seconds
+    // Use todaysDuration if user has entered a value, otherwise fallback to exercise.durationMin
+    const durationToUse = todaysDuration ? parseInt(todaysDuration) : exercise?.durationMin;
+    if (durationToUse) {
+      setWorkoutDuration(durationToUse * 60); // Convert minutes to seconds
       setShowWorkoutTimer(true);
     }
   };
@@ -249,8 +251,9 @@ const ExerciseDetail = () => {
               size="lg"
               onClick={() => navigate("/")}
               className="h-14 w-14 p-0"
+              title="Back to workout overview"
             >
-              <ArrowLeft className="w-8 h-8" />
+              <Home className="w-8 h-8" />
             </Button>
             <h1 className="text-2xl font-bold text-foreground flex-1 text-center px-2">{exercise.name}</h1>
             <div className="flex items-center gap-3">
@@ -330,11 +333,12 @@ const ExerciseDetail = () => {
                   mode="countdown"
                   initialSeconds={workoutDuration}
                   onComplete={() => {
+                    const completedDuration = Math.round(workoutDuration / 60);
                     toast.success("🎉 Workout Complete!", {
-                      description: `${exercise.durationMin} minutes completed!`,
+                      description: `${completedDuration} minutes completed!`,
                       duration: 3000,
                     });
-                    setTodaysDuration(exercise.durationMin.toString());
+                    setTodaysDuration(completedDuration.toString());
                     setShowWorkoutTimer(false);
                   }}
                   onCancel={() => setShowWorkoutTimer(false)}
