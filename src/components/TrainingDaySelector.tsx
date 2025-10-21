@@ -105,8 +105,8 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
         </SelectTrigger>
         <SelectContent className="max-h-[300px]">
           {trainingDays.map((day) => (
-            <SelectItem key={day} value={day} className="text-base sm:text-lg md:text-xl font-bold py-2 sm:py-3">
-              Day {day} / {maxDay}
+            <SelectItem key={day} value={day} className="text-xl font-bold py-3">
+              Day {day}
             </SelectItem>
           ))}
         </SelectContent>
