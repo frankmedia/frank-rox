@@ -38,9 +38,15 @@ When you "Mark as Done" on an exercise:
 #### For Bodyweight Exercises:
 - Sets completed
 - Reps completed
-- RPE
 - Notes
-- *(No PB for bodyweight currently)*
+- PB tracking available
+
+#### NOT Tracked for PB:
+- **Mobility/Warmup/Cooldown/Stretch** - Focus on recovery, not performance
+- **HIIT** - Interval-based, not weight-based
+- **Circuit** - Multi-exercise format, PB tracked per child exercise instead
+- **AMRAP** - Time-capped workouts, rounds are tracked instead
+- **Intro** - Informational only
 
 ### 4. **History Tab Structure**
 

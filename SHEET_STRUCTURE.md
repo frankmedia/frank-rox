@@ -78,15 +78,22 @@ This tab contains your training plan. The app shows exercises for the CURRENT TR
 
 ---
 
-#### 🧘 **MOBILITY** (Type = `mobility`)
-**Example: Hip Mobility Flow**
+#### 🧘 **MOBILITY / WARMUP / COOLDOWN / STRETCH** (Type = `mobility`)
+**Use `mobility` for:** Warm-ups, Cool-downs, Stretching, Mobility work, Foam rolling
+
+**Examples:**
 
 | A | B | C | D | E | F | G | H | I | J | K |
 |---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Warm-Up: Treadmill + Mobility | mobility | | | | | 8 | | Easy pace warm-up | |
 | 1 | Hip Mobility Flow | mobility | | | | | 10 | | Slow controlled movements | https://... |
+| 1 | Cool Down | mobility | | | | | 5 | | Light stretching | |
+| 1 | Foam Rolling / Stretch | mobility | | | | | 10 | | Full body recovery | |
 
 **Fill:** Day, Exercise, Type=`mobility`, Duration (H), Notes (optional), Media URL (optional)
 **Leave Empty:** Sets, Reps, Kg, **Personal Best** (NO PB for mobility!), Distance
+
+**Note:** The app will display a timer for mobility exercises if Duration is specified.
 
 ---
 
