@@ -20,9 +20,23 @@ interface DailyWorkout {
   totalDistance: number;
 }
 
+// Helper function to parse DD/MM/YYYY date format
+const parseDate = (dateStr: string): Date => {
+  // Handle "21/10/2025, 16:24" format (DD/MM/YYYY, HH:MM)
+  const parts = dateStr.split(',')[0].split('/'); // Get "21/10/2025" part
+  if (parts.length === 3) {
+    const day = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1; // Month is 0-indexed
+    const year = parseInt(parts[2]);
+    return new Date(year, month, day);
+  }
+  // Fallback to regular Date parsing
+  return new Date(dateStr);
+};
+
 // Helper function to format date
 const formatDisplayDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
+  const date = parseDate(dateStr);
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -51,7 +65,7 @@ const groupWorkoutsByDate = (logs: WorkoutLog[]): DailyWorkout[] => {
   const grouped = new Map<string, DailyWorkout>();
   
   logs.forEach((log) => {
-    const date = new Date(log.date);
+    const date = parseDate(log.date);
     const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
     
     if (!grouped.has(dateKey)) {
@@ -184,6 +198,52 @@ const History = () => {
       </header>
 
       <main className="container max-w-2xl mx-auto px-4 py-6">
+        {/* Debug Info */}
+        <Card className="p-4 mb-4 bg-yellow-500/10 border-yellow-500">
+          <h3 className="font-bold text-foreground mb-2">🔍 Debug Info</h3>
+          <div className="text-sm space-y-1">
+            <p className="text-foreground">
+              <strong>Logged in as:</strong> {localStorage.getItem("frank_rock_user") ? JSON.parse(localStorage.getItem("frank_rock_user")!).username : "Not logged in"}
+            </p>
+            <p className="text-foreground">
+              <strong>Storage key:</strong> workoutHistory_{localStorage.getItem("frank_rock_user") ? JSON.parse(localStorage.getItem("frank_rock_user")!).username : "unknown"}
+            </p>
+            <p className="text-foreground">
+              <strong>History entries loaded:</strong> {history.length}
+            </p>
+            <p className="text-foreground">
+              <strong>Daily workouts grouped:</strong> {dailyWorkouts.length}
+            </p>
+            {history.length > 0 && (
+              <div className="mt-2 p-2 bg-secondary/10 rounded text-xs">
+                <p className="font-bold mb-1">First entry sample:</p>
+                <pre className="text-xs overflow-auto">
+                  {JSON.stringify(history[0], null, 2)}
+                </pre>
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => {
+                const userStr = localStorage.getItem("frank_rock_user");
+                if (userStr) {
+                  const user = JSON.parse(userStr);
+                  const key = `workoutHistory_${user.username}`;
+                  const data = localStorage.getItem(key);
+                  console.log("📊 Raw localStorage data:", data);
+                  console.log("📊 Parsed history:", history);
+                  console.log("📊 Daily workouts:", dailyWorkouts);
+                  alert(data ? `Found ${JSON.parse(data).length} entries. Check console for details.` : "No data found!");
+                }
+              }}
+            >
+              Show Raw Data
+            </Button>
+          </div>
+        </Card>
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="history">History</TabsTrigger>
