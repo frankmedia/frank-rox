@@ -76,13 +76,16 @@ const Today = () => {
               className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => navigate("/")}
             >
-              <img 
-                src="https://www.svgrepo.com/show/461257/dumbbell-3.svg" 
-                alt="Dumbbell" 
-                className="w-8 h-8"
-                style={{ filter: 'brightness(0) saturate(100%) invert(85%) sepia(78%) saturate(2476%) hue-rotate(359deg) brightness(104%) contrast(104%)' }}
-              />
-              <h1 className="text-2xl font-bold text-foreground">roxPT</h1>
+              <div className="w-8 h-8" style={{ 
+                backgroundColor: '#FFCC00',
+                WebkitMaskImage: 'url(https://www.svgrepo.com/show/461257/dumbbell-3.svg)',
+                WebkitMaskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                maskImage: 'url(https://www.svgrepo.com/show/461257/dumbbell-3.svg)',
+                maskSize: 'contain',
+                maskRepeat: 'no-repeat'
+              }} />
+              <h1 className="text-2xl font-bold text-foreground">RoxPT</h1>
             </div>
             
             {/* Training Day Selector - Center */}
