@@ -99,13 +99,13 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
       </Button>
 
       <Select value={currentDay} onValueChange={handleDayChange} disabled={loading}>
-        <SelectTrigger className="w-[180px] h-14 text-base">
+        <SelectTrigger className="w-[180px] h-14 text-xl font-bold">
           <RotateCw className="w-5 h-5 mr-2" />
           <SelectValue placeholder="Training Day" />
         </SelectTrigger>
         <SelectContent className="max-h-[300px]">
           {trainingDays.map((day) => (
-            <SelectItem key={day} value={day}>
+            <SelectItem key={day} value={day} className="text-xl font-bold py-3">
               Day {day} / {maxDay}
             </SelectItem>
           ))}
