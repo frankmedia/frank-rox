@@ -129,16 +129,16 @@ const Today = () => {
                 className="p-8 mb-6 border-4"
                 style={{ borderColor: "#FFCC00" }}
               >
-                <div className="flex items-start gap-4">
-                  <ClipboardList className="w-12 h-12 mt-1 flex-shrink-0" style={{ color: "#FFCC00" }} />
-                  <div className="flex-1" style={{ marginLeft: "-4px" }}>
-                    <h3 className="text-4xl font-bold mb-4" style={{ color: "#FFCC00" }}>
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <ClipboardList className="w-10 h-10 flex-shrink-0" style={{ color: "#FFCC00" }} />
+                    <h3 className="text-4xl font-bold" style={{ color: "#FFCC00" }}>
                       {exercises.find(ex => ex.type === "intro")?.name}
                     </h3>
-                    <p className="text-xl text-foreground leading-relaxed" style={{ marginLeft: "0" }}>
-                      {exercises.find(ex => ex.type === "intro")?.notes || "No description provided."}
-                    </p>
                   </div>
+                  <p className="text-xl text-foreground leading-relaxed">
+                    {exercises.find(ex => ex.type === "intro")?.notes || "No description provided."}
+                  </p>
                 </div>
               </Card>
             )}
