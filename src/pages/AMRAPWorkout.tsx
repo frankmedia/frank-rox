@@ -94,6 +94,46 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
           </p>
         </Card>
         
+        {/* Exercise List - Always visible */}
+        <div className="space-y-3">
+          {exercises.map((ex: Exercise) => {
+            // Build title with distance in brackets
+            let title = ex.name;
+            const parts: string[] = [];
+            
+            if (ex.targetDistanceKm) {
+              // Convert km to meters for display in title
+              const meters = Math.round(ex.targetDistanceKm * 1000);
+              title = `${ex.name} [${meters}m]`;
+            }
+            
+            // Build subtitle with other info (reps in AMRAP are just the target, don't display)
+            if (ex.suggestedKg) {
+              parts.push(`${ex.suggestedKg}kg`);
+            }
+            
+            if (ex.durationMin) {
+              parts.push(`${ex.durationMin} min`);
+            }
+            
+            return (
+              <Card
+                key={ex.id}
+                className="p-6 border-2"
+              >
+                <div>
+                  <h3 className="text-3xl font-bold mb-1 text-foreground">{title}</h3>
+                  {parts.length > 0 && (
+                    <p className="text-lg text-foreground/70">
+                      {parts.join(" • ")}
+                    </p>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+        
         {!isRunning && timeRemaining === timeCap * 60 ? (
           // Start button
           <Button
@@ -126,46 +166,6 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
                 </div>
               </div>
             </Card>
-            
-            {/* Exercise List */}
-            <div className="space-y-3">
-              {exercises.map((ex: Exercise) => {
-                // Build title with distance in brackets
-                let title = ex.name;
-                const parts: string[] = [];
-                
-                if (ex.targetDistanceKm) {
-                  // Convert km to meters for display in title
-                  const meters = Math.round(ex.targetDistanceKm * 1000);
-                  title = `${ex.name} [${meters}m]`;
-                }
-                
-                // Build subtitle with other info (reps in AMRAP are just the target, don't display)
-                if (ex.suggestedKg) {
-                  parts.push(`${ex.suggestedKg}kg`);
-                }
-                
-                if (ex.durationMin) {
-                  parts.push(`${ex.durationMin} min`);
-                }
-                
-                return (
-                  <Card
-                    key={ex.id}
-                    className="p-6 border-2"
-                  >
-                    <div>
-                      <h3 className="text-3xl font-bold mb-1 text-foreground">{title}</h3>
-                      {parts.length > 0 && (
-                        <p className="text-lg text-foreground/70">
-                          {parts.join(" • ")}
-                        </p>
-                      )}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
             
             {/* Controls */}
             <div className="flex gap-4 w-full">
