@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Timer } from "@/components/Timer";
 import { RestTimer } from "@/components/RestTimer";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Home } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, List } from "lucide-react";
 import { toast } from "sonner";
 import { fetchTodayExercises, logExercise } from "@/services/googleSheets";
 import { Exercise } from "@/types/workout";
@@ -251,9 +251,9 @@ const ExerciseDetail = () => {
               size="lg"
               onClick={() => navigate("/")}
               className="h-14 w-14 p-0"
-              title="Back to workout overview"
+              title="Back to today's exercises"
             >
-              <Home className="w-8 h-8" />
+              <List className="w-8 h-8" />
             </Button>
             <h1 className="text-2xl font-bold text-foreground flex-1 text-center px-2">{exercise.name}</h1>
             <div className="flex items-center gap-3">
