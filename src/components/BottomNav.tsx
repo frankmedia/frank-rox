@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, History, User, CalendarDays } from "lucide-react";
+import { Home, BookOpen, User, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const BottomNav = () => {
@@ -15,8 +15,8 @@ const BottomNav = () => {
     },
     {
       id: "history",
-      label: "History",
-      icon: History,
+      label: "Logbook",
+      icon: BookOpen,
       path: "/history",
     },
     {

@@ -279,7 +279,7 @@ const History = () => {
       <main className="container max-w-2xl mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="history">History</TabsTrigger>
+            <TabsTrigger value="history">Logbook</TabsTrigger>
             <TabsTrigger value="pb">Personal Bests</TabsTrigger>
           </TabsList>
 
@@ -426,7 +426,7 @@ const History = () => {
               </Accordion>
             ) : (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">No workout history yet</p>
+                <p className="text-muted-foreground">No workouts logged yet</p>
               </div>
             )}
           </TabsContent>
