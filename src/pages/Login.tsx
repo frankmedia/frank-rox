@@ -57,8 +57,8 @@ const Login = () => {
           <p className="text-2xl font-bold mb-2" style={{ color: '#FFCC00' }}>
             Train with Frank the Tank
           </p>
-          <p className="text-sm text-gray-400">
-            Track your workouts with precision
+          <p className="text-base text-gray-300">
+            Personalised Training Programme
           </p>
         </div>
 
