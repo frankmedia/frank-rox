@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Timer } from "@/components/timer";
+import { Timer } from "@/components/Timer";
 import { toast } from "sonner";
 import type { Exercise } from "@/types/workout";
 
