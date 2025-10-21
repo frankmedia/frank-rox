@@ -66,9 +66,7 @@ const History = () => {
         
         setStats(statsData);
         
-        console.log("✅ Loaded history from localStorage:", historyData.length, "entries");
       } catch (error) {
-        console.error("Error loading history:", error);
         toast.error("Failed to load history", {
           description: "Could not load local storage data",
         });

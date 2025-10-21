@@ -39,7 +39,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       try {
         setUser(JSON.parse(storedUser));
       } catch (error) {
-        console.error("Error parsing stored user:", error);
         localStorage.removeItem("frank_rock_user");
       }
     }
@@ -53,7 +52,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const MASTER_SHEET_ID = import.meta.env.VITE_MASTER_SHEET_ID;
       
       if (!API_KEY || !MASTER_SHEET_ID) {
-        console.error("Missing API key or master sheet ID");
         return false;
       }
       
@@ -62,7 +60,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       );
       
       if (!response.ok) {
-        console.error("Failed to fetch master sheet:", response.status);
         return false;
       }
       
@@ -86,16 +83,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             localStorage.setItem("VITE_USER_NAME", sheetUsername); // Store for API calls
             return true;
           } else {
-            console.log("Invalid password for user:", username);
             return false;
           }
         }
       }
       
-      console.log("User not found:", username);
       return false;
     } catch (error) {
-      console.error("Login error:", error);
       return false;
     }
   };

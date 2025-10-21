@@ -35,13 +35,11 @@ export const DataProvider = ({ children }: DataProviderProps) => {
   const [currentTrainingDay, setCurrentTrainingDay] = useState<string>("");
 
   const loadData = async () => {
-    console.log("🚀 Loading data for user:", currentUser || "unknown", "day:", currentTrainingDay || "unknown");
     setLoading(true);
     setError(null);
 
     try {
       // 1. Get user sheet (ONE API call)
-      console.log("1️⃣ Fetching user sheet...");
       const sheet = await getUserSheet();
       setUserSheet(sheet);
 
@@ -50,25 +48,19 @@ export const DataProvider = ({ children }: DataProviderProps) => {
       }
 
       // 2. Get exercises for current training day (ONE API call)
-      console.log("2️⃣ Fetching exercises...");
       const exerciseData = await fetchTodayExercises();
       setExercises(exerciseData);
       setAllExercises(exerciseData);
 
-      console.log("✅ All data loaded successfully!");
-      console.log(`   - User: ${sheet.user}`);
-      console.log(`   - Exercises: ${exerciseData.length}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load data";
       setError(message);
-      console.error("❌ Data loading error:", err);
     } finally {
       setLoading(false);
     }
   };
 
   const refresh = async () => {
-    console.log("🔄 Manual refresh requested...");
     await loadData();
   };
 
@@ -81,12 +73,10 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         const username = user.username || "";
         
         if (username !== currentUser) {
-          console.log("👤 User changed from", currentUser || "(none)", "to", username);
           setCurrentUser(username);
         }
       }
     } catch (e) {
-      console.error("Error detecting user:", e);
     }
   }, []);
 
@@ -101,12 +91,10 @@ export const DataProvider = ({ children }: DataProviderProps) => {
           const trainingDay = localStorage.getItem(userKey) || "1";
           
           if (trainingDay !== currentTrainingDay) {
-            console.log("📅 Training day changed from", currentTrainingDay || "(none)", "to", trainingDay);
             setCurrentTrainingDay(trainingDay);
           }
         }
       } catch (e) {
-        console.error("Error detecting training day:", e);
       }
     };
 

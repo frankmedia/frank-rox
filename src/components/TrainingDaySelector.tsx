@@ -24,7 +24,6 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
         return localStorage.getItem(userKey) || "1";
       }
     } catch (e) {
-      console.error("Error loading training day:", e);
     }
     return "1";
   });
@@ -38,7 +37,6 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
       const max = await getMaxTrainingDay();
       setMaxDay(max);
       setLoading(false);
-      console.log(`🔄 Training cycle: ${max} days (Day ${currentDay} / ${max})`);
     };
     loadMaxDay();
   }, []);
@@ -61,7 +59,6 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
         localStorage.setItem(userKey, newDay);
       }
     } catch (e) {
-      console.error("Error saving training day:", e);
     }
     
     onDayChange?.(newDay);
@@ -74,7 +71,6 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
     const currentNum = parseInt(currentDay);
     // Rotate back to Day 1 when reaching the end of the cycle
     const nextDay = currentNum >= maxDay ? "1" : (currentNum + 1).toString();
-    console.log(`➡️ Moving from Day ${currentNum} to Day ${nextDay} (cycle: ${maxDay} days)`);
     handleDayChange(nextDay);
   };
 
@@ -82,7 +78,6 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
     const currentNum = parseInt(currentDay);
     // Wrap around to max day when going back from Day 1
     const prevDay = currentNum <= 1 ? maxDay.toString() : (currentNum - 1).toString();
-    console.log(`⬅️ Moving from Day ${currentNum} to Day ${prevDay} (cycle: ${maxDay} days)`);
     handleDayChange(prevDay);
   };
 

@@ -31,7 +31,6 @@ export function HIITWorkout({ exercise, onComplete }: HIITWorkoutProps) {
   const { work: workSeconds, rest: restSeconds } = parseWorkRest(exercise.workRestRatio || exercise.notes || "20s/10s");
   const totalIntervals = exercise.totalRounds || exercise.sets || 8;
   
-  console.log("🔥 HIIT Workout Debug:", {
     name: exercise.name,
     totalRounds: exercise.totalRounds,
     sets: exercise.sets,

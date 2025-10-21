@@ -12,16 +12,11 @@ function getCurrentUser(): string {
       return user.username || "frank";
     }
   } catch (e) {
-    console.error("Error getting current user:", e);
   }
   return "frank"; // Fallback
 }
 
 // Debug logging
-console.log("🔧 Google Sheets Service Configuration:");
-console.log("  API_KEY:", API_KEY ? `${API_KEY.substring(0, 20)}...` : "❌ MISSING");
-console.log("  MASTER_SHEET_ID:", MASTER_SHEET_ID || "❌ MISSING");
-console.log("  CURRENT_USER:", getCurrentUser());
 
 // Cache for API responses (5 minutes TTL)
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -36,7 +31,6 @@ async function waitForRateLimit() {
   const timeSinceLastRequest = now - lastRequestTime;
   if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
     const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
-    console.log(`⏱️ Rate limit: waiting ${waitTime}ms`);
     await new Promise(resolve => setTimeout(resolve, waitTime));
   }
   lastRequestTime = Date.now();
@@ -59,13 +53,11 @@ async function fetchSheetData(sheetId: string, range: string): Promise<any[][]> 
   // Check cache first
   const cached = cache.get(cacheKey);
   if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
-    console.log(`💾 Cache hit for ${range}`);
     return cached.data;
   }
   
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${API_KEY}`;
   
-  console.log(`📡 Fetching sheet data:`, {
     sheetId,
     range,
     url: url.replace(API_KEY || '', 'API_KEY_HIDDEN'),
@@ -77,10 +69,8 @@ async function fetchSheetData(sheetId: string, range: string): Promise<any[][]> 
   try {
     const response = await fetch(url);
     
-    console.log(`📥 Response status:`, response.status, response.statusText);
     
     if (response.status === 429) {
-      console.error("❌ Rate limit exceeded! Waiting 2 seconds...");
       await new Promise(resolve => setTimeout(resolve, 2000));
       // Try one more time
       const retryResponse = await fetch(url);
@@ -94,12 +84,10 @@ async function fetchSheetData(sheetId: string, range: string): Promise<any[][]> 
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
-      console.error("❌ API Error Response:", errorData);
       throw new Error(`Failed to fetch sheet data: ${response.statusText}`);
     }
     
     const data = await response.json();
-    console.log(`✅ Data received:`, {
       range,
       rows: data.values?.length || 0,
       columns: data.values?.[0]?.length || 0,
@@ -113,7 +101,6 @@ async function fetchSheetData(sheetId: string, range: string): Promise<any[][]> 
     
     return values;
   } catch (error) {
-    console.error("❌ Error fetching sheet data:", {
       error,
       message: error instanceof Error ? error.message : String(error),
       sheetId,
@@ -135,8 +122,6 @@ async function appendSheetData(
 ): Promise<boolean> {
   // This would require OAuth2 authentication
   // For now, we'll return false and log to console
-  console.log("Append to sheet:", { sheetId, range, values });
-  console.warn(
     "Sheet write operations require OAuth2 authentication. This is a placeholder."
   );
   return false;
@@ -146,13 +131,11 @@ async function appendSheetData(
  * Get user's sheet ID from master sheet
  */
 export async function getUserSheet(username: string = getCurrentUser()): Promise<UserSheet | null> {
-  console.log(`👤 Getting user sheet for: ${username}`);
   
   try {
     // Fetch from first tab without specifying tab name (A:C will use first tab by default)
     const data = await fetchSheetData(MASTER_SHEET_ID, "A:C");
     
-    console.log(`📋 Master sheet data:`, {
       totalRows: data.length,
       allUsers: data.slice(1).map(row => row[0]),
       fullData: data,
@@ -161,7 +144,6 @@ export async function getUserSheet(username: string = getCurrentUser()): Promise
     // Skip header row and find user
     for (let i = 1; i < data.length; i++) {
       const [user, password, sheetUrl] = data[i];
-      console.log(`  Checking row ${i}:`, { user, password: password ? '***' : 'none', sheetUrl, match: user?.toLowerCase() === username.toLowerCase() });
       
       if (user?.toLowerCase() === username.toLowerCase()) {
         const userSheet = {
@@ -170,15 +152,12 @@ export async function getUserSheet(username: string = getCurrentUser()): Promise
           sheetUrl,
           sheetId: extractSheetId(sheetUrl),
         };
-        console.log(`✅ Found user sheet:`, userSheet);
         return userSheet;
       }
     }
     
-    console.warn(`⚠️ User "${username}" not found in master sheet`);
     return null;
   } catch (error) {
-    console.error("❌ Error fetching user sheet:", error);
     return null;
   }
 }
@@ -195,15 +174,12 @@ async function fetchMediaFallback(
     for (const row of videosData) {
       const [name, url] = row;
       if (name && name.toLowerCase().trim() === exerciseName.toLowerCase().trim() && url) {
-        console.log(`🎥 Found video for "${exerciseName}" in master sheet videos tab:`, url);
         return url;
       }
     }
     
-    console.log(`ℹ️ No media found for "${exerciseName}" in master sheet videos tab`);
     return null;
   } catch (error) {
-    console.error("❌ Error fetching media fallback:", error);
     return null;
   }
 }
@@ -221,7 +197,6 @@ export async function getMaxTrainingDay(username: string = getCurrentUser()): Pr
 
   try {
     const data = await fetchSheetData(userSheet.sheetId, "Plan!A2:A500");
-    console.log(`📊 Raw day data from sheet:`, {
       totalRows: data.length,
       firstFewRows: data.slice(0, 20).map(row => row[0]),
       allDayValues: data.map(row => row[0])
@@ -231,14 +206,10 @@ export async function getMaxTrainingDay(username: string = getCurrentUser()): Pr
       .map(row => parseInt(row[0]?.toString().trim()))
       .filter(num => !isNaN(num) && num > 0);
     
-    console.log(`📊 Parsed day numbers:`, dayNumbers);
-    console.log(`📊 Unique days:`, [...new Set(dayNumbers)].sort((a, b) => a - b));
     
     const maxDay = dayNumbers.length > 0 ? Math.max(...dayNumbers) : 1;
-    console.log(`🔄 Program cycle length: ${maxDay} days (from ${dayNumbers.length} total rows)`);
     return maxDay;
   } catch (error) {
-    console.error("❌ Error getting max training day:", error);
     return 1;
   }
 }
@@ -248,12 +219,10 @@ export async function getMaxTrainingDay(username: string = getCurrentUser()): Pr
  * Expected format in Plan tab: Weekday | Exercise Name | Type | Sets | Reps | Suggested Weight | Personal Best | Duration | Distance | Notes | Media URL
  */
 export async function fetchTodayExercises(username: string = getCurrentUser()): Promise<Exercise[]> {
-  console.log(`🏋️ Fetching today's exercises for: ${username}`);
   
   const userSheet = await getUserSheet(username);
   
   if (!userSheet) {
-    console.error("❌ User sheet not found - cannot fetch exercises");
     return [];
   }
 
@@ -268,15 +237,11 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         currentTrainingDay = localStorage.getItem(userKey) || "1";
       }
     } catch (e) {
-      console.error("Error reading training day:", e);
     }
-    console.log(`📅 Current Training Day: ${currentTrainingDay}`);
     
     // Fetch exercises from the Plan tab (now includes Notes and Media URL columns)
-    console.log(`📊 Fetching from sheet: ${userSheet.sheetId}, tab: Plan`);
     const data = await fetchSheetData(userSheet.sheetId, "Plan!A2:K500");
     
-    console.log(`📝 Raw data from Plan tab:`, {
       totalRows: data.length,
       sampleRows: data.slice(0, 5),
     });
@@ -293,20 +258,17 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
       const matches = normalizedDayNumber === normalizedCurrentDay && exerciseName;
       
       if (row[0] || row[1]) {
-        console.log(`  Row filter:`, { dayNumber, normalizedDayNumber, currentTrainingDay, normalizedCurrentDay, exerciseName, matches });
       }
       
       return matches;
     });
     
-    console.log(`🎯 Filtered to ${filteredData.length} exercises for Training Day ${currentTrainingDay}`);
     
     // First pass: parse all rows into exercises
     const parsedExercises = await Promise.all(
       filteredData.map(async (row, index) => {
         const [, name, type, sets, reps, suggestedKg, personalBest, durationMin, targetDistanceKm, notes, mediaUrl] = row;
         
-        console.log(`🔥 RAW ROW DATA for "${name}":`, {
           type: type,
           sets: sets,
           reps: reps,
@@ -325,24 +287,20 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         let exerciseType: Exercise["type"] = "weights";
         let isGroupHeader = false;
         
-        console.log(`📝 Parsing exercise "${name}" with type "${type}" (normalized: "${typeValue}")`);
         
         // Simple type detection based on type column only
         if (typeValue === "intro") {
           exerciseType = "intro";
           isGroupHeader = false;
-          console.log(`📋 INTRO card: "${name}"`);
         } else if (typeValue === "circuit") {
           exerciseType = "circuit";
           isGroupHeader = true;
-          console.log(`🔵 CIRCUIT header: "${name}"`);
         } else if (typeValue === "circuit_exercise") {
           exerciseType = "weights"; // Will be set as child
           isGroupHeader = false;
         } else if (typeValue === "amrap") {
           exerciseType = "amrap";
           isGroupHeader = true;
-          console.log(`🟢 AMRAP header: "${name}"`);
         } else if (typeValue === "amrap_exercise") {
           exerciseType = "bodyweight"; // Will be set as child
           isGroupHeader = false;
@@ -371,7 +329,6 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         // Mark if this is a child exercise of a group
         const isChildExercise = typeValue === "circuit_exercise" || typeValue === "amrap_exercise";
         
-        console.log(`🏷️  Setting _isChildExercise for "${name}":`, {
           typeValue,
           isCircuitExercise: typeValue === "circuit_exercise",
           isAmrapExercise: typeValue === "amrap_exercise",
@@ -408,7 +365,6 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
             // Check if Duration column contains work/rest ratio (e.g., "50/10")
             if (durationMin && durationMin.toString().includes("/")) {
               exercise.workRestRatio = durationMin.toString().trim();
-              console.log(`⚡ HIIT work/rest from Duration column: "${exercise.workRestRatio}"`);
             } else {
               exercise.workRestRatio = notes || "20/10";
               if (durationMin) {
@@ -416,7 +372,6 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
               }
             }
             
-            console.log(`⚡ HIIT Exercise "${name}":`, {
               totalRounds: exercise.totalRounds,
               workRestRatio: exercise.workRestRatio,
               durationMin: exercise.durationMin,
@@ -432,14 +387,12 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
               exercise.durationMin = parseInt(durationMin);
             }
             
-            console.log(`🔄 CIRCUIT Exercise "${name}":`, {
               totalRounds: exercise.totalRounds,
               notes: exercise.notes,
               durationColumnValue: durationMin
             });
           } else if (exerciseType === "amrap") {
             exercise.timeCap = durationMin ? parseInt(durationMin) : 10;
-            console.log(`🎯 AMRAP Exercise "${name}":`, {
               timeCap: exercise.timeCap,
               durationMinFromSheet: durationMin
             });
@@ -454,11 +407,9 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           if (exerciseType === "bodyweight" || exerciseType === "weights") {
             if (durationMin && !isNaN(parseFloat(durationMin))) {
               exercise.durationMin = parseFloat(durationMin);
-              console.log(`⏱️  Child exercise "${name}" has duration: ${exercise.durationMin} min`);
             }
             if (targetDistanceKm && !isNaN(parseFloat(targetDistanceKm))) {
               exercise.targetDistanceKm = parseFloat(targetDistanceKm);
-              console.log(`📏 Child exercise "${name}" has distance: ${exercise.targetDistanceKm}km`);
             }
           }
         } else {
@@ -467,9 +418,7 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           // ALWAYS parse duration if it exists (for timer)
           if (durationMin) {
             exercise.durationMin = parseInt(durationMin);
-            console.log(`✅ SET durationMin=${exercise.durationMin} for "${name}"`);
           } else {
-            console.log(`❌ NO durationMin for "${name}" (raw: "${durationMin}")`);
           }
           
           // ALWAYS parse distance if it exists
@@ -494,7 +443,6 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
           }
         }
 
-        console.log(`  ✅ Parsed exercise:`, exercise);
         return exercise;
       })
     );
@@ -505,7 +453,6 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
     let groupChildren: Exercise[] = [];
     
     for (const exercise of parsedExercises) {
-      console.log(`🔍 Grouping check for "${exercise.name}":`, {
         isGroupHeader: exercise.isGroupHeader,
         _isChildExercise: (exercise as any)._isChildExercise,
         startsWithArrow: exercise.name.trim().startsWith("→"),
@@ -517,12 +464,10 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
         if (currentGroup && groupChildren.length > 0) {
           currentGroup.exercises = groupChildren;
           groupedExercises.push(currentGroup);
-          console.log(`✅ Saved group "${currentGroup.name}" with ${groupChildren.length} children`);
         }
         // Start new group
         currentGroup = exercise;
         groupChildren = [];
-        console.log(`🆕 Started new group: "${exercise.name}"`);
       } else if (currentGroup) {
         // Check if this exercise belongs to the current group
         // Only group exercises with names starting with "→" or marked as child exercises
@@ -530,30 +475,24 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
                         exercise.name.trim().startsWith("- ") ||
                         (exercise as any)._isChildExercise;
         
-        console.log(`  ➡️ Is child? ${isChild} (group: "${currentGroup.name}")`);
         
         if (isChild) {
           // Add to current group
           groupChildren.push(exercise);
-          console.log(`  ✅ Added "${exercise.name}" to group "${currentGroup.name}" (${groupChildren.length} children now)`);
         } else {
           // Not a child exercise - close current group and add this as standalone
           if (groupChildren.length > 0) {
             currentGroup.exercises = groupChildren;
             groupedExercises.push(currentGroup);
-            console.log(`  🔒 Closed group "${currentGroup.name}" with ${groupChildren.length} children`);
           } else {
-            console.log(`  ⚠️ Closing group "${currentGroup.name}" with NO children`);
           }
           currentGroup = null;
           groupChildren = [];
           groupedExercises.push(exercise);
-          console.log(`  ➕ Added standalone: "${exercise.name}"`);
         }
       } else {
         // Standalone exercise (not part of a group)
         groupedExercises.push(exercise);
-        console.log(`  ➕ Added standalone: "${exercise.name}" (no current group)`);
       }
     }
     
@@ -563,8 +502,6 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
       groupedExercises.push(currentGroup);
     }
     
-    console.log(`📦 Grouped into ${groupedExercises.length} exercise blocks (${parsedExercises.length} total exercises)`);
-    console.log(`📋 Final exercises:`, groupedExercises.map(ex => ({ 
       name: ex.name, 
       type: ex.type, 
       isGroupHeader: ex.isGroupHeader,
@@ -574,7 +511,6 @@ export async function fetchTodayExercises(username: string = getCurrentUser()): 
     
     return groupedExercises;
   } catch (error) {
-    console.error("❌ Error fetching exercises:", {
       error,
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
@@ -590,7 +526,6 @@ export async function fetchAllPlannedExercises(username: string = getCurrentUser
   const userSheet = await getUserSheet(username);
   
   if (!userSheet) {
-    console.error("User sheet not found");
     return [];
   }
 
@@ -653,7 +588,6 @@ export async function fetchAllPlannedExercises(username: string = getCurrentUser
         return exercise;
       });
   } catch (error) {
-    console.error("Error fetching all exercises:", error);
     return [];
   }
 }
@@ -666,7 +600,6 @@ export async function fetchWorkoutHistory(username: string = getCurrentUser()): 
   const userSheet = await getUserSheet(username);
   
   if (!userSheet) {
-    console.error("User sheet not found");
     return [];
   }
 
@@ -691,7 +624,6 @@ export async function fetchWorkoutHistory(username: string = getCurrentUser()): 
       })
       .reverse(); // Most recent first
   } catch (error) {
-    console.error("Error fetching workout history:", error);
     return [];
   }
 }
@@ -766,7 +698,6 @@ export async function logExercise(
   username: string = getCurrentUser()
 ): Promise<{ success: boolean; message?: string; isPB?: boolean; oldPB?: number; newPB?: number }> {
   try {
-    console.log("📝 Logging exercise via Vercel API:", exerciseName, data);
     
     const payload = {
       username,
@@ -795,7 +726,6 @@ export async function logExercise(
     
     const result = await response.json();
     
-    console.log("✅ Exercise logged successfully:", result);
     
     // Also save to localStorage as backup (user-specific key)
     const storageKey = `workoutHistory_${username}`;
@@ -830,10 +760,8 @@ export async function logExercise(
       newPB: result.newPB,
     };
   } catch (error) {
-    console.error("❌ Error logging exercise:", error);
     
     // Fallback to localStorage only if API fails (user-specific key)
-    console.log("💾 Saving to localStorage as fallback");
     const storageKey = `workoutHistory_${username}`;
     const existingLogs = localStorage.getItem(storageKey);
     const logs = existingLogs ? JSON.parse(existingLogs) : [];

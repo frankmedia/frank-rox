@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { ExerciseCard } from "@/components/ExerciseCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Trophy, Loader2, ClipboardList, Flame } from "lucide-react";
+import { Trophy, ClipboardList, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingDaySelector } from "@/components/TrainingDaySelector";
 import { useData } from "@/contexts/DataContext";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 const Today = () => {
   const navigate = useNavigate();
@@ -20,7 +21,6 @@ const Today = () => {
         return localStorage.getItem(userKey) || "1";
       }
     } catch (e) {
-      console.error("Error loading training day:", e);
     }
     return "1";
   });
@@ -49,7 +49,6 @@ const Today = () => {
         }
       }
     } catch (e) {
-      console.error("Error loading completed exercises:", e);
     }
   }, [exercises]); // Re-check when exercises change
 
@@ -102,9 +101,7 @@ const Today = () => {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
+          <LoadingScreen />
         ) : (
           <>
             {/* Intro Card (optional) */}
