@@ -3,13 +3,13 @@ import { Timer as TimerIcon } from "lucide-react";
 
 interface RestTimerProps {
   onSelectDuration: (seconds: number) => void;
-  exerciseType?: "weights" | "cardio" | "bodyweight" | "mobility";
+  exerciseType?: "weights" | "cardio" | "bodyweight" | "mobility" | "running";
 }
 
 export function RestTimer({ onSelectDuration, exerciseType }: RestTimerProps) {
-  // For cardio/mobility exercises, show longer rest intervals in minutes
+  // For cardio/mobility/running exercises, show longer rest intervals in minutes
   // For weights/bodyweight, show shorter intervals in seconds
-  const isLongDuration = exerciseType === "cardio" || exerciseType === "mobility";
+  const isLongDuration = exerciseType === "cardio" || exerciseType === "mobility" || exerciseType === "running";
   
   const presets = isLongDuration 
     ? [120, 180, 300] // 2min, 3min, 5min for cardio/mobility

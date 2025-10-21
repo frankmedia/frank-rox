@@ -352,6 +352,8 @@ export async function fetchTodayExercises(username: string = getCurrentUser(), p
           isGroupHeader = false;
         } else if (typeValue === "cardio") {
           exerciseType = "cardio";
+        } else if (typeValue === "running") {
+          exerciseType = "running";
         } else if (typeValue === "bodyweight") {
           exerciseType = "bodyweight";
         } else if (typeValue === "mobility") {

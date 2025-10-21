@@ -1,13 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Dumbbell, Medal, Activity, Zap, Repeat, Target } from "lucide-react";
+import { Clock, Dumbbell, Medal, Activity, Zap, Repeat, Target, PersonStanding } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ExerciseCardProps {
   exercise: {
     id: string;
     name: string;
-    type: "weights" | "cardio" | "bodyweight" | "mobility" | "hiit" | "circuit" | "amrap";
+    type: "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap";
     sets?: number;
     reps?: number;
     suggestedKg?: number;
@@ -47,6 +47,7 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
       case "amrap": return <Target className="w-5 h-5" style={{ color: "#00E676" }} />;
       case "cardio": return <Clock className="w-5 h-5 text-primary" />;
       case "mobility": return <Activity className="w-5 h-5 text-primary" />;
+      case "running": return <PersonStanding className="w-5 h-5 text-primary" />;
       default: return <Dumbbell className="w-5 h-5 text-primary" />;
     }
   };
@@ -115,6 +116,21 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                 </span>
               )}
               <span className="text-sm text-muted-foreground">Mobility</span>
+            </div>
+          )}
+
+          {exercise.type === "running" && (
+            <div className="flex items-center gap-4 text-muted-foreground">
+              {exercise.targetDistanceKm && (
+                <span className="text-4xl font-bold text-foreground">
+                  {exercise.targetDistanceKm.toFixed(1)}km
+                </span>
+              )}
+              {exercise.durationMin && (
+                <span className="text-lg">
+                  Target: <span className="font-semibold text-secondary">{exercise.durationMin} min</span>
+                </span>
+              )}
             </div>
           )}
           

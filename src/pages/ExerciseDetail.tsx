@@ -89,7 +89,7 @@ const ExerciseDetail = () => {
       notes: notes || undefined,
     };
 
-    if (exercise.type === "cardio") {
+    if (exercise.type === "cardio" || exercise.type === "running") {
       data.distance = todaysDistance ? parseFloat(todaysDistance) : undefined;
       data.duration = todaysDuration ? parseInt(todaysDuration) : undefined;
     } else if (exercise.type === "mobility") {
@@ -288,7 +288,7 @@ const ExerciseDetail = () => {
         <Card className="p-6 bg-secondary/10 border-secondary">
           <div className="text-center">
             <p className="text-sm text-muted-foreground mb-2">Target</p>
-            {exercise.type === "cardio" ? (
+            {(exercise.type === "cardio" || exercise.type === "running") ? (
               <>
                 <p className="text-5xl font-bold text-foreground mb-4">
                   {exercise.durationMin} min
@@ -412,7 +412,7 @@ const ExerciseDetail = () => {
             </div>
           )}
           
-          {exercise.type === "cardio" && (
+          {(exercise.type === "cardio" || exercise.type === "running") && (
             <>
               <div>
                 <Label htmlFor="distance" className="text-xl font-bold">Distance (km)</Label>
