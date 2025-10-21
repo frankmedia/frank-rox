@@ -90,6 +90,30 @@ This tab contains your training plan. The app shows exercises for the CURRENT TR
 
 ---
 
+#### 📋 **INTRO** (Type = `intro`) - OPTIONAL
+**Example: Daily Workout Overview**
+
+| A | B | C | D | E | F | G | H | I | J | K |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Conditioning | intro | | | | | | | Today we are going to work on your fitness level to make sure you can compete at the Hyrox. | |
+
+**Fill:** Day, Exercise (title), Type=`intro`, Notes (J) = description/explanation
+**Leave Empty:** Sets, Reps, Kg, Personal Best, Duration, Distance, Media URL
+
+**How it works:**
+- The intro card appears at the **TOP of the Today page** with a **yellow border**
+- Provides context for what the day's workout is about
+- **Optional** - only shows if you add an intro row for that day
+- Changes automatically when you switch training days
+- **Not clickable** - purely informational
+
+**When to use:**
+- Explain the day's focus (e.g., "Lower Body Strength", "HYROX Simulation")
+- Set expectations (e.g., "Today's workout is high intensity")
+- Provide motivational context
+
+---
+
 #### ⚡ **HIIT** (Type = `hiit`)
 **Example: Assault Bike HIIT**
 
