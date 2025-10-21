@@ -34,9 +34,9 @@ const BottomNav = () => {
   ];
 
   const isActive = (path: string) => {
-    // Home button is active for both / (overview) and /today
+    // Today button is active on /today and /exercise pages
     if (path === "/today") {
-      return location.pathname === "/" || location.pathname === "/today";
+      return location.pathname === "/today" || location.pathname.startsWith("/exercise");
     }
     return location.pathname.startsWith(path);
   };
@@ -60,8 +60,8 @@ const BottomNav = () => {
                 )}
               >
                 <Icon className={cn(
-                  "w-5 h-5 transition-colors",
-                  active ? "fill-primary" : "group-hover:stroke-foreground"
+                  "w-5 h-5 transition-all",
+                  active ? "fill-primary group-hover:opacity-80" : "group-hover:stroke-foreground"
                 )} />
                 <span className={cn("text-xs font-medium transition-colors", active && "font-semibold")}>
                   {tab.label}
