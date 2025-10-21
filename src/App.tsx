@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import BottomNav from "@/components/BottomNav";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import Login from "./pages/Login";
 import Today from "./pages/Today";
 import ExerciseDetail from "./pages/ExerciseDetail";
@@ -33,7 +34,8 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-          <Routes>
+            <ScrollToTop />
+            <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/access-denied" element={<AccessDenied />} />
