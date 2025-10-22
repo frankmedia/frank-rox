@@ -3,11 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Timer } from "@/components/Timer";
 import { RestTimer } from "@/components/RestTimer";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, List } from "lucide-react";
+import { CheckCircle2, Loader2, List } from "lucide-react";
 import { toast } from "sonner";
 import { fetchTodayExercises, logExercise } from "@/services/googleSheets";
 import { Exercise } from "@/types/workout";
@@ -15,6 +14,8 @@ import { ExerciseMedia } from "@/components/ExerciseMedia";
 import { HIITWorkout } from "./HIITWorkout";
 import { CircuitWorkout } from "./CircuitWorkout";
 import { AMRAPWorkout } from "./AMRAPWorkout";
+import { triggerSuccessHaptic } from "@/utils/haptics";
+import { FlameRating } from "@/components/FlameRating";
 
 const ExerciseDetail = () => {
   const { id } = useParams();
@@ -26,13 +27,43 @@ const ExerciseDetail = () => {
   const [exercise, setExercise] = useState<Exercise | null>(null);
 
   const [setWeights, setSetWeights] = useState<string[]>([]);
+  const [setCompleted, setSetCompleted] = useState<boolean[]>([]); // Track completed sets
   const [todaysDistance, setTodaysDistance] = useState("");
   const [todaysDuration, setTodaysDuration] = useState("");
-  const [notes, setNotes] = useState("");
+  const [rating, setRating] = useState(0); // 0-5 flame rating
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(60);
   const [showWorkoutTimer, setShowWorkoutTimer] = useState(false);
   const [workoutDuration, setWorkoutDuration] = useState(0);
+  
+  // Swipe gesture detection
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+  
+  const minSwipeDistance = 50; // minimum distance for a swipe
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(0); // Reset
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe && currentIndex < exercises.length - 1) {
+      handleNext();
+    } else if (isRightSwipe && currentIndex > 0) {
+      handlePrevious();
+    }
+  };
 
   useEffect(() => {
     const loadExercises = async () => {
@@ -58,11 +89,16 @@ const ExerciseDetail = () => {
             willShowTimer: !!ex.durationMin && ex.durationMin > 0
           });
           
+          // Reset rating for new exercise
+          setRating(0);
+          
           // Pre-populate fields based on exercise data
           if (ex.type === "weights" && ex.sets) {
             // Initialize array with suggested weight for each set
             const initialWeights = Array(ex.sets).fill(ex.suggestedKg?.toString() || "");
             setSetWeights(initialWeights);
+            // Initialize all sets as not completed
+            setSetCompleted(Array(ex.sets).fill(false));
           }
           if (ex.targetDistanceKm) {
             setTodaysDistance(ex.targetDistanceKm.toString());
@@ -82,11 +118,17 @@ const ExerciseDetail = () => {
     loadExercises();
   }, [id]);
 
-  const handleMarkAsDone = async () => {
+  const handleMarkAsDone = async (customRating?: number) => {
     if (!exercise) return;
 
+    // Trigger haptic feedback
+    triggerSuccessHaptic();
+
+    // Use customRating if provided (from flame click), otherwise use state
+    const finalRating = customRating !== undefined ? customRating : rating;
+
     const data: any = {
-      notes: notes || undefined,
+      rating: finalRating > 0 ? finalRating : undefined, // Only send if rated (1-5)
     };
 
     if (exercise.type === "cardio" || exercise.type === "running") {
@@ -136,17 +178,32 @@ const ExerciseDetail = () => {
         navigate(`/exercise/${nextExercise.id}`);
       }, result.isPB ? 2000 : 500); // Longer delay for PB celebration
     } else {
+      // Mark the training day as complete
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const trainingDay = parseInt(localStorage.getItem(`currentTrainingDay_${user.username}`) || "1");
+        const completedDaysKey = `completedDays_${user.username}`;
+        const completedDaysStr = localStorage.getItem(completedDaysKey);
+        const completedDays = completedDaysStr ? JSON.parse(completedDaysStr) : [];
+        
+        if (!completedDays.includes(trainingDay)) {
+          completedDays.push(trainingDay);
+          localStorage.setItem(completedDaysKey, JSON.stringify(completedDays));
+        }
+      }
+      
       if (!result.isPB) {
         toast.success("🎉 All exercises complete!", {
-          description: "Great workout! Returning home...",
+          description: "Great workout! Returning to overview...",
         });
       } else {
         toast.success("🎉 Workout complete + NEW PB!", {
-          description: "Amazing session! Returning home...",
+          description: "Amazing session! Returning to overview...",
         });
       }
       setTimeout(() => {
-        navigate("/today");
+        navigate("/");
       }, result.isPB ? 2500 : 1000);
     }
   };
@@ -244,67 +301,126 @@ const ExerciseDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div 
+      className="min-h-screen bg-background"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-2 sm:py-3">
-          <div className="flex items-center justify-between gap-1 sm:gap-2">
+        <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate("/today")}
-              className="h-10 w-10 sm:h-12 sm:w-12 p-0 [&_svg]:!w-6 [&_svg]:!h-6 sm:[&_svg]:!w-8 sm:[&_svg]:!h-8 flex-shrink-0"
+              className="h-12 w-12 sm:h-14 sm:w-14 p-0 [&_svg]:!w-6 [&_svg]:!h-6 sm:[&_svg]:!w-8 sm:[&_svg]:!h-8 flex-shrink-0"
               title="Back to today's exercises"
             >
               <List strokeWidth={3} />
             </Button>
-            <h1 className="text-base sm:text-xl md:text-2xl font-bold text-foreground flex-1 text-center px-1 truncate">{exercise.name}</h1>
-            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevious}
-                disabled={currentIndex === 0}
-                className="h-10 w-10 sm:h-12 sm:w-12 p-0 [&_svg]:!w-6 [&_svg]:!h-6 sm:[&_svg]:!w-8 sm:[&_svg]:!h-8"
-              >
-                <ArrowLeft strokeWidth={3} />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNext}
-                disabled={currentIndex === exercises.length - 1}
-                className="h-10 w-10 sm:h-12 sm:w-12 p-0 [&_svg]:!w-6 [&_svg]:!h-6 sm:[&_svg]:!w-8 sm:[&_svg]:!h-8"
-              >
-                <ArrowRight strokeWidth={3} />
-              </Button>
-            </div>
           </div>
         </div>
       </header>
 
       <main className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6 pb-24">
-        {/* Exercise Info */}
+        {/* Static Header: Exercise Title + Notes + Media - Always visible for ALL exercise types */}
+        <div className="space-y-4">
+          {/* Exercise Title with Border */}
+          <Card className="p-6 border-4 border-yellow-500">
+            <h2 className="text-4xl font-bold text-foreground text-center">
+              {exercise.name}
+            </h2>
+          </Card>
+          
+          {/* Media & Notes */}
+          {(exercise.notes || exercise.mediaUrl) && (
+            <div className="text-center">
+              {/* Media from mediaUrl field */}
+              {exercise.mediaUrl && (
+                <div className="mb-4 max-w-full">
+                  <ExerciseMedia url={exercise.mediaUrl} alt={`${exercise.name} demonstration`} />
+                </div>
+              )}
+              
+              {/* Notes - check if it's a URL or text */}
+              {exercise.notes && (() => {
+                const trimmedNotes = exercise.notes.trim();
+                const isUrl = trimmedNotes.startsWith('http://') || trimmedNotes.startsWith('https://');
+                const isMediaUrl = isUrl && (
+                  trimmedNotes.match(/\.(jpg|jpeg|png|gif|webp|mp4|webm|ogg|youtube\.com|youtu\.be)/i) ||
+                  trimmedNotes.includes('youtube.com') || trimmedNotes.includes('youtu.be')
+                );
+                
+                if (isMediaUrl) {
+                  return (
+                    <div className="max-w-full">
+                      <ExerciseMedia url={trimmedNotes} alt={`${exercise.name} demonstration`} />
+                    </div>
+                  );
+                } else {
+                  return (
+                    <p className="text-base text-foreground whitespace-pre-wrap text-center">{exercise.notes}</p>
+                  );
+                }
+              })()}
+            </div>
+          )}
+        </div>
+
+        {/* Target Card - Hide when timer is running for mobility exercises or when empty */}
+        {!(exercise.type === "mobility" && showWorkoutTimer) && 
+         !(exercise.type === "cardio" && !exercise.durationMin && !exercise.targetDistanceKm) &&
+         !(exercise.type === "running" && !exercise.durationMin && !exercise.targetDistanceKm) && (
         <Card className="p-6 bg-secondary/10 border-secondary">
           <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-2">Target</p>
+            {/* Hide "Target" label for mobility exercises */}
+            {exercise.type !== "mobility" && (
+              <p className="text-sm text-muted-foreground mb-2">Target</p>
+            )}
             {(exercise.type === "cardio" || exercise.type === "running") ? (
               <>
-                <p className="text-5xl font-bold text-foreground mb-4">
-                  {exercise.durationMin} min
-                </p>
-                <p className="text-2xl text-secondary font-semibold">
-                  Distance: {exercise.targetDistanceKm?.toFixed(1)}km
-                </p>
+                {exercise.durationMin && exercise.durationMin > 0 && (
+                  <p className="text-5xl font-bold text-foreground mb-4">
+                    {exercise.durationMin} min
+                  </p>
+                )}
+                {exercise.targetDistanceKm && exercise.targetDistanceKm > 0 && (
+                  <p className="text-2xl text-secondary font-semibold">
+                    Distance: {exercise.targetDistanceKm?.toFixed(1)}km
+                  </p>
+                )}
               </>
             ) : exercise.type === "mobility" ? (
               <>
-                <p className="text-5xl font-bold text-foreground mb-4">
-                  {exercise.durationMin} min
-                </p>
-                <p className="text-xl text-muted-foreground font-medium">
-                  Mobility Work
-                </p>
+                <Label htmlFor="mobility-duration" className="text-xl font-bold block text-center mb-4">Duration (minutes)</Label>
+                <div className="flex items-center justify-center gap-3">
+                  <Button
+                    type="button"
+                    onClick={() => setTodaysDuration((prev) => Math.max(1, parseFloat(prev || exercise.durationMin?.toString() || "1") - 1).toString())}
+                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                    variant="default"
+                  >
+                    −
+                  </Button>
+                  <Input
+                    id="mobility-duration"
+                    type="number"
+                    value={todaysDuration || exercise.durationMin?.toString()}
+                    onChange={(e) => setTodaysDuration(e.target.value)}
+                    className="text-center text-6xl h-32 border-2 font-bold flex-1"
+                    placeholder={exercise.durationMin?.toString() || "8"}
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => setTodaysDuration((prev) => (parseFloat(prev || exercise.durationMin?.toString() || "0") + 1).toString())}
+                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                    variant="default"
+                  >
+                    +
+                  </Button>
+                </div>
               </>
             ) : (
               <>
@@ -325,9 +441,10 @@ const ExerciseDetail = () => {
             )}
           </div>
         </Card>
+        )}
 
-        {/* Workout Countdown Timer (for any exercise with duration) */}
-        {exercise.durationMin && exercise.durationMin > 0 && (
+        {/* Workout Countdown Timer (for mobility exercises only - right after Duration card) */}
+        {exercise.type === "mobility" && exercise.durationMin && exercise.durationMin > 0 && (
           <>
             {showWorkoutTimer ? (
               <Card className="p-6 bg-primary/5 border-primary">
@@ -335,6 +452,41 @@ const ExerciseDetail = () => {
                 <Timer
                   mode="countdown"
                   initialSeconds={workoutDuration}
+                  autoStart={true}
+                  onComplete={() => {
+                    const completedDuration = Math.round(workoutDuration / 60);
+                    toast.success("🎉 Workout Complete!", {
+                      description: `${completedDuration} minutes completed!`,
+                      duration: 3000,
+                    });
+                    setTodaysDuration(completedDuration.toString());
+                    setShowWorkoutTimer(false);
+                  }}
+                  onCancel={() => setShowWorkoutTimer(false)}
+                />
+              </Card>
+            ) : (
+              <Button
+                size="lg"
+                onClick={handleStartWorkout}
+                className="h-24 px-16 text-3xl font-bold w-full"
+              >
+                START COUNTDOWN
+              </Button>
+            )}
+          </>
+        )}
+        
+        {/* Workout Countdown Timer (for cardio/running exercises - shown later) */}
+        {(exercise.type === "cardio" || exercise.type === "running") && exercise.durationMin && exercise.durationMin > 0 && (
+          <>
+            {showWorkoutTimer ? (
+              <Card className="p-6 bg-primary/5 border-primary">
+                <h3 className="text-2xl font-bold mb-4 text-center text-primary">Workout Timer</h3>
+                <Timer
+                  mode="countdown"
+                  initialSeconds={workoutDuration}
+                  autoStart={true}
                   onComplete={() => {
                     const completedDuration = Math.round(workoutDuration / 60);
                     toast.success("🎉 Workout Complete!", {
@@ -405,6 +557,28 @@ const ExerciseDetail = () => {
                       variant="default"
                     >
                       +
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const newCompleted = [...setCompleted];
+                        newCompleted[index] = !newCompleted[index];
+                        setSetCompleted(newCompleted);
+                        if (!newCompleted[index]) {
+                          toast.success("Set marked as incomplete");
+                        } else {
+                          triggerSuccessHaptic();
+                          toast.success(`Set ${index + 1} complete! 💪`);
+                        }
+                      }}
+                      className={`h-16 w-16 text-3xl font-bold flex-shrink-0 transition-all ${
+                        setCompleted[index] 
+                          ? 'bg-green-500 hover:bg-green-600 text-white' 
+                          : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                      }`}
+                      variant="default"
+                    >
+                      ✓
                     </Button>
                   </div>
                 </div>
@@ -482,119 +656,69 @@ const ExerciseDetail = () => {
             </div>
           )}
 
-          {exercise.type === "mobility" && (
-            <div>
-              <Label htmlFor="duration" className="text-xl font-bold">Duration (minutes)</Label>
-              <div className="flex items-center gap-3 mt-3">
-                <Button
-                  type="button"
-                  onClick={() => setTodaysDuration((prev) => Math.max(0, parseFloat(prev || "0") - 1).toString())}
-                  className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                  variant="default"
-                >
-                  −
-                </Button>
-                <Input
-                  type="number"
-                  id="duration"
-                  value={todaysDuration}
-                  onChange={(e) => setTodaysDuration(e.target.value)}
-                  className="text-center text-6xl h-32 border-2 font-bold"
-                  placeholder={exercise.durationMin?.toString() || "10"}
-                />
-                <Button
-                  type="button"
-                  onClick={() => setTodaysDuration((prev) => (parseFloat(prev || "0") + 1).toString())}
-                  className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                  variant="default"
-                >
-                  +
-                </Button>
-              </div>
-            </div>
-          )}
+          {/* Mobility exercises: duration input is now in the Target card above, no separate input needed */}
         </div>
 
-        {/* Rest Timer */}
-        {showRestTimer ? (
-          <Card className="p-6">
-            <h3 className="text-lg font-bold mb-4 text-center">Rest Timer</h3>
-            <Timer
-              mode="countdown"
-              initialSeconds={restDuration}
-              onComplete={() => {
-                toast.success("Rest complete!", {
-                  description: "Ready for next set",
-                });
-                setShowRestTimer(false);
-              }}
-            />
-          </Card>
-        ) : (
-          <RestTimer onSelectDuration={handleRestTimer} exerciseType={exercise.type} />
+        {/* Rest Timer - Skip for mobility exercises */}
+        {exercise.type !== "mobility" && (
+          <>
+            {showRestTimer ? (
+              <Card className="p-6">
+                <h3 className="text-lg font-bold mb-4 text-center">Rest Timer</h3>
+                <Timer
+                  mode="countdown"
+                  initialSeconds={restDuration}
+                  onComplete={() => {
+                    toast.success("Rest complete!", {
+                      description: "Ready for next set",
+                    });
+                    setShowRestTimer(false);
+                  }}
+                />
+              </Card>
+            ) : (
+              <RestTimer onSelectDuration={handleRestTimer} exerciseType={exercise.type} />
+            )}
+          </>
         )}
 
-        {/* Mark as Done */}
-        <Button
-          size="lg"
-          className="w-full h-16 text-lg font-bold"
-          onClick={handleMarkAsDone}
-        >
-          <CheckCircle2 className="w-6 h-6 mr-2" />
-          Mark as Done
-        </Button>
-
-        {/* Notes Input - Below Complete Button */}
-        <div>
-          <Label htmlFor="notes" className="text-base">Notes (optional)</Label>
-          <Textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="How did it feel? Any observations..."
-            className="mt-2 min-h-[100px]"
-          />
-        </div>
-
-        {/* Exercise Notes/Instructions - At Bottom */}
-        {(exercise.notes || exercise.mediaUrl) && (
-          <Card className="p-4 bg-primary/5 border-4 border-yellow-500">
-            {/* Show media from mediaUrl field */}
-            {exercise.mediaUrl && (
-              <div className="mb-4 max-w-full">
-                <ExerciseMedia url={exercise.mediaUrl} alt={`${exercise.name} demonstration`} />
-              </div>
+        {/* Flame Rating - Click to Rate & Complete */}
+        <Card className="p-6 bg-yellow-500/10 border-4 border-yellow-500">
+          <div className="flex flex-col items-center gap-4">
+            <Label className="text-3xl font-bold text-foreground text-center">Rate to Continue</Label>
+            
+            <FlameRating 
+              value={rating} 
+              onChange={(selectedRating) => {
+                setRating(selectedRating);
+                // Auto-complete when flame is clicked, passing the rating directly
+                setTimeout(() => handleMarkAsDone(selectedRating), 100);
+              }} 
+              size="lg" 
+            />
+            
+            {rating > 0 && (
+              <p className="text-lg text-foreground font-bold">
+                {rating === 5 && "🔥 Crushed it!"}
+                {rating === 4 && "💪 Great effort!"}
+                {rating === 3 && "👍 Solid work!"}
+                {rating === 2 && "😅 Challenging!"}
+                {rating === 1 && "😮‍💨 Tough one!"}
+              </p>
             )}
             
-            {/* Show notes - check if it's a URL or text */}
-            {exercise.notes && (() => {
-              // Check if notes is just a URL (image or video)
-              const trimmedNotes = exercise.notes.trim();
-              const isUrl = trimmedNotes.startsWith('http://') || trimmedNotes.startsWith('https://');
-              
-              // Check if it looks like an image URL or video URL
-              const isMediaUrl = isUrl && (
-                /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|$)/i.test(trimmedNotes) ||
-                /(youtube\.com|youtu\.be|vimeo\.com)/i.test(trimmedNotes) ||
-                /images\.|image\.|img\.|cdn\.|cloudfront\.|ctfassets\./i.test(trimmedNotes)
-              );
-              
-              if (isMediaUrl) {
-                // It's a media URL, render as media
-                return (
-                  <div className="mb-4 max-w-full">
-                    <ExerciseMedia url={trimmedNotes} alt={`${exercise.name} demonstration`} />
-                  </div>
-                );
-              } else {
-                // It's text (or a non-media URL), render as text
-                return (
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{exercise.notes}</p>
-                );
-              }
-            })()}
-          </Card>
-        )}
+            {/* Skip rating option */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleMarkAsDone()}
+              className="text-muted-foreground hover:text-foreground mt-2"
+            >
+              Skip and complete without rating
+            </Button>
+          </div>
+        </Card>
+
       </main>
     </div>
   );

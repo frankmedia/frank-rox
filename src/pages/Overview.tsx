@@ -1,21 +1,28 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Flame, ChevronRight, Calendar, Dumbbell, PersonStanding, Activity, Info } from "lucide-react";
+import { Flame, ChevronRight, Dumbbell, PersonStanding, Info, Zap, Repeat, Target, Footprints, User, Heart, HandMetal, CheckCircle2 } from "lucide-react";
 import { fetchTodayExercises, getUserSheet, getMaxTrainingDay } from "@/services/googleSheets";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { TrainingDayGridSkeleton } from "@/components/TrainingDayGridSkeleton";
 import type { Exercise } from "@/types/workout";
 
 interface DaySummary {
   day: number;
   exercises: Exercise[];
   totalExercises: number;
+  isCompleted: boolean;
   hasWeights: boolean;
+  hasBodyweight: boolean;
   hasRunning: boolean;
   hasCardio: boolean;
   hasMobility: boolean;
+  hasHIIT: boolean;
+  hasCircuit: boolean;
+  hasAMRAP: boolean;
 }
 
 const Overview = () => {
@@ -58,18 +65,36 @@ const Overview = () => {
 
           // Analyze exercise types
           const hasWeights = exercises.some(e => e.type === "weights");
+          const hasBodyweight = exercises.some(e => e.type === "bodyweight");
           const hasRunning = exercises.some(e => e.type === "running");
           const hasCardio = exercises.some(e => e.type === "cardio");
           const hasMobility = exercises.some(e => e.type === "mobility");
+          const hasHIIT = exercises.some(e => e.type === "hiit");
+          const hasCircuit = exercises.some(e => e.type === "circuit");
+          const hasAMRAP = exercises.some(e => e.type === "amrap");
+
+          // Check if this training day is marked as complete
+          const completedDaysKey = `completedDays_${user.username}`;
+          const completedDaysStr = localStorage.getItem(completedDaysKey);
+          const completedDays: number[] = completedDaysStr ? JSON.parse(completedDaysStr) : [];
+          const isCompleted = completedDays.includes(day);
+
+          // Filter out intro cards for exercise count
+          const workoutExercises = exercises.filter(e => e.type !== "intro");
 
           summaries.push({
             day,
             exercises,
-            totalExercises: exercises.filter(e => e.type !== "intro").length,
+            totalExercises: workoutExercises.length,
+            isCompleted,
             hasWeights,
+            hasBodyweight,
             hasRunning,
             hasCardio,
             hasMobility,
+            hasHIIT,
+            hasCircuit,
+            hasAMRAP,
           });
         }
 
@@ -98,7 +123,22 @@ const Overview = () => {
   };
 
   if (loading) {
-    return <LoadingScreen />;
+    return (
+      <div className="min-h-screen bg-background pb-24">
+        <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+          <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-4">
+            <div className="flex items-center justify-center gap-2">
+              <Flame className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#FFCC00' }} />
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">RoxPT</h1>
+            </div>
+          </div>
+        </header>
+        <main className="container max-w-2xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
+          <div className="h-8 w-64 bg-muted rounded mb-6 animate-pulse" />
+          <TrainingDayGridSkeleton count={14} />
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -464,11 +504,7 @@ const Overview = () => {
                     </Card>
                   </div>
 
-                  <div className="pt-4 border-t border-border">
-                    <p className="text-sm text-muted-foreground text-center italic">
-                      Your Road to the Next Podium Starts Here 🏆
-                    </p>
-                  </div>
+
                 </div>
               </DialogContent>
             </Dialog>
@@ -476,21 +512,35 @@ const Overview = () => {
         </div>
 
         {/* Hero Image */}
-        <div className="mb-6 rounded-lg overflow-hidden">
+        <motion.div 
+          className="mb-6 rounded-lg overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
           <img 
             src="/hyrox-home.webp" 
             alt="Hyrox Training" 
             className="w-full h-auto object-cover"
           />
-        </div>
+        </motion.div>
 
         <div className="grid gap-3">
           {daySummaries.map((summary) => (
             <Card
               key={summary.day}
-              className="p-4 hover:bg-secondary/10 transition-colors cursor-pointer border-2 hover:border-primary"
+              className={`p-4 hover:bg-secondary/10 transition-colors cursor-pointer border-2 hover:border-primary relative ${
+                summary.isCompleted ? 'border-[#FFCC00]' : ''
+              }`}
               onClick={() => handleDayClick(summary.day)}
             >
+              {/* Completion Badge */}
+              {summary.isCompleted && (
+                <div className="absolute top-2 right-2">
+                  <CheckCircle2 className="w-8 h-8 fill-[#FFCC00] text-black" />
+                </div>
+              )}
+              
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -511,29 +561,53 @@ const Overview = () => {
                   </div>
 
                   {/* Exercise type icons */}
-                  <div className="flex items-center gap-3 ml-15">
+                  <div className="flex flex-wrap items-center gap-2 ml-15">
                     {summary.hasWeights && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Dumbbell className="w-4 h-4" />
                         <span>Weights</span>
                       </div>
                     )}
+                    {summary.hasBodyweight && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <User className="w-4 h-4" />
+                        <span>Bodyweight</span>
+                      </div>
+                    )}
                     {summary.hasRunning && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <PersonStanding className="w-4 h-4" />
+                        <Footprints className="w-4 h-4" />
                         <span>Running</span>
                       </div>
                     )}
                     {summary.hasCardio && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Calendar className="w-4 h-4" />
+                        <Heart className="w-4 h-4" />
                         <span>Cardio</span>
                       </div>
                     )}
                     {summary.hasMobility && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Activity className="w-4 h-4" />
+                        <HandMetal className="w-4 h-4" />
                         <span>Mobility</span>
+                      </div>
+                    )}
+                    {summary.hasHIIT && (
+                      <div className="flex items-center gap-1 text-xs" style={{ color: '#FF00B2' }}>
+                        <Flame className="w-4 h-4" />
+                        <span>HIIT</span>
+                      </div>
+                    )}
+                    {summary.hasCircuit && (
+                      <div className="flex items-center gap-1 text-xs" style={{ color: '#FFB74D' }}>
+                        <Repeat className="w-4 h-4" />
+                        <span>Circuit</span>
+                      </div>
+                    )}
+                    {summary.hasAMRAP && (
+                      <div className="flex items-center gap-1 text-xs" style={{ color: '#00E676' }}>
+                        <Target className="w-4 h-4" />
+                        <span>AMRAP</span>
                       </div>
                     )}
                   </div>
@@ -551,6 +625,19 @@ const Overview = () => {
           onClick={() => navigate("/today")}
         >
           Go to Today's Workout
+        </Button>
+
+        {/* HYROX Fitness Assessment */}
+        <Button
+          className="w-full mt-4 h-16 text-lg font-bold border-2"
+          style={{ 
+            backgroundColor: '#FFFFFF', 
+            color: '#000000',
+            borderColor: '#000000'
+          }}
+          onClick={() => navigate("/assessment")}
+        >
+          Take HYROX Fitness Assessment
         </Button>
       </main>
     </div>

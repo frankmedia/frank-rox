@@ -14,7 +14,9 @@ import Today from "./pages/Today";
 import ExerciseDetail from "./pages/ExerciseDetail";
 import History from "./pages/History";
 import Profile from "./pages/Profile";
-import BookPT from "./pages/BookPT";
+import Assessment from "./pages/Assessment";
+import AssessmentResults from "./pages/AssessmentResults";
+import PTCheckIn from "./pages/PTCheckIn";
 import AccessDenied from "./pages/AccessDenied";
 import NotFound from "./pages/NotFound";
 
@@ -84,11 +86,31 @@ const App = () => (
               }
             />
             <Route
-              path="/book-pt"
+              path="/assessment"
               element={
                 <ProtectedRoute>
                   <AuthenticatedLayout>
-                    <BookPT />
+                    <Assessment />
+                  </AuthenticatedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assessment-results"
+              element={
+                <ProtectedRoute>
+                  <AuthenticatedLayout>
+                    <AssessmentResults />
+                  </AuthenticatedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pt-checkin"
+              element={
+                <ProtectedRoute>
+                  <AuthenticatedLayout>
+                    <PTCheckIn />
                   </AuthenticatedLayout>
                 </ProtectedRoute>
               }

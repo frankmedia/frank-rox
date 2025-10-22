@@ -1,18 +1,23 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, RotateCcw, X } from "lucide-react";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 interface TimerProps {
   mode: "stopwatch" | "countdown";
   initialSeconds?: number;
+  autoStart?: boolean;
   onComplete?: () => void;
   onCancel?: () => void;
 }
 
-export function Timer({ mode, initialSeconds = 0, onComplete, onCancel }: TimerProps) {
+export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete, onCancel }: TimerProps) {
   const [seconds, setSeconds] = useState(initialSeconds);
-  const [isRunning, setIsRunning] = useState(false);
+  const [isRunning, setIsRunning] = useState(autoStart);
   const intervalRef = useRef<number>();
+
+  // Keep screen awake during timer
+  useWakeLock(isRunning);
 
   useEffect(() => {
     if (isRunning) {

@@ -9,6 +9,7 @@ import { ArrowLeft, Medal, TrendingUp, Loader2, Calendar, Dumbbell, Clock, BookO
 import { fetchWorkoutHistory, fetchUserStats } from "@/services/googleSheets";
 import { WorkoutLog, UserStats } from "@/types/workout";
 import { toast } from "sonner";
+import { FlameRating } from "@/components/FlameRating";
 
 interface DailyWorkout {
   date: string; // YYYY-MM-DD format
@@ -145,6 +146,7 @@ const History = () => {
           duration: log.duration,
           distance: log.distance,
           notes: log.notes,
+          rating: typeof log.rating === 'number' ? log.rating : (log.rating ? parseInt(log.rating) : undefined), // Flame rating (0-5)
         }));
         
         setHistory(historyData);
@@ -386,16 +388,10 @@ const History = () => {
                                       </Badge>
                                     )}
                                   </div>
-                                  <p className="text-xs text-muted-foreground ml-6">
-                                    {new Date(entry.date).toLocaleTimeString("en-GB", { 
-                                      hour: "2-digit", 
-                                      minute: "2-digit" 
-                                    })}
-                                  </p>
-                                  {entry.notes && (
-                                    <p className="text-sm text-muted-foreground mt-2 ml-6 italic">
-                                      {entry.notes}
-                                    </p>
+                                  {entry.rating && entry.rating > 0 && (
+                                    <div className="mt-1 ml-6">
+                                      <FlameRating value={entry.rating} readonly size="sm" />
+                                    </div>
                                   )}
                                 </div>
                                 <div className="text-right ml-4">

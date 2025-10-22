@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import type { Exercise } from "@/types/workout";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 interface HIITWorkoutProps {
   exercise: Exercise;
@@ -17,6 +18,9 @@ export function HIITWorkout({ exercise, onComplete }: HIITWorkoutProps) {
   const [currentInterval, setCurrentInterval] = useState(0);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
   const [timeRemaining, setTimeRemaining] = useState(0);
+  
+  // Keep screen awake during workout
+  useWakeLock(isRunning);
   
   // Parse work/rest ratio (e.g., "20s/10s" or "20s work / 10s rest")
   const parseWorkRest = (ratio: string) => {

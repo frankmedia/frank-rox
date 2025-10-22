@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
 interface ExerciseMediaProps {
   url: string;
@@ -25,33 +28,76 @@ function getYouTubeVideoId(url: string): string | null {
 }
 
 export function ExerciseMedia({ url, alt, className = "" }: ExerciseMediaProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const youtubeId = getYouTubeVideoId(url);
 
   if (youtubeId) {
-    // YouTube video with minimal controls
+    // YouTube video with loading state
     return (
-      <Card className={`overflow-hidden ${className}`}>
-        <div className="relative w-full aspect-video bg-black">
+      <Card className={`overflow-hidden ${className} relative`}>
+        <AnimatePresence>
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 w-full aspect-video bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center z-10"
+            >
+              <Loader2 className="w-12 h-12 animate-spin text-yellow-500" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: isLoading ? 0 : 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="relative w-full aspect-video bg-black"
+        >
           <iframe
             src={`https://www.youtube.com/embed/${youtubeId}?controls=1&modestbranding=1&rel=0&showinfo=0`}
             title={alt}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             className="absolute inset-0 w-full h-full"
+            onLoad={() => setIsLoading(false)}
           />
-        </div>
+        </motion.div>
       </Card>
     );
   }
 
-  // Regular image
+  // Regular image with loading state
+  if (hasError) return null;
+  
   return (
-    <Card className={`overflow-hidden ${className}`}>
-      <img
+    <Card className={`overflow-hidden ${className} relative`}>
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 w-full aspect-video bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center z-10"
+          >
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="w-12 h-12 animate-spin text-yellow-500" />
+              <p className="text-sm text-gray-400 animate-pulse">Loading...</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <motion.img
         src={url}
         alt={alt}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: isLoading ? 0 : 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
         className="w-full h-full object-cover aspect-video"
+        onLoad={() => setIsLoading(false)}
         onError={(e) => {
+          setHasError(true);
           (e.target as HTMLImageElement).style.display = 'none';
         }}
       />

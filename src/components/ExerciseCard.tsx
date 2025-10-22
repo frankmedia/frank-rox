@@ -7,7 +7,7 @@ interface ExerciseCardProps {
   exercise: {
     id: string;
     name: string;
-    type: "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap";
+    type: "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap" | "intro";
     sets?: number;
     reps?: number;
     suggestedKg?: number;

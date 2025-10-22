@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import type { Exercise } from "@/types/workout";
+import { triggerSuccessHaptic } from "@/utils/haptics";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 interface AMRAPWorkoutProps {
   exercise: Exercise;
@@ -18,6 +20,9 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
   
   const [isRunning, setIsRunning] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(timeCap * 60); // in seconds
+  
+  // Keep screen awake during workout
+  useWakeLock(isRunning);
   
   useEffect(() => {
     if (!isRunning || timeRemaining <= 0) return;
@@ -54,6 +59,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
   };
   
   const handleComplete = () => {
+    triggerSuccessHaptic();
     toast.success("✅ AMRAP Logged!");
     onComplete();
   };

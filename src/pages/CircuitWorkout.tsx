@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Timer } from "@/components/Timer";
 import { toast } from "sonner";
 import type { Exercise } from "@/types/workout";
+import { triggerSuccessHaptic } from "@/utils/haptics";
 
 interface CircuitWorkoutProps {
   exercise: Exercise;
@@ -54,6 +55,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
   };
   
   const handleComplete = () => {
+    triggerSuccessHaptic();
     toast.success("✅ Circuit Complete!", {
       description: `${totalRounds} rounds finished!`,
     });

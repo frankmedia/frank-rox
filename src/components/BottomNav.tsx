@@ -26,10 +26,10 @@ const BottomNav = () => {
       path: "/profile",
     },
     {
-      id: "book-pt",
-      label: "Book PT",
+      id: "pt-checkin",
+      label: "PT Check-In",
       icon: CalendarDays,
-      path: "/book-pt",
+      path: "/pt-checkin",
     },
   ];
 

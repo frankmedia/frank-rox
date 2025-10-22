@@ -1,18 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExerciseCard } from "@/components/ExerciseCard";
+import { ExerciseMedia } from "@/components/ExerciseMedia";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Trophy, ClipboardList, Flame, Info } from "lucide-react";
+import { Trophy, ClipboardList, Flame, Info, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingDaySelector } from "@/components/TrainingDaySelector";
 import { useData } from "@/contexts/DataContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { ExerciseListSkeleton } from "@/components/ExerciseCardSkeleton";
+import { shareWorkout } from "@/utils/share";
 
 const Today = () => {
   const navigate = useNavigate();
-  const { exercises, loading, error } = useData();
+  const { exercises, loading, error, refresh } = useData();
   const [currentTrainingDay, setCurrentTrainingDay] = useState(() => {
     try {
       const userStr = localStorage.getItem("frank_rock_user");
@@ -27,9 +31,20 @@ const Today = () => {
     return "1";
   });
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  // Pull-to-refresh with MUCH bigger threshold
+  const { containerRef, pullDistance, isRefreshing } = usePullToRefresh({
+    onRefresh: async () => {
+      await refresh();
+      toast.success("Workouts refreshed!", { duration: 2000 });
+    },
+    threshold: 150, // Much bigger pull required
+  });
 
   // Load completed exercises from today (user-specific)
-  useEffect(() => {
+  const loadCompletedExercises = () => {
     try {
       const userStr = localStorage.getItem("frank_rock_user");
       if (userStr) {
@@ -41,10 +56,10 @@ const Today = () => {
           const logs = JSON.parse(workoutHistory);
           const todayDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
           
-          const todayCompleted = new Set(
+          const todayCompleted = new Set<string>(
             logs
               .filter((log: any) => log.timestamp && log.timestamp.startsWith(todayDate))
-              .map((log: any) => log.exerciseName)
+              .map((log: any) => log.exerciseName as string)
           );
           
           setCompletedExercises(todayCompleted);
@@ -53,7 +68,51 @@ const Today = () => {
     } catch (e) {
       console.error("Error loading completed exercises:", e);
     }
+  };
+
+  useEffect(() => {
+    loadCompletedExercises();
   }, [exercises]); // Re-check when exercises change
+  
+  // Re-check on component mount and when window gains focus (optimistic UI)
+  useEffect(() => {
+    loadCompletedExercises();
+    
+    const handleFocus = () => loadCompletedExercises();
+    window.addEventListener("focus", handleFocus);
+    
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
+  
+  // Collapsing header on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      const container = containerRef.current;
+      if (!container) return;
+      
+      const currentScrollY = container.scrollTop;
+      
+      // Only hide header if scrolling down and past a threshold
+      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+        setHeaderVisible(false);
+      } else if (currentScrollY < lastScrollY.current) {
+        setHeaderVisible(true);
+      }
+      
+      lastScrollY.current = currentScrollY;
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll, { passive: true });
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (error) {
@@ -67,10 +126,52 @@ const Today = () => {
     }
   }, [error, loading, exercises]);
 
+  const handleShare = async () => {
+    const result = await shareWorkout(currentTrainingDay, exercises);
+    
+    if (result.success) {
+      if (result.fallback) {
+        toast.success("Copied to clipboard!", {
+          description: "Share your workout with friends",
+        });
+      } else {
+        toast.success("Workout shared!");
+      }
+    } else if (!result.cancelled) {
+      toast.error("Failed to share workout");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div ref={containerRef} className="min-h-screen bg-background pb-24 overflow-y-auto relative">
+      {/* Pull-to-Refresh Indicator */}
+      <div 
+        className="absolute top-0 left-0 right-0 flex items-center justify-center transition-all z-50"
+        style={{
+          height: `${pullDistance}px`,
+          opacity: Math.min(pullDistance / 150, 1),
+        }}
+      >
+        <div className="flex flex-col items-center gap-2 mt-4">
+          {isRefreshing ? (
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#FFCC00' }} />
+          ) : (
+            <Flame className="w-8 h-8" style={{ color: '#FFCC00', transform: `rotate(${pullDistance * 2.4}deg)` }} />
+          )}
+          <span className="text-sm font-semibold text-muted-foreground">
+            {isRefreshing ? "Refreshing..." : "Pull down to refresh"}
+          </span>
+        </div>
+      </div>
+
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+      <header 
+        className="sticky z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border transition-transform duration-300 ease-in-out"
+        style={{
+          top: 0,
+          transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
+        }}
+      >
         <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-2 sm:py-3">
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Logo - Left Side */}
@@ -93,7 +194,17 @@ const Today = () => {
         <div className="flex items-center justify-between mb-3 sm:mb-6">
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Training Day {currentTrainingDay}</h2>
           
-          <Dialog>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-primary"
+              onClick={handleShare}
+            >
+              <Share2 className="w-4 h-4" />
+            </Button>
+            
+            <Dialog>
             <DialogTrigger asChild>
               <Button
                 variant="ghost"
@@ -437,39 +548,54 @@ const Today = () => {
                   </Card>
                 </div>
 
-                <div className="pt-4 border-t border-border">
-                  <p className="text-sm text-muted-foreground text-center italic">
-                    Your Road to the Next Podium Starts Here 🏆
-                  </p>
-                </div>
+
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {loading ? (
-          <LoadingScreen />
+          <ExerciseListSkeleton count={6} />
         ) : (
           <>
             {/* Intro Card (optional) */}
-            {exercises.find(ex => ex.type === "intro") && (
-              <Card 
-                className="p-8 mb-6 border-4"
-                style={{ borderColor: "#FFCC00" }}
-              >
-                <div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <ClipboardList className="w-10 h-10 flex-shrink-0" style={{ color: "#FFCC00" }} />
-                    <h3 className="text-4xl font-bold" style={{ color: "#FFCC00" }}>
-                      {exercises.find(ex => ex.type === "intro")?.name}
-                    </h3>
+            {(() => {
+              const introCard = exercises.find(ex => ex.type === "intro");
+              if (!introCard) return null;
+              
+              return (
+                <Card 
+                  className="p-4 mb-6 border-4 overflow-hidden"
+                  style={{ borderColor: "#FFCC00" }}
+                >
+                  <div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <ClipboardList className="w-8 h-8 flex-shrink-0" style={{ color: "#FFCC00" }} />
+                      <h3 className="text-3xl font-bold" style={{ color: "#FFCC00" }}>
+                        {introCard.name}
+                      </h3>
+                    </div>
+                    
+                    {/* Media (if available) - Full width with rounded corners */}
+                    {introCard.mediaUrl && (
+                      <div className="-mx-4 mb-4">
+                        <div className="rounded-lg overflow-hidden">
+                          <ExerciseMedia url={introCard.mediaUrl} alt={introCard.name} />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Description */}
+                    {introCard.notes && (
+                      <p className="text-xl text-foreground leading-relaxed">
+                        {introCard.notes}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-xl text-foreground leading-relaxed">
-                    {exercises.find(ex => ex.type === "intro")?.notes || "No description provided."}
-                  </p>
-                </div>
-              </Card>
-            )}
+                </Card>
+              );
+            })()}
             
             <div className="space-y-4">
               {exercises.map((exercise) => {
@@ -498,9 +624,6 @@ const Today = () => {
             {exercises.filter(ex => ex.type !== "intro").length === 0 && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No exercises planned for today</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Configure your Google Sheets to get started
-                </p>
               </div>
             )}
           </>

@@ -32,6 +32,7 @@ export interface WorkoutLog {
   duration?: number;
   distance?: number;
   notes?: string;
+  rating?: number; // 0-5 flame rating
 }
 
 export interface UserStats {

@@ -184,27 +184,26 @@ export async function getUserSheet(username: string = getCurrentUser()): Promise
 }
 
 /**
- * Fetch media URL from Videos tab in MASTER sheet as fallback
+ * Fetch ALL videos from MASTER sheet ONCE and create a lookup map
  */
-async function fetchMediaFallback(
-  exerciseName: string
-): Promise<string | null> {
+async function fetchAllVideos(): Promise<Map<string, string>> {
   try {
-    // Look in MASTER sheet's videos tab (centralized media library)
+    console.log("🎥 Fetching ALL videos from master sheet (one-time call)...");
     const videosData = await fetchSheetData(MASTER_SHEET_ID, "videos!A:B").catch(() => []);
+    
+    const videoMap = new Map<string, string>();
     for (const row of videosData) {
       const [name, url] = row;
-      if (name && name.toLowerCase().trim() === exerciseName.toLowerCase().trim() && url) {
-        console.log(`🎥 Found video for "${exerciseName}" in master sheet videos tab:`, url);
-        return url;
+      if (name && url) {
+        videoMap.set(name.toLowerCase().trim(), url);
       }
     }
     
-    console.log(`ℹ️ No media found for "${exerciseName}" in master sheet videos tab`);
-    return null;
+    console.log(`✅ Loaded ${videoMap.size} videos into lookup map`);
+    return videoMap;
   } catch (error) {
-    console.error("❌ Error fetching media fallback:", error);
-    return null;
+    console.error("❌ Error fetching all videos:", error);
+    return new Map();
   }
 }
 
@@ -272,6 +271,9 @@ export async function fetchTodayExercises(username: string = getCurrentUser(), p
       console.error("Error reading training day:", e);
     }
     console.log(`📅 Current Training Day: ${currentTrainingDay}`);
+    
+    // Fetch ALL videos ONCE (for media fallback lookup)
+    const videoMap = await fetchAllVideos();
     
     // Fetch exercises from the Plan tab (now includes Notes and Media URL columns)
     console.log(`📊 Fetching from sheet: ${userSheet.sheetId}, tab: Plan`);
@@ -362,11 +364,12 @@ export async function fetchTodayExercises(username: string = getCurrentUser(), p
           exerciseType = "weights";
         }
 
-        // If no mediaUrl, try to fetch from videos tab in MASTER sheet
+        // If no mediaUrl, look it up from the video map (NO extra API call!)
         let finalMediaUrl = mediaUrl || undefined;
         if (!finalMediaUrl && name && !isGroupHeader) {
-          const fallbackUrl = await fetchMediaFallback(name);
+          const fallbackUrl = videoMap.get(name.toLowerCase().trim());
           if (fallbackUrl) {
+            console.log(`🎥 Found video for "${name}" in video map:`, fallbackUrl);
             finalMediaUrl = fallbackUrl;
           }
         }
@@ -766,6 +769,7 @@ export async function logExercise(
     duration?: number;
     distance?: number;
     notes?: string;
+    rating?: number; // 0-5 flame rating
   },
   username: string = getCurrentUser()
 ): Promise<{ success: boolean; message?: string; isPB?: boolean; oldPB?: number; newPB?: number }> {
@@ -782,6 +786,7 @@ export async function logExercise(
       duration: data.duration,
       distance: data.distance,
       notes: data.notes,
+      rating: data.rating, // 0-5 flame rating
     };
     
     // Call Vercel serverless function

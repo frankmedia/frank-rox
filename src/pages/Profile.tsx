@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, LogOut, Mail, User as UserIcon } from "lucide-react";
+import { ExternalLink, LogOut, Mail, User as UserIcon, ClipboardCheck } from "lucide-react";
 import { getUserSheet } from "@/services/googleSheets";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -81,6 +81,29 @@ const Profile = () => {
       </header>
 
       <main className="container max-w-2xl mx-auto px-4 -mt-6">
+        {/* HYROX Assessment - Entire card is clickable */}
+        <Card 
+          className="p-6 mb-4 shadow-lg bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 border-2 border-yellow-500 cursor-pointer hover:border-yellow-400 hover:shadow-xl active:scale-[0.98] transition-all duration-200"
+          onClick={() => navigate("/assessment")}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <ClipboardCheck className="w-7 h-7 text-yellow-500" />
+                <h3 className="text-xl font-bold text-white">HYROX Athlete Assessment</h3>
+              </div>
+              <p className="text-base text-white/80">
+                Complete your 25-question profile to get personalized training insights
+              </p>
+            </div>
+            <div className="ml-4 text-yellow-500">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        </Card>
+
         {/* Workout Sheet Info */}
         <Card className="p-6 mb-4 shadow-lg">
           <div className="flex items-start justify-between mb-4">
