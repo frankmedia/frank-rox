@@ -204,7 +204,7 @@ const AssessmentResults = () => {
               </div>
               <div className="space-y-3">
                 {results.profile.strengths.map((strength) => (
-                  <Badge key={strength} variant="secondary" className="w-full justify-center text-base py-2 font-semibold bg-yellow-500/20 text-yellow-800 border-yellow-500">
+                  <Badge key={strength} variant="secondary" className="w-full justify-center text-base py-2 font-semibold bg-yellow-500/20 text-white border-yellow-500">
                     {strength}
                   </Badge>
                 ))}

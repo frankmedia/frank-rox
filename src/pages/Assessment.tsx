@@ -984,7 +984,7 @@ const Assessment = () => {
         {/* Navigation */}
         <div className="flex gap-3">
           {currentSection > 0 && (
-            <Button variant="outline" size="lg" onClick={handlePrev} className="flex-1">
+            <Button variant="outline" size="lg" onClick={handlePrev} className="w-1/4 h-16 text-base">
               Previous
             </Button>
           )}
@@ -992,7 +992,7 @@ const Assessment = () => {
             <Button
               size="lg"
               onClick={handleNext}
-              className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600"
+              className="w-3/4 h-16 text-lg font-bold bg-yellow-500 text-black hover:bg-yellow-600"
             >
               Next Section
             </Button>
@@ -1000,7 +1000,7 @@ const Assessment = () => {
             <Button
               size="lg"
               onClick={handleSubmit}
-              className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600"
+              className="w-3/4 h-16 text-lg font-bold bg-yellow-500 text-black hover:bg-yellow-600"
             >
               Complete Assessment
             </Button>

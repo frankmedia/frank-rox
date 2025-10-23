@@ -17,13 +17,54 @@ import { shareWorkout } from "@/utils/share";
 const Today = () => {
   const navigate = useNavigate();
   const { exercises, loading, error, refresh } = useData();
+  // Function to find the next incomplete training day
+  const findNextIncompleteDay = () => {
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const completedDaysKey = `completedDays_${user.username}`;
+        const completedDaysStr = localStorage.getItem(completedDaysKey);
+        const completedDays: number[] = completedDaysStr ? JSON.parse(completedDaysStr) : [];
+        
+        // Find the first day that's not completed
+        for (let day = 1; day <= 20; day++) { // Assuming max 20 training days
+          if (!completedDays.includes(day)) {
+            return day.toString();
+          }
+        }
+        // If all days are completed, return day 1
+        return "1";
+      }
+    } catch (e) {
+      console.error("Error finding next incomplete day:", e);
+    }
+    return "1";
+  };
+
   const [currentTrainingDay, setCurrentTrainingDay] = useState(() => {
     try {
       const userStr = localStorage.getItem("frank_rock_user");
       if (userStr) {
         const user = JSON.parse(userStr);
         const userKey = `currentTrainingDay_${user.username}`;
-        return localStorage.getItem(userKey) || "1";
+        const storedDay = localStorage.getItem(userKey);
+        
+        // If no stored day, find the next incomplete day
+        if (!storedDay) {
+          return findNextIncompleteDay();
+        }
+        
+        // Check if the stored day is completed, if so find next incomplete
+        const completedDaysKey = `completedDays_${user.username}`;
+        const completedDaysStr = localStorage.getItem(completedDaysKey);
+        const completedDays: number[] = completedDaysStr ? JSON.parse(completedDaysStr) : [];
+        
+        if (completedDays.includes(parseInt(storedDay))) {
+          return findNextIncompleteDay();
+        }
+        
+        return storedDay;
       }
     } catch (e) {
       console.error("Error loading training day:", e);
@@ -83,6 +124,36 @@ const Today = () => {
     
     return () => window.removeEventListener("focus", handleFocus);
   }, []);
+
+  // Auto-update to next incomplete day when current day is completed
+  useEffect(() => {
+    const checkAndUpdateToNextDay = () => {
+      try {
+        const userStr = localStorage.getItem("frank_rock_user");
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          const completedDaysKey = `completedDays_${user.username}`;
+          const completedDaysStr = localStorage.getItem(completedDaysKey);
+          const completedDays: number[] = completedDaysStr ? JSON.parse(completedDaysStr) : [];
+          
+          // If current day is completed, find next incomplete day
+          if (completedDays.includes(parseInt(currentTrainingDay))) {
+            const nextDay = findNextIncompleteDay();
+            if (nextDay !== currentTrainingDay) {
+              setCurrentTrainingDay(nextDay);
+              // Update localStorage
+              const userKey = `currentTrainingDay_${user.username}`;
+              localStorage.setItem(userKey, nextDay);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error checking for next day:", e);
+      }
+    };
+
+    checkAndUpdateToNextDay();
+  }, [currentTrainingDay]);
   
   // Collapsing header on scroll
   useEffect(() => {
