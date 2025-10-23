@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Dumbbell, Medal, Activity, Zap, Repeat, Target, PersonStanding } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { InlineHeartRate } from "@/components/HeartRateZone";
 
 interface ExerciseCardProps {
   exercise: {
@@ -68,12 +69,18 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
             {getIcon()}
             <h3 className="text-lg font-bold text-foreground">{exercise.name}</h3>
           </div>
-          {exercise.personalBest && exercise.type !== "mobility" && !["hiit", "circuit", "amrap"].includes(exercise.type) && (
-            <Badge className="bg-primary/10 text-primary border border-primary/20 font-bold">
-              <Medal className="w-3 h-3 mr-1" />
-              PB: {exercise.personalBest}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Heart rate zone tracking for cardio/running/HIIT */}
+            {["cardio", "running", "hiit", "circuit", "amrap"].includes(exercise.type) && (
+              <InlineHeartRate />
+            )}
+            {exercise.personalBest && exercise.type !== "mobility" && !["hiit", "circuit", "amrap"].includes(exercise.type) && (
+              <Badge className="bg-primary/10 text-primary border border-primary/20 font-bold">
+                <Medal className="w-3 h-3 mr-1" />
+                PB: {exercise.personalBest}
+              </Badge>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2">

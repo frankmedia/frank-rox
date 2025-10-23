@@ -5,15 +5,18 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { AssessmentData } from "@/types/assessment";
 import { calculateHyroxResults } from "@/utils/hyroxModel";
+import { getHealthDataForAssessment, isHealthAvailable } from "@/services/healthKit";
 
 const Assessment = () => {
   const navigate = useNavigate();
   const [currentSection, setCurrentSection] = useState(0);
+  const [healthAvailable, setHealthAvailable] = useState(false);
+  const [loadingHealthData, setLoadingHealthData] = useState(false);
   const [formData, setFormData] = useState<AssessmentData>({
     gender: "",
     category: "",
@@ -57,6 +60,15 @@ const Assessment = () => {
     competitionLevel: "",
   });
 
+  // Check if health data is available
+  useEffect(() => {
+    const checkHealth = async () => {
+      const { available } = await isHealthAvailable();
+      setHealthAvailable(available);
+    };
+    checkHealth();
+  }, []);
+
   // Load existing data from localStorage
   useEffect(() => {
     const userStr = localStorage.getItem("frank_rock_user");
@@ -69,6 +81,47 @@ const Assessment = () => {
       }
     }
   }, []);
+
+  // Fetch health data and auto-populate fields
+  const fetchHealthData = async () => {
+    setLoadingHealthData(true);
+    try {
+      const healthData = await getHealthDataForAssessment();
+      
+      // Auto-populate fields with health data
+      const updates: Partial<AssessmentData> = {};
+      
+      if (healthData.sleepHours) {
+        updates.sleepHours = healthData.sleepHours.toString();
+      }
+      
+      if (healthData.sleepQuality) {
+        updates.sleepQuality = healthData.sleepQuality.toString();
+      }
+      
+      if (healthData.restingHeartRate) {
+        // Use resting HR to estimate endurance level
+        if (healthData.restingHeartRate < 50) {
+          updates.enduranceLevel = "Advanced";
+        } else if (healthData.restingHeartRate < 60) {
+          updates.enduranceLevel = "Intermediate";
+        }
+      }
+      
+      setFormData(prev => ({ ...prev, ...updates }));
+      
+      toast.success("Health data imported!", {
+        description: `Imported ${Object.keys(updates).length} fields from your health app`
+      });
+    } catch (error) {
+      console.error("Failed to fetch health data:", error);
+      toast.error("Could not fetch health data", {
+        description: "Please ensure you've granted permissions"
+      });
+    } finally {
+      setLoadingHealthData(false);
+    }
+  };
 
   // Auto-save whenever formData changes (debounced)
   useEffect(() => {
@@ -948,6 +1001,19 @@ const Assessment = () => {
                 Section {currentSection + 1} of {sections.length}
               </p>
             </div>
+            {/* Health Data Import Button */}
+            {healthAvailable && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchHealthData}
+                disabled={loadingHealthData}
+                className="gap-2"
+              >
+                <Activity className="w-4 h-4" />
+                {loadingHealthData ? "Loading..." : "Import Health"}
+              </Button>
+            )}
           </div>
           {/* Progress bar */}
           <div className="mt-3 h-2 bg-secondary rounded-full overflow-hidden">

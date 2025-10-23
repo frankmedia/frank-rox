@@ -45,5 +45,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>RoxPT needs access to your health data to personalize your HYROX training and track your heart rate zones during workouts</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>RoxPT wants to save your workout data to Apple Health so you can track your progress</string>
+	<key>NSMotionUsageDescription</key>
+	<string>RoxPT uses motion data to track your activity during workouts</string>
 </dict>
 </plist>

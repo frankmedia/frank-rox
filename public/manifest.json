@@ -1,43 +1,54 @@
 {
-  "name": "RoxPT - Hyrox Training",
+  "name": "RoxPT - HYROX Training",
   "short_name": "RoxPT",
-  "description": "Your personalized Hyrox training programme. Built for Hyrox. Tuned for You.",
+  "description": "Personalized HYROX training plans powered by AI",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#FFCC00",
   "orientation": "portrait-primary",
-  "scope": "/",
   "icons": [
     {
-      "src": "/android-chrome-192x192.png",
-      "sizes": "192x192",
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/icon-192.png",
       "type": "image/png",
+      "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "/android-chrome-512x512.png",
-      "sizes": "512x512",
+      "src": "/icon-512.png",
       "type": "image/png",
+      "sizes": "512x512",
       "purpose": "any maskable"
     }
   ],
   "categories": ["health", "fitness", "sports"],
+  "screenshots": [
+    {
+      "src": "/screenshot-1.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Today's Workout",
       "short_name": "Today",
-      "description": "View today's training",
+      "description": "View today's training session",
       "url": "/today",
-      "icons": [{ "src": "/android-chrome-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Training Log",
-      "short_name": "Log",
-      "description": "View your training history",
-      "url": "/history",
-      "icons": [{ "src": "/android-chrome-192x192.png", "sizes": "192x192" }]
+      "name": "Assessment",
+      "short_name": "Assessment",
+      "description": "Complete your HYROX assessment",
+      "url": "/assessment",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }
-

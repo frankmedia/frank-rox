@@ -8,6 +8,7 @@ import { DataProvider } from "@/contexts/DataContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import BottomNav from "@/components/BottomNav";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import Login from "./pages/Login";
 import Overview from "./pages/Overview";
 import Today from "./pages/Today";
@@ -27,6 +28,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => (
   <div className="pb-16">
     {children}
     <BottomNav />
+    <PWAInstallPrompt />
   </div>
 );
 
