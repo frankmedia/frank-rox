@@ -196,15 +196,15 @@ const AssessmentResults = () => {
         {/* Strengths & Limiters */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <div className="grid grid-cols-2 gap-4">
-            {/* Strengths */}
-            <Card className="p-6 bg-green-500/10 border-4 border-green-500 min-h-[180px]">
+            {/* Focus Areas */}
+            <Card className="p-6 bg-yellow-500/10 border-4 border-yellow-500 min-h-[180px]">
               <div className="flex items-center gap-2 mb-4">
-                <Target className="w-7 h-7 text-green-500" />
-                <h3 className="font-bold text-lg">Strengths</h3>
+                <Target className="w-7 h-7 text-yellow-500" />
+                <h3 className="font-bold text-lg">Focus Areas</h3>
               </div>
               <div className="space-y-3">
                 {results.profile.strengths.map((strength) => (
-                  <Badge key={strength} variant="secondary" className="w-full justify-center text-base py-2 font-semibold">
+                  <Badge key={strength} variant="secondary" className="w-full justify-center text-base py-2 font-semibold bg-yellow-500/20 text-yellow-800 border-yellow-500">
                     {strength}
                   </Badge>
                 ))}
