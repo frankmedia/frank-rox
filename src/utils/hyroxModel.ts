@@ -466,7 +466,7 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
     .slice(0, 2)
     .map(([name]) => name);
   
-  // Focus areas (lowest scores that need improvement)
+  // Strengths (highest scores)
   const indexScores = [
     { name: "Running", score: RunningIndex },
     { name: "Strength", score: StrengthIndex },
@@ -476,8 +476,14 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
     { name: "Lifestyle", score: LifestyleIndex },
   ];
   const strengths = indexScores
+    .sort((a, b) => b.score - a.score)  // Sort by highest scores first
+    .slice(0, 3)
+    .map((s) => s.name);
+  
+  // Focus areas (lowest scores that need improvement)
+  const focusAreas = indexScores
     .sort((a, b) => a.score - b.score)  // Sort by lowest scores first
-    .slice(0, 2)
+    .slice(0, 3)
     .map((s) => s.name);
   
   const archetype = getArchetype(RunningIndex, StrengthIndex, EngineIndex);
@@ -486,6 +492,7 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
     profile: {
       archetype,
       strengths,
+      focusAreas,
       limiters: weakStations,
     },
     indices: {

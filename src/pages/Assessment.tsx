@@ -727,7 +727,7 @@ const Assessment = () => {
           <div>
             <Label className="text-base font-bold mb-4 block">🌾 Fiber intake (grams per day)</Label>
             <div className="grid grid-cols-4 gap-2">
-              {["<15g", "15-25g", "25-35g", "35g+"].map((option) => (
+              {["<15", "15-25", "25-35", "35+"].map((option) => (
                 <Button
                   key={option}
                   variant={formData.fiberIntake === option ? "default" : "outline"}
