@@ -97,19 +97,26 @@ const calculateEngineIndex = (
 const calculateMobilityIndex = (
   mobilityFreq: number,
   sleepHours: number,
-  hasInjuries: boolean
+  sleepQuality: number,
+  hasInjuries: boolean,
+  injurySeverity: number
 ): number => {
   const zMob = lin(mobilityFreq, 0, 5);
-  const zSleep = lin(sleepHours, 5, 9);
-  const zInj = hasInjuries ? 0.5 : 1;
-  return to10(0.45 * zMob + 0.45 * zSleep + 0.10 * zInj);
+  const zSleepHours = lin(sleepHours, 5, 9);
+  const zSleepQuality = lin(sleepQuality, 1, 5);
+  const zInj = hasInjuries ? (1 - injurySeverity * 0.2) : 1; // More severe injuries = lower score
+  return to10(0.30 * zMob + 0.30 * zSleepHours + 0.20 * zSleepQuality + 0.20 * zInj);
 };
 
 // Calculate Nutrition Index
 const calculateNutritionIndex = (
   waterLiters: number,
   dietType: string[],
-  supplements: string[]
+  supplements: string[],
+  proteinIntake: number,
+  fruitVegServings: number,
+  fiberIntake: number,
+  nutritionUncertain: boolean
 ): number => {
   const zWater = lin(waterLiters, 1, 3);
   
@@ -126,17 +133,32 @@ const calculateNutritionIndex = (
   // Supplements score
   const zSupp = (supplements.includes("Creatine") || supplements.includes("Protein") || supplements.includes("Electrolytes")) ? 1 : 0.6;
   
-  return to10(0.5 * zWater + 0.3 * zDiet + 0.2 * zSupp);
+  // Enhanced nutrition metrics
+  const zProtein = lin(proteinIntake, 0.8, 2.5); // g/kg bodyweight
+  const zFruitVeg = lin(fruitVegServings, 2, 8); // servings per day
+  const zFiber = lin(fiberIntake, 15, 35); // grams per day
+  
+  // Penalty for uncertainty
+  const zUncertain = nutritionUncertain ? 0.7 : 1;
+  
+  return to10(0.20 * zWater + 0.15 * zDiet + 0.15 * zSupp + 0.20 * zProtein + 0.15 * zFruitVeg + 0.10 * zFiber + 0.05 * zUncertain);
 };
 
 // Calculate Lifestyle Index
 const calculateLifestyleIndex = (
   sessionsPerWeek: number,
-  hasBiggestWeakness: boolean
+  hasBiggestWeakness: boolean,
+  stressLevel: number,
+  workSchedule: number,
+  recoveryPractices: string[]
 ): number => {
   const zSess = lin(sessionsPerWeek, 2, 7);
   const zWeak = hasBiggestWeakness ? 1 : 0.6;
-  return to10(0.8 * zSess + 0.2 * zWeak);
+  const zStress = invLin(stressLevel, 1, 5); // Lower stress = higher score
+  const zWork = invLin(workSchedule, 1, 5); // Less demanding work = higher score
+  const zRecovery = lin(recoveryPractices.length, 0, 5); // More recovery practices = higher score
+  
+  return to10(0.30 * zSess + 0.20 * zWeak + 0.20 * zStress + 0.15 * zWork + 0.15 * zRecovery);
 };
 
 // Station time interpolation
@@ -209,22 +231,31 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
   
   const mobilityFreq = mapMobilityFrequency(data.mobilityFrequency);
   const sleepHours = parseFloat(data.sleepHours) || 7;
+  const sleepQuality = parseFloat(data.sleepQuality) || 3;
   const hasInjuries = data.hasInjuries === "Yes";
+  const injurySeverity = parseFloat(data.injurySeverity) || 1;
   
   const waterLiters = parseFloat(data.waterIntake) || 2;
   const dietType = data.dietType || [];
   const supplements = data.supplements || [];
+  const proteinIntake = parseFloat(data.proteinIntake) || 1.2;
+  const fruitVegServings = parseFloat(data.fruitVegServings) || 4;
+  const fiberIntake = parseFloat(data.fiberIntake) || 20;
+  const nutritionUncertain = data.nutritionUncertain === "Yes";
   
   const sessionsPerWeek = parseFloat(data.trainingFrequency) || 4;
   const biggestWeakness = data.biggestWeakness || [];
+  const stressLevel = parseFloat(data.stressLevel) || 3;
+  const workSchedule = parseFloat(data.workSchedule) || 3;
+  const recoveryPractices = data.recoveryPractices || [];
   
   // Calculate indices
   const RunningIndex = calculateRunningIndex(km1Sec, dist30Min, runFreq, enduranceLevel);
   const StrengthIndex = calculateStrengthIndex(sledPush, sledPull, wallBalls, deadlift, lunges, farmerCarry);
   const EngineIndex = calculateEngineIndex(row500Sec, ski500Sec, bikePower, engineLevel);
-  const MobilityIndex = calculateMobilityIndex(mobilityFreq, sleepHours, hasInjuries);
-  const NutritionIndex = calculateNutritionIndex(waterLiters, dietType, supplements);
-  const LifestyleIndex = calculateLifestyleIndex(sessionsPerWeek, biggestWeakness.length > 0);
+  const MobilityIndex = calculateMobilityIndex(mobilityFreq, sleepHours, sleepQuality, hasInjuries, injurySeverity);
+  const NutritionIndex = calculateNutritionIndex(waterLiters, dietType, supplements, proteinIntake, fruitVegServings, fiberIntake, nutritionUncertain);
+  const LifestyleIndex = calculateLifestyleIndex(sessionsPerWeek, biggestWeakness.length > 0, stressLevel, workSchedule, recoveryPractices);
   
   const TotalScore = Math.round(((RunningIndex + StrengthIndex + EngineIndex + MobilityIndex + NutritionIndex + LifestyleIndex) / 6) * 10) / 10;
   
@@ -244,8 +275,39 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
   if (StrengthIndex < 5) fat += 0.05;
   fat = clamp(fat, 1.0, 1.12);
   
-  // Station time anchors (slow, fast) in seconds
-  const anchors: { [key: string]: [number, number] } = {
+  // Get age and gender for adjustments
+  const age = parseInt(data.age) || 30;
+  const isFemale = data.gender === "Female";
+  
+  // Sex-specific anchor adjustments
+  const getSexAdjustedAnchors = (baseAnchors: [number, number], station: string): [number, number] => {
+    const [slow, fast] = baseAnchors;
+    if (isFemale) {
+      // Females typically slower on upper body stations
+      if (station === "push" || station === "pull" || station === "wb") {
+        return [slow * 1.08, fast * 1.08]; // +8% for upper body
+      }
+    } else {
+      // Males typically slower on endurance stations
+      if (station === "ski" || station === "row" || station === "burps") {
+        return [slow * 1.05, fast * 1.05]; // +5% for endurance
+      }
+    }
+    return baseAnchors;
+  };
+  
+  // Age-based adjustments
+  const getAgeAdjustment = (age: number): number => {
+    if (age >= 60) return 1.12; // +12% for 60+
+    if (age >= 50) return 1.08; // +8% for 50-59
+    if (age >= 40) return 1.05; // +5% for 40-49
+    return 1.0; // No adjustment for under 40
+  };
+  
+  const ageMultiplier = getAgeAdjustment(age);
+  
+  // Base station time anchors (slow, fast) in seconds
+  const baseAnchors: { [key: string]: [number, number] } = {
     ski: [340, 250],
     push: [240, 150],
     pull: [220, 135],
@@ -255,6 +317,13 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
     lunges: [270, 180],
     wb: [360, 240],
   };
+  
+  // Apply sex and age adjustments to anchors
+  const anchors: { [key: string]: [number, number] } = {};
+  Object.entries(baseAnchors).forEach(([station, baseAnchor]) => {
+    const sexAdjusted = getSexAdjustedAnchors(baseAnchor, station);
+    anchors[station] = [sexAdjusted[0] * ageMultiplier, sexAdjusted[1] * ageMultiplier];
+  });
   
   const stationTimes = {
     ski: interpTime(ScoreSki, ...anchors.ski) * fat,
@@ -286,25 +355,76 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
   const FM = clamp(1.12 - 0.01 * (EngineIndex - 5) - 0.005 * (StrengthIndex - 5), 1.02, 1.20);
   const RunTotal = 8 * km1Sec * FM;
   
-  // Transitions
+  // Enhanced transitions calculation
   let Transitions = 120;
-  if (data.hasCompeted === "Yes") Transitions -= 20;
-  if (hasInjuries) Transitions += 20;
-  Transitions = clamp(Transitions, 80, 180);
+  
+  // Experience-based adjustments
+  const hyroxRacesCompleted = parseInt(data.hyroxRacesCompleted) || 0;
+  const functionalFitnessYears = parseFloat(data.functionalFitnessYears) || 2;
+  const competitionLevel = data.competitionLevel || "Recreational";
+  
+  // Race experience adjustments
+  if (hyroxRacesCompleted >= 5) Transitions -= 30; // Very experienced
+  else if (hyroxRacesCompleted >= 2) Transitions -= 20; // Some experience
+  else if (data.hasCompeted === "Yes") Transitions -= 15; // First race
+  else Transitions += 10; // No experience
+  
+  // Functional fitness experience
+  if (functionalFitnessYears >= 5) Transitions -= 10;
+  else if (functionalFitnessYears >= 3) Transitions -= 5;
+  else if (functionalFitnessYears < 1) Transitions += 15;
+  
+  // Competition level
+  if (competitionLevel === "Elite") Transitions -= 15;
+  else if (competitionLevel === "Competitive") Transitions -= 10;
+  else if (competitionLevel === "Recreational") Transitions += 5;
+  
+  // Injury adjustments (enhanced)
+  if (hasInjuries) {
+    if (injurySeverity >= 4) Transitions += 30; // Severe injury
+    else if (injurySeverity >= 3) Transitions += 20; // Moderate injury
+    else Transitions += 10; // Minor injury
+  }
+  
+  // Age adjustments
+  if (age >= 60) Transitions += 15;
+  else if (age >= 50) Transitions += 10;
+  else if (age >= 40) Transitions += 5;
+  
+  Transitions = clamp(Transitions, 60, 200);
   
   // Estimated time
   const estSec = RunTotal + StationsTotal + Transitions;
   const lowSec = estSec * 1.03;
   const highSec = estSec * 1.08;
   
-  console.log("⏱️ Race Time Breakdown:", {
+  console.log("⏱️ Enhanced Race Time Breakdown:", {
     "1km pace (sec)": km1Sec,
     "Fade Multiplier (FM)": FM.toFixed(2),
     "Run Total (8km)": `${Math.floor(RunTotal / 60)}:${Math.floor(RunTotal % 60).toString().padStart(2, '0')} (${Math.floor(RunTotal)}s)`,
     "Stations Total": `${Math.floor(StationsTotal / 60)}:${Math.floor(StationsTotal % 60).toString().padStart(2, '0')} (${Math.floor(StationsTotal)}s)`,
     "Transitions": `${Math.floor(Transitions / 60)}:${Math.floor(Transitions % 60).toString().padStart(2, '0')} (${Transitions}s)`,
     "TOTAL TIME": `${Math.floor(estSec / 60)}:${Math.floor(estSec % 60).toString().padStart(2, '0')} (${Math.floor(estSec)}s)`,
-    "Indices": { RunningIndex, StrengthIndex, EngineIndex }
+    "Enhanced Indices": { 
+      RunningIndex, 
+      StrengthIndex, 
+      EngineIndex, 
+      MobilityIndex, 
+      NutritionIndex, 
+      LifestyleIndex 
+    },
+    "Demographics": {
+      "Age": age,
+      "Gender": data.gender,
+      "Races Completed": hyroxRacesCompleted,
+      "Experience Years": functionalFitnessYears,
+      "Competition Level": competitionLevel
+    },
+    "Adjustments": {
+      "Age Multiplier": ageMultiplier.toFixed(2),
+      "Sex Adjustments": isFemale ? "Female (upper body +8%)" : "Male (endurance +5%)",
+      "Injury Impact": hasInjuries ? `+${injurySeverity * 10}s` : "None"
+    }
   });
   
   // Prescriptions
