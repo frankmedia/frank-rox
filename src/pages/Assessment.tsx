@@ -661,11 +661,11 @@ const Assessment = () => {
               {["Balanced", "High Protein", "Low Carb", "Vegetarian", "Vegan", "Unstructured"].map((option) => (
                 <Button
                   key={option}
-                  variant={formData.dietType.includes(option) ? "default" : "outline"}
+                  variant={formData.dietType?.includes(option) ? "default" : "outline"}
                   onClick={() => toggleArrayField("dietType", option)}
-                  className={`h-14 text-base font-semibold ${formData.dietType.includes(option) ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                  className={`h-14 text-base font-semibold ${formData.dietType?.includes(option) ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
                 >
-                  {formData.dietType.includes(option) && <Check className="w-4 h-4 mr-2" />}
+                  {formData.dietType?.includes(option) && <Check className="w-4 h-4 mr-2" />}
                   {option}
                 </Button>
               ))}
@@ -698,11 +698,11 @@ const Assessment = () => {
               {["Creatine", "Protein", "Electrolytes", "None"].map((option) => (
                 <Button
                   key={option}
-                  variant={formData.supplements.includes(option) ? "default" : "outline"}
+                  variant={formData.supplements?.includes(option) ? "default" : "outline"}
                   onClick={() => toggleArrayField("supplements", option)}
-                  className={`h-14 text-base font-semibold ${formData.supplements.includes(option) ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                  className={`h-14 text-base font-semibold ${formData.supplements?.includes(option) ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
                 >
-                  {formData.supplements.includes(option) && <Check className="w-4 h-4 mr-2" />}
+                  {formData.supplements?.includes(option) && <Check className="w-4 h-4 mr-2" />}
                   {option}
                 </Button>
               ))}
@@ -816,11 +816,11 @@ const Assessment = () => {
               {["Running", "Sled", "Wall Balls", "Burpees", "Endurance", "Transitions"].map((option) => (
                 <Button
                   key={option}
-                  variant={formData.biggestWeakness.includes(option) ? "default" : "outline"}
+                  variant={formData.biggestWeakness?.includes(option) ? "default" : "outline"}
                   onClick={() => toggleArrayField("biggestWeakness", option)}
-                  className={`h-14 text-base font-semibold ${formData.biggestWeakness.includes(option) ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                  className={`h-14 text-base font-semibold ${formData.biggestWeakness?.includes(option) ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
                 >
-                  {formData.biggestWeakness.includes(option) && <Check className="w-4 h-4 mr-2" />}
+                  {formData.biggestWeakness?.includes(option) && <Check className="w-4 h-4 mr-2" />}
                   {option}
                 </Button>
               ))}
@@ -871,11 +871,11 @@ const Assessment = () => {
               {["Massage", "Sauna", "Ice Bath", "Stretching", "Meditation", "None"].map((option) => (
                 <Button
                   key={option}
-                  variant={formData.recoveryPractices.includes(option) ? "default" : "outline"}
+                  variant={formData.recoveryPractices?.includes(option) ? "default" : "outline"}
                   onClick={() => toggleArrayField("recoveryPractices", option)}
-                  className={`h-14 text-base font-semibold ${formData.recoveryPractices.includes(option) ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                  className={`h-14 text-base font-semibold ${formData.recoveryPractices?.includes(option) ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
                 >
-                  {formData.recoveryPractices.includes(option) && <Check className="w-4 h-4 mr-2" />}
+                  {formData.recoveryPractices?.includes(option) && <Check className="w-4 h-4 mr-2" />}
                   {option}
                 </Button>
               ))}
