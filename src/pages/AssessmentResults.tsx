@@ -126,31 +126,66 @@ const AssessmentResults = () => {
             </div>
             <div className="space-y-3">
               {[
-                { label: "Running", score: results.indices.Running, icon: "🏃" },
-                { label: "Strength", score: results.indices.Strength, icon: "💪" },
-                { label: "Engine", score: results.indices.Engine, icon: "⚡" },
-                { label: "Mobility", score: results.indices.Mobility, icon: "🧘" },
-                { label: "Nutrition", score: results.indices.Nutrition, icon: "🍎" },
-                { label: "Lifestyle", score: results.indices.Lifestyle, icon: "🍸" },
+                { 
+                  label: "Running", 
+                  score: results.indices.Running, 
+                  icon: "🏃",
+                  description: "1km pace, 30min distance, frequency, endurance"
+                },
+                { 
+                  label: "Strength", 
+                  score: results.indices.Strength, 
+                  icon: "💪",
+                  description: "Sled push/pull, wall balls, deadlift, lunges, farmer carry"
+                },
+                { 
+                  label: "Engine", 
+                  score: results.indices.Engine, 
+                  icon: "⚡",
+                  description: "Rowing, skiing, bike power, engine capacity"
+                },
+                { 
+                  label: "Mobility", 
+                  score: results.indices.Mobility, 
+                  icon: "🧘",
+                  description: "Mobility frequency, sleep hours & quality, injury severity"
+                },
+                { 
+                  label: "Nutrition", 
+                  score: results.indices.Nutrition, 
+                  icon: "🍎",
+                  description: "Water, protein, fruit/veg, fiber, supplements, diet type"
+                },
+                { 
+                  label: "Lifestyle", 
+                  score: results.indices.Lifestyle, 
+                  icon: "🍸",
+                  description: "Training frequency, stress, work schedule, recovery practices"
+                },
               ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{item.icon}</span>
-                    <span className="font-medium">{item.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-32 h-2 bg-secondary rounded-full overflow-hidden">
-                      <motion.div
-                        className={`h-full ${getScoreColor(item.score)}`}
-                        style={{ backgroundColor: "currentColor" }}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(item.score / 10) * 100}%` }}
-                        transition={{ duration: 0.5, delay: 0.4 }}
-                      />
+                <div key={item.label} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{item.icon}</span>
+                      <span className="font-medium">{item.label}</span>
                     </div>
-                    <span className={`font-bold text-lg w-10 text-right ${getScoreColor(item.score)}`}>
-                      {item.score.toFixed(1)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-32 h-2 bg-secondary rounded-full overflow-hidden">
+                        <motion.div
+                          className={`h-full ${getScoreColor(item.score)}`}
+                          style={{ backgroundColor: "currentColor" }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(item.score / 10) * 100}%` }}
+                          transition={{ duration: 0.5, delay: 0.4 }}
+                        />
+                      </div>
+                      <span className={`font-bold text-lg w-10 text-right ${getScoreColor(item.score)}`}>
+                        {item.score.toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground ml-8">
+                    {item.description}
                   </div>
                 </div>
               ))}

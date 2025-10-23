@@ -36,7 +36,6 @@ const Assessment = () => {
     engineLevel: "",
     hasInjuries: "",
     injuryDetails: "",
-    injuryType: "",
     injurySeverity: "",
     mobilityFrequency: "",
     sleepHours: "",
@@ -554,23 +553,6 @@ const Assessment = () => {
                   rows={3}
                 />
                 
-                {/* Injury Type */}
-                <div>
-                  <Label className="text-base font-bold mb-4 block">🩹 Injury Type</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {["Upper Body", "Lower Body", "Core", "General"].map((option) => (
-                      <Button
-                        key={option}
-                        variant={formData.injuryType === option ? "default" : "outline"}
-                        onClick={() => updateField("injuryType", option)}
-                        className={`h-14 text-base font-semibold ${formData.injuryType === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
-                      >
-                        {formData.injuryType === option && <Check className="w-4 h-4 mr-2" />}
-                        {option}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
 
                 {/* Injury Severity */}
                 <div>
