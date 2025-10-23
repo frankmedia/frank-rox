@@ -306,16 +306,16 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
   
   const ageMultiplier = getAgeAdjustment(age);
   
-  // Base station time anchors (slow, fast) in seconds
+  // Base station time anchors (slow, fast) in seconds - 5% more conservative
   const baseAnchors: { [key: string]: [number, number] } = {
-    ski: [340, 250],
-    push: [240, 150],
-    pull: [220, 135],
-    burps: [300, 210],
-    row: [330, 230],
-    carry: [160, 100],
-    lunges: [270, 180],
-    wb: [360, 240],
+    ski: [357, 263],      // +5% slower
+    push: [252, 158],     // +5% slower
+    pull: [231, 142],      // +5% slower
+    burps: [315, 221],     // +5% slower
+    row: [347, 242],       // +5% slower
+    carry: [168, 105],     // +5% slower
+    lunges: [284, 189],    // +5% slower
+    wb: [378, 252],        // +5% slower
   };
   
   // Apply sex and age adjustments to anchors
@@ -351,12 +351,12 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
     "Fatigue Factor": fat.toFixed(2)
   });
   
-  // Run total
-  const FM = clamp(1.12 - 0.01 * (EngineIndex - 5) - 0.005 * (StrengthIndex - 5), 1.02, 1.20);
+  // Run total - 5% more conservative fade multiplier
+  const FM = clamp(1.17 - 0.01 * (EngineIndex - 5) - 0.005 * (StrengthIndex - 5), 1.07, 1.25);
   const RunTotal = 8 * km1Sec * FM;
   
-  // Enhanced transitions calculation
-  let Transitions = 120;
+  // Enhanced transitions calculation - 5% more conservative
+  let Transitions = 126;
   
   // Experience-based adjustments
   const hyroxRacesCompleted = parseInt(data.hyroxRacesCompleted) || 0;

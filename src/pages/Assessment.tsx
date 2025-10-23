@@ -339,7 +339,7 @@ const Assessment = () => {
                 <Label className="text-sm font-medium mb-2 block">Push</Label>
                 <Input
                   type="number"
-                  placeholder="e.g. 125"
+                  placeholder="150"
                   value={formData.sledPushMax}
                   onChange={(e) => updateField("sledPushMax", e.target.value)}
                   className="text-base h-14"
@@ -349,7 +349,7 @@ const Assessment = () => {
                 <Label className="text-sm font-medium mb-2 block">Pull</Label>
                 <Input
                   type="number"
-                  placeholder="e.g. 75"
+                  placeholder="120"
                   value={formData.sledPullMax}
                   onChange={(e) => updateField("sledPullMax", e.target.value)}
                   className="text-base h-14"
