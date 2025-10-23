@@ -1,0 +1,15 @@
+This is a placeholder for the 180x180 Apple touch icon. You'll need to replace this with an actual PNG image.
+
+Apple touch icon requirements:
+- Size: 180x180 pixels
+- Format: PNG
+- No transparency (iOS adds rounded corners automatically)
+- No border (iOS adds border automatically)
+
+Recommended design:
+- Background: Black (#000000)
+- Primary: Yellow (#FFCC00)
+- Icon: Flame symbol
+- Text: "RoxPT" or just flame icon
+- Ensure good contrast for visibility
+
