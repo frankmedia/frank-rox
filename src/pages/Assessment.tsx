@@ -19,6 +19,7 @@ const Assessment = () => {
     category: "",
     hasCompeted: "",
     mainGoal: "",
+    age: "",
     km1Time: "",
     distance30Min: "",
     runFrequency: "",
@@ -35,13 +36,26 @@ const Assessment = () => {
     engineLevel: "",
     hasInjuries: "",
     injuryDetails: "",
+    injuryType: "",
+    injurySeverity: "",
     mobilityFrequency: "",
     sleepHours: "",
+    sleepQuality: "",
     dietType: [],
     waterIntake: "",
     supplements: [],
+    proteinIntake: "",
+    fruitVegServings: "",
+    fiberIntake: "",
+    nutritionUncertain: "",
     trainingFrequency: "",
     biggestWeakness: [],
+    stressLevel: "",
+    workSchedule: "",
+    recoveryPractices: [],
+    hyroxRacesCompleted: "",
+    functionalFitnessYears: "",
+    competitionLevel: "",
   });
 
   // Load existing data from localStorage
@@ -197,6 +211,21 @@ const Assessment = () => {
                 </Button>
               ))}
             </div>
+          </div>
+
+          {/* Q4 - Age */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">Age</Label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min="16"
+              max="80"
+              placeholder="Enter your age"
+              value={formData.age}
+              onChange={(e) => updateField("age", e.target.value)}
+              className="text-base h-14"
+            />
           </div>
         </div>
       ),
@@ -513,13 +542,51 @@ const Assessment = () => {
               ))}
             </div>
             {formData.hasInjuries === "Yes" && (
-              <Textarea
-                placeholder="Please describe (e.g., tight hips, knee pain)"
-                value={formData.injuryDetails}
-                onChange={(e) => updateField("injuryDetails", e.target.value)}
-                className="text-base"
-                rows={3}
-              />
+              <div className="space-y-4">
+                <Textarea
+                  placeholder="Please describe (e.g., tight hips, knee pain)"
+                  value={formData.injuryDetails}
+                  onChange={(e) => updateField("injuryDetails", e.target.value)}
+                  className="text-base"
+                  rows={3}
+                />
+                
+                {/* Injury Type */}
+                <div>
+                  <Label className="text-base font-bold mb-4 block">🩹 Injury Type</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {["Upper Body", "Lower Body", "Core", "General"].map((option) => (
+                      <Button
+                        key={option}
+                        variant={formData.injuryType === option ? "default" : "outline"}
+                        onClick={() => updateField("injuryType", option)}
+                        className={`h-14 text-base font-semibold ${formData.injuryType === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                      >
+                        {formData.injuryType === option && <Check className="w-4 h-4 mr-2" />}
+                        {option}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Injury Severity */}
+                <div>
+                  <Label className="text-base font-bold mb-4 block">⚡ Severity (1-5)</Label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {[1, 2, 3, 4, 5].map((level) => (
+                      <Button
+                        key={level}
+                        variant={formData.injurySeverity === level.toString() ? "default" : "outline"}
+                        onClick={() => updateField("injurySeverity", level.toString())}
+                        className={`h-14 text-base font-semibold ${formData.injurySeverity === level.toString() ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                      >
+                        {formData.injurySeverity === level.toString() && <Check className="w-4 h-4 mr-2" />}
+                        {level}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
@@ -543,7 +610,7 @@ const Assessment = () => {
 
           {/* Q20 */}
           <div>
-            <Label className="text-base font-bold mb-4 block">Average sleep hours per night</Label>
+            <Label className="text-base font-bold mb-4 block">😴 Average sleep hours per night</Label>
             <Input
               type="number"
               step="0.5"
@@ -552,6 +619,24 @@ const Assessment = () => {
               onChange={(e) => updateField("sleepHours", e.target.value)}
               className="text-base h-14"
             />
+          </div>
+
+          {/* Q21 - Sleep Quality */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">⭐ Sleep Quality (1-5)</Label>
+            <div className="grid grid-cols-5 gap-2">
+              {[1, 2, 3, 4, 5].map((level) => (
+                <Button
+                  key={level}
+                  variant={formData.sleepQuality === level.toString() ? "default" : "outline"}
+                  onClick={() => updateField("sleepQuality", level.toString())}
+                  className={`h-14 text-base font-semibold ${formData.sleepQuality === level.toString() ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.sleepQuality === level.toString() && <Check className="w-4 h-4 mr-2" />}
+                  {level}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       ),
@@ -582,20 +667,25 @@ const Assessment = () => {
 
           {/* Q22 */}
           <div>
-            <Label className="text-base font-bold mb-4 block">Water intake (liters per day)</Label>
-            <Input
-              type="number"
-              step="0.5"
-              placeholder="e.g. 2.5"
-              value={formData.waterIntake}
-              onChange={(e) => updateField("waterIntake", e.target.value)}
-              className="text-base h-14"
-            />
+            <Label className="text-base font-bold mb-4 block">💧 Water intake (liters per day)</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {["1.5", "2", "2.5", "3+"].map((option) => (
+                <Button
+                  key={option}
+                  variant={formData.waterIntake === option ? "default" : "outline"}
+                  onClick={() => updateField("waterIntake", option)}
+                  className={`h-14 text-base font-semibold ${formData.waterIntake === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.waterIntake === option && <Check className="w-4 h-4 mr-2" />}
+                  {option}L
+                </Button>
+              ))}
+            </div>
           </div>
 
           {/* Q23 */}
           <div>
-            <Label className="text-base font-bold mb-4 block">Supplements you use</Label>
+            <Label className="text-base font-bold mb-4 block">💊 Supplements you use</Label>
             <div className="grid grid-cols-2 gap-3">
               {["Creatine", "Protein", "Electrolytes", "None"].map((option) => (
                 <Button
@@ -611,6 +701,80 @@ const Assessment = () => {
             </div>
             <p className="text-sm text-muted-foreground mt-2">You can select multiple</p>
           </div>
+
+          {/* Q24 - Protein Intake */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">🥩 Protein intake (g/kg bodyweight)</Label>
+            <Input
+              type="number"
+              step="0.1"
+              placeholder="e.g. 1.5"
+              value={formData.proteinIntake}
+              onChange={(e) => updateField("proteinIntake", e.target.value)}
+              className="text-base h-14"
+            />
+          </div>
+
+          {/* Q25 - Fruit & Vegetables */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">🥬 Fruit & vegetables (servings per day)</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {["1-2", "3-4", "5-6", "7+"].map((option) => (
+                <Button
+                  key={option}
+                  variant={formData.fruitVegServings === option ? "default" : "outline"}
+                  onClick={() => updateField("fruitVegServings", option)}
+                  className={`h-14 text-base font-semibold ${formData.fruitVegServings === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.fruitVegServings === option && <Check className="w-4 h-4 mr-2" />}
+                  {option}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Q26 - Fiber Intake */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">🌾 Fiber intake (grams per day)</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {["<15g", "15-25g", "25-35g", "35g+"].map((option) => (
+                <Button
+                  key={option}
+                  variant={formData.fiberIntake === option ? "default" : "outline"}
+                  onClick={() => updateField("fiberIntake", option)}
+                  className={`h-14 text-base font-semibold ${formData.fiberIntake === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.fiberIntake === option && <Check className="w-4 h-4 mr-2" />}
+                  {option}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Q27 - Nutrition Uncertainty */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">❓ Unsure about nutrition?</Label>
+            <div className="grid grid-cols-2 gap-3">
+              {["Yes", "No"].map((option) => (
+                <Button
+                  key={option}
+                  variant={formData.nutritionUncertain === option ? "default" : "outline"}
+                  onClick={() => updateField("nutritionUncertain", option)}
+                  className={`h-14 text-base font-semibold ${formData.nutritionUncertain === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.nutritionUncertain === option && <Check className="w-4 h-4 mr-2" />}
+                  {option}
+                </Button>
+              ))}
+            </div>
+            {formData.nutritionUncertain === "Yes" && (
+              <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  💡 Consider booking a nutrition consultation with our experts!
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       ),
     },
@@ -621,7 +785,7 @@ const Assessment = () => {
         <div className="space-y-6">
           {/* Q24 */}
           <div>
-            <Label className="text-base font-bold mb-4 block">Training sessions per week</Label>
+            <Label className="text-base font-bold mb-4 block">🏋️ Training sessions per week</Label>
             <Input
               type="number"
               placeholder="e.g. 4"
@@ -633,7 +797,7 @@ const Assessment = () => {
 
           {/* Q25 */}
           <div>
-            <Label className="text-base font-bold mb-4 block">What's your biggest weakness in HYROX?</Label>
+            <Label className="text-base font-bold mb-4 block">🎯 What's your biggest weakness in HYROX?</Label>
             <div className="grid grid-cols-2 gap-3">
               {["Running", "Sled", "Wall Balls", "Burpees", "Endurance", "Transitions"].map((option) => (
                 <Button
@@ -648,6 +812,122 @@ const Assessment = () => {
               ))}
             </div>
             <p className="text-sm text-muted-foreground mt-2">You can select multiple</p>
+          </div>
+
+          {/* Q26 - Stress Level */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">😰 Stress level (1-5)</Label>
+            <div className="grid grid-cols-5 gap-2">
+              {[1, 2, 3, 4, 5].map((level) => (
+                <Button
+                  key={level}
+                  variant={formData.stressLevel === level.toString() ? "default" : "outline"}
+                  onClick={() => updateField("stressLevel", level.toString())}
+                  className={`h-14 text-base font-semibold ${formData.stressLevel === level.toString() ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.stressLevel === level.toString() && <Check className="w-4 h-4 mr-2" />}
+                  {level}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Q27 - Work Schedule */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">💼 Work schedule impact (1-5)</Label>
+            <div className="grid grid-cols-5 gap-2">
+              {[1, 2, 3, 4, 5].map((level) => (
+                <Button
+                  key={level}
+                  variant={formData.workSchedule === level.toString() ? "default" : "outline"}
+                  onClick={() => updateField("workSchedule", level.toString())}
+                  className={`h-14 text-base font-semibold ${formData.workSchedule === level.toString() ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.workSchedule === level.toString() && <Check className="w-4 h-4 mr-2" />}
+                  {level}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Q28 - Recovery Practices */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">🧘 Recovery practices</Label>
+            <div className="grid grid-cols-2 gap-3">
+              {["Massage", "Sauna", "Ice Bath", "Stretching", "Meditation", "None"].map((option) => (
+                <Button
+                  key={option}
+                  variant={formData.recoveryPractices.includes(option) ? "default" : "outline"}
+                  onClick={() => toggleArrayField("recoveryPractices", option)}
+                  className={`h-14 text-base font-semibold ${formData.recoveryPractices.includes(option) ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.recoveryPractices.includes(option) && <Check className="w-4 h-4 mr-2" />}
+                  {option}
+                </Button>
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">You can select multiple</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Experience & Competition",
+      icon: "🏆",
+      questions: (
+        <div className="space-y-6">
+          {/* Q29 - HYROX Races Completed */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">🏁 HYROX races completed</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {["0", "1", "2-4", "5+"].map((option) => (
+                <Button
+                  key={option}
+                  variant={formData.hyroxRacesCompleted === option ? "default" : "outline"}
+                  onClick={() => updateField("hyroxRacesCompleted", option)}
+                  className={`h-14 text-base font-semibold ${formData.hyroxRacesCompleted === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.hyroxRacesCompleted === option && <Check className="w-4 h-4 mr-2" />}
+                  {option}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Q30 - Functional Fitness Years */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">💪 Years of functional fitness</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {["<1", "1-2", "3-5", "5+"].map((option) => (
+                <Button
+                  key={option}
+                  variant={formData.functionalFitnessYears === option ? "default" : "outline"}
+                  onClick={() => updateField("functionalFitnessYears", option)}
+                  className={`h-14 text-base font-semibold ${formData.functionalFitnessYears === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.functionalFitnessYears === option && <Check className="w-4 h-4 mr-2" />}
+                  {option}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Q31 - Competition Level */}
+          <div>
+            <Label className="text-base font-bold mb-4 block">🥇 Competition level</Label>
+            <div className="grid grid-cols-3 gap-3">
+              {["Recreational", "Competitive", "Elite"].map((option) => (
+                <Button
+                  key={option}
+                  variant={formData.competitionLevel === option ? "default" : "outline"}
+                  onClick={() => updateField("competitionLevel", option)}
+                  className={`h-14 text-base font-semibold ${formData.competitionLevel === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.competitionLevel === option && <Check className="w-4 h-4 mr-2" />}
+                  {option}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       ),
