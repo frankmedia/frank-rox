@@ -70,7 +70,7 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
             <h3 className="text-lg font-bold text-foreground">{exercise.name}</h3>
           </div>
           <div className="flex items-center gap-2">
-            {/* Heart rate zone tracking for cardio/running/HIIT */}
+            {/* Heart rate zone tracking for cardio/running/HIIT/circuit/AMRAP */}
             {["cardio", "running", "hiit", "circuit", "amrap"].includes(exercise.type) && (
               <InlineHeartRate />
             )}
