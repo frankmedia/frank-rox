@@ -786,13 +786,19 @@ const Assessment = () => {
           {/* Q24 */}
           <div>
             <Label className="text-base font-bold mb-4 block">🏋️ Training sessions per week</Label>
-            <Input
-              type="number"
-              placeholder="e.g. 4"
-              value={formData.trainingFrequency}
-              onChange={(e) => updateField("trainingFrequency", e.target.value)}
-              className="text-base h-14"
-            />
+            <div className="grid grid-cols-5 gap-2">
+              {["2", "3", "4", "5", "6"].map((option) => (
+                <Button
+                  key={option}
+                  variant={formData.trainingFrequency === option ? "default" : "outline"}
+                  onClick={() => updateField("trainingFrequency", option)}
+                  className={`h-14 text-base font-semibold ${formData.trainingFrequency === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.trainingFrequency === option && <Check className="w-4 h-4 mr-2" />}
+                  {option}
+                </Button>
+              ))}
+            </div>
           </div>
 
           {/* Q25 */}
