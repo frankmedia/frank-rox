@@ -614,14 +614,19 @@ const Assessment = () => {
           {/* Q20 */}
           <div>
             <Label className="text-base font-bold mb-4 block">😴 Average sleep hours per night</Label>
-            <Input
-              type="number"
-              step="0.5"
-              placeholder="e.g. 7"
-              value={formData.sleepHours}
-              onChange={(e) => updateField("sleepHours", e.target.value)}
-              className="text-base h-14"
-            />
+            <div className="grid grid-cols-5 gap-2">
+              {["4", "5", "6", "7", "8"].map((option) => (
+                <Button
+                  key={option}
+                  variant={formData.sleepHours === option ? "default" : "outline"}
+                  onClick={() => updateField("sleepHours", option)}
+                  className={`h-14 text-base font-semibold ${formData.sleepHours === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                >
+                  {formData.sleepHours === option && <Check className="w-4 h-4 mr-2" />}
+                  {option}h
+                </Button>
+              ))}
+            </div>
           </div>
 
           {/* Q21 - Sleep Quality */}
