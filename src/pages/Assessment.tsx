@@ -962,7 +962,7 @@ const Assessment = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container max-w-2xl mx-auto px-4 py-6">
+      <main className="container max-w-2xl mx-auto px-4 py-4">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSection}
@@ -971,7 +971,7 @@ const Assessment = () => {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
           >
-            <Card className="p-6 mb-6">
+            <Card className="p-6 mb-4">
               <div className="flex items-center gap-3 mb-6">
                 <span className="text-4xl">{currentSectionData.icon}</span>
                 <h2 className="text-2xl font-bold">{currentSectionData.title}</h2>
@@ -992,7 +992,7 @@ const Assessment = () => {
             <Button
               size="lg"
               onClick={handleNext}
-              className="w-3/4 h-16 text-lg font-bold bg-yellow-500 text-black hover:bg-yellow-600"
+              className={`${currentSection === 0 ? 'w-full' : 'w-3/4'} h-16 text-lg font-bold bg-yellow-500 text-black hover:bg-yellow-600`}
             >
               Next Section
             </Button>
@@ -1000,7 +1000,7 @@ const Assessment = () => {
             <Button
               size="lg"
               onClick={handleSubmit}
-              className="w-3/4 h-16 text-lg font-bold bg-yellow-500 text-black hover:bg-yellow-600"
+              className={`${currentSection === 0 ? 'w-full' : 'w-3/4'} h-16 text-lg font-bold bg-yellow-500 text-black hover:bg-yellow-600`}
             >
               Complete Assessment
             </Button>
