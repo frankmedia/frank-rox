@@ -436,7 +436,11 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
   
   let runs = 2 + (RunningIndex < 5 ? 1 : 0) + (EngineIndex < 5 ? 0.5 : 0);
   if (biggestWeakness.includes("Running")) runs = Math.max(runs, 3);
-  runs = Math.round(clamp(runs, 2, 4));
+  // Focus more on running if it's the lowest score
+  if (RunningIndex < 5 && RunningIndex < StrengthIndex && RunningIndex < EngineIndex) {
+    runs = Math.max(runs, 4);
+  }
+  runs = Math.round(clamp(runs, 2, 5));
   
   let weeks = 8;
   if (TotalScore >= 8.0) weeks = 8;
@@ -462,14 +466,17 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
     .slice(0, 2)
     .map(([name]) => name);
   
-  // Top strengths
+  // Focus areas (lowest scores that need improvement)
   const indexScores = [
     { name: "Running", score: RunningIndex },
     { name: "Strength", score: StrengthIndex },
     { name: "Engine", score: EngineIndex },
+    { name: "Mobility", score: MobilityIndex },
+    { name: "Nutrition", score: NutritionIndex },
+    { name: "Lifestyle", score: LifestyleIndex },
   ];
   const strengths = indexScores
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => a.score - b.score)  // Sort by lowest scores first
     .slice(0, 2)
     .map((s) => s.name);
   
