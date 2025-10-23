@@ -332,28 +332,31 @@ const Assessment = () => {
       icon: "🏋️",
       questions: (
         <div className="space-y-6">
-          {/* Q8 */}
+          {/* Q8 & Q9 - Sled Push & Pull */}
           <div>
-            <Label className="text-base font-bold mb-4 block">Sled Push - Max load for 10m (kg)</Label>
-            <Input
-              type="number"
-              placeholder="e.g. 125"
-              value={formData.sledPushMax}
-              onChange={(e) => updateField("sledPushMax", e.target.value)}
-              className="text-base h-14"
-            />
-          </div>
-
-          {/* Q9 */}
-          <div>
-            <Label className="text-base font-bold mb-4 block">Sled Pull - Max load for 10m (kg)</Label>
-            <Input
-              type="number"
-              placeholder="e.g. 75"
-              value={formData.sledPullMax}
-              onChange={(e) => updateField("sledPullMax", e.target.value)}
-              className="text-base h-14"
-            />
+            <Label className="text-base font-bold mb-4 block">🛷 Sled Push & Pull - Max load for 10m (kg)</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Push</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 125"
+                  value={formData.sledPushMax}
+                  onChange={(e) => updateField("sledPushMax", e.target.value)}
+                  className="text-base h-14"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Pull</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 75"
+                  value={formData.sledPullMax}
+                  onChange={(e) => updateField("sledPullMax", e.target.value)}
+                  className="text-base h-14"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Q10 */}
