@@ -98,9 +98,9 @@ const Profile = () => {
   };
 
   const handleConnectStrava = () => {
-    const clientId = (import.meta as any).env?.VITE_STRAVA_CLIENT_ID;
+    const clientId = (window as any).__VITE_STRAVA_CLIENT_ID__ as string;
     const defaultRedirect = `${window.location.origin}/auth/strava/callback`;
-    const redirectUri = (import.meta as any).env?.VITE_STRAVA_REDIRECT_URI || defaultRedirect;
+    const redirectUri = ((window as any).__VITE_STRAVA_REDIRECT_URI__ as string) || defaultRedirect;
     if (!clientId) {
       toast.error("Missing Strava config", { description: "Set VITE_STRAVA_CLIENT_ID in your env" });
       return;

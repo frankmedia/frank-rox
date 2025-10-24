@@ -1,11 +1,20 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  // Load env (both .env and process.env)
+  const env = loadEnv(mode, process.cwd(), "");
+  // Bridge non-VITE_* to VITE_* so you can use the same names everywhere
+  const defineVars = {
+    __VITE_STRAVA_CLIENT_ID__: JSON.stringify(env.VITE_STRAVA_CLIENT_ID || env.STRAVA_CLIENT_ID || ""),
+    __VITE_STRAVA_REDIRECT_URI__: JSON.stringify(env.VITE_STRAVA_REDIRECT_URI || env.STRAVA_REDIRECT_URI || ""),
+  };
+
+  return {
   server: {
     host: "::",
     port: 8081,
@@ -72,9 +81,11 @@ export default defineConfig(({ mode }) => ({
       },
     }),
   ].filter(Boolean),
+  define: defineVars,
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
-}));
+  };
+});
