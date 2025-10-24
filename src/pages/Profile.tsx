@@ -120,7 +120,7 @@ const Profile = () => {
       redirect_uri: redirectUri,
       response_type: "code",
       approval_prompt: "auto",
-      scope: "read"
+      scope: "read,profile:read_all,activity:read_all"
     });
     window.location.href = `https://www.strava.com/oauth/authorize?${params.toString()}`;
   };
