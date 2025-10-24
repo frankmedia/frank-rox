@@ -9,7 +9,7 @@ import { getUserSheet } from "@/services/googleSheets";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
-import { isPWA, usePWAInstall } from "@/utils/pwaInstall";
+import { usePWAInstall } from "@/utils/pwaInstall";
 import { isHealthAvailable, requestHealthPermissions, getHealthDataForAssessment } from "@/services/healthKit";
 
 const Profile = () => {
@@ -148,7 +148,7 @@ const Profile = () => {
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">Connections</h3>
           <div className="space-y-3">
             {/* Native: Health Connect / HealthKit */}
-            {Capacitor.isNativePlatform() ? (
+            {Capacitor.isNativePlatform() && (
               <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
                   <HeartPulse className={`w-5 h-5 ${healthConnected ? "text-green-500" : "text-muted-foreground"}`} />
@@ -162,21 +162,6 @@ const Profile = () => {
                 <Button size="sm" onClick={handleConnectHealth} disabled={!healthSupported}>
                   {healthConnected ? "Reconnect" : "Connect"}
                 </Button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-3">
-                  <HeartPulse className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Health (Apple / Android)</p>
-                    <p className="text-xs text-muted-foreground">Install the native app to connect</p>
-                  </div>
-                </div>
-                {!installed && (
-                  <Button size="sm" variant="outline" onClick={promptInstall}>
-                    Install App
-                  </Button>
-                )}
               </div>
             )}
 
