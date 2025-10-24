@@ -108,11 +108,11 @@ const Profile = () => {
   };
 
   const handleConnectStrava = () => {
-    const clientId = (window as any).__VITE_STRAVA_CLIENT_ID__ as string;
+    const clientId = (import.meta as any).env?.VITE_STRAVA_CLIENT_ID as string;
     const defaultRedirect = `${window.location.origin}/auth/strava/callback`;
-    const redirectUri = ((window as any).__VITE_STRAVA_REDIRECT_URI__ as string) || defaultRedirect;
+    const redirectUri = ((import.meta as any).env?.VITE_STRAVA_REDIRECT_URI as string) || defaultRedirect;
     if (!clientId) {
-      toast.error("Missing Strava config", { description: "Set STRAVA_CLIENT_ID and STRAVA_REDIRECT_URI in your env" });
+      toast.error("Missing Strava config", { description: "Set VITE_STRAVA_CLIENT_ID and VITE_STRAVA_REDIRECT_URI in your env" });
       return;
     }
     const params = new URLSearchParams({
