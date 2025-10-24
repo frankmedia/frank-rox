@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { usePWAInstall } from "@/utils/pwaInstall";
 import { isHealthAvailable, requestHealthPermissions, getHealthDataForAssessment } from "@/services/healthKit";
-import { importRecentActivities } from "@/services/strava";
+import { importRecentActivities, saveActivitiesToLog } from "@/services/strava";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -128,7 +128,8 @@ const Profile = () => {
   const handleSyncStrava = async () => {
     try {
       const r = await importRecentActivities();
-      toast.success(`Imported ${r.count} activities from Strava`);
+      const result = await saveActivitiesToLog(r.activities);
+      toast.success(`Synced Strava: saved ${result.saved}, skipped ${result.skipped}`);
     } catch (e: any) {
       toast.error("Strava sync failed", { description: e?.message || String(e) });
     }
