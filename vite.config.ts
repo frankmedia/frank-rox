@@ -12,6 +12,13 @@ export default defineConfig(({ mode }) => {
   const defineVars = {
     __VITE_STRAVA_CLIENT_ID__: JSON.stringify(env.VITE_STRAVA_CLIENT_ID || env.STRAVA_CLIENT_ID || ""),
     __VITE_STRAVA_REDIRECT_URI__: JSON.stringify(env.VITE_STRAVA_REDIRECT_URI || env.STRAVA_REDIRECT_URI || ""),
+    // Supabase: allow using SUPABASE_URL / NEXT_PUBLIC_* without duplicating as VITE_*
+    __VITE_SUPABASE_URL__: JSON.stringify(
+      env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL || ""
+    ),
+    __VITE_SUPABASE_ANON_KEY__: JSON.stringify(
+      env.VITE_SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || ""
+    ),
   };
 
   return {
