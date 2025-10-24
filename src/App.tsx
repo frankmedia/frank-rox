@@ -21,6 +21,12 @@ import PTCheckIn from "./pages/PTCheckIn";
 import AccessDenied from "./pages/AccessDenied";
 import NotFound from "./pages/NotFound";
 import AuthStravaCallback from "./pages/AuthStravaCallback";
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import Clients from "./pages/admin/Clients";
+import Workouts from "./pages/admin/Workouts";
+import Notes from "./pages/admin/Notes";
+import Settings from "./pages/admin/Settings";
 
 const queryClient = new QueryClient();
 
@@ -123,6 +129,21 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Admin routes (coach/PT) */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="clients" element={<Clients />} />
+              <Route path="workouts" element={<Workouts />} />
+              <Route path="notes" element={<Notes />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
             <Route
               path="/exercise/:id"
               element={
