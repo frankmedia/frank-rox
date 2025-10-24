@@ -1,5 +1,11 @@
 {
   "rewrites": [
+    { "source": "/auth/strava/callback", "destination": "/index.html" }
+  ]
+}
+
+{
+  "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"

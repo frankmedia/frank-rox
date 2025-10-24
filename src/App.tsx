@@ -20,6 +20,7 @@ import AssessmentResults from "./pages/AssessmentResults";
 import PTCheckIn from "./pages/PTCheckIn";
 import AccessDenied from "./pages/AccessDenied";
 import NotFound from "./pages/NotFound";
+import AuthStravaCallback from "./pages/AuthStravaCallback";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,11 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/auth/strava/callback"
+              element={<AuthStravaCallback />}
+            />
+
             <Route
               path="/assessment"
               element={
