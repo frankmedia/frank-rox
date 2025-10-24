@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { usePWAInstall } from "@/utils/pwaInstall";
 import { isHealthAvailable, requestHealthPermissions, getHealthDataForAssessment } from "@/services/healthKit";
+import { importRecentActivities } from "@/services/strava";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -124,6 +125,15 @@ const Profile = () => {
     window.location.href = `https://www.strava.com/oauth/authorize?${params.toString()}`;
   };
 
+  const handleSyncStrava = async () => {
+    try {
+      const r = await importRecentActivities();
+      toast.success(`Imported ${r.count} activities from Strava`);
+    } catch (e: any) {
+      toast.error("Strava sync failed", { description: e?.message || String(e) });
+    }
+  };
+
   const initials = user.name
     .split(" ")
     .map((n) => n[0])
@@ -183,9 +193,14 @@ const Profile = () => {
                   <p className="text-xs text-muted-foreground">{stravaConnected ? "Connected" : "Connect to import activities"}</p>
                 </div>
               </div>
-              <Button size="sm" variant="outline" onClick={handleConnectStrava}>
-                {stravaConnected ? "Reconnect" : "Connect Strava"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={handleConnectStrava}>
+                  {stravaConnected ? "Reconnect" : "Connect"}
+                </Button>
+                {stravaConnected && (
+                  <Button size="sm" onClick={handleSyncStrava}>Sync</Button>
+                )}
+              </div>
             </div>
 
             {/* PWA install (Web only) */}
