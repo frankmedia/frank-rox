@@ -80,7 +80,7 @@ const Workouts = () => {
                   <div className="font-medium">{p.name}</div>
                   <div className="text-xs text-zinc-400">{p.cycle_days || 14} days</div>
                 </div>
-                <button className="text-yellow-500 hover:underline">Open</button>
+                <a href={`/admin/plans/${p.id}`} className="text-yellow-500 hover:underline">Open</a>
               </div>
             ))}
           </div>

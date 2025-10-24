@@ -27,6 +27,7 @@ import Clients from "./pages/admin/Clients";
 import Workouts from "./pages/admin/Workouts";
 import Notes from "./pages/admin/Notes";
 import Settings from "./pages/admin/Settings";
+import PlanDetail from "./pages/admin/PlanDetail";
 
 const queryClient = new QueryClient();
 
@@ -143,6 +144,7 @@ const App = () => (
               <Route path="workouts" element={<Workouts />} />
               <Route path="notes" element={<Notes />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="plans/:id" element={<PlanDetail />} />
             </Route>
             <Route
               path="/exercise/:id"
