@@ -4,20 +4,26 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, LogOut, Mail, User as UserIcon, ClipboardCheck } from "lucide-react";
+import { ExternalLink, LogOut, Mail, User as UserIcon, ClipboardCheck, HeartPulse, Link2, Smartphone } from "lucide-react";
 import { getUserSheet } from "@/services/googleSheets";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
+import { isPWA, usePWAInstall } from "@/utils/pwaInstall";
+import { isHealthAvailable, requestHealthPermissions, getHealthDataForAssessment } from "@/services/healthKit";
 
 const Profile = () => {
   const navigate = useNavigate();
   const { user: authUser, logout } = useAuth();
+  const { installable, installed, promptInstall } = usePWAInstall();
   const [userSheet, setUserSheet] = useState<{
     user: string;
     password: string;
     sheetUrl: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [healthSupported, setHealthSupported] = useState<boolean>(false);
+  const [healthConnected, setHealthConnected] = useState<boolean>(false);
 
   const user = {
     email: authUser?.email || "frank@example.com",
@@ -41,6 +47,24 @@ const Profile = () => {
     loadUserSheet();
   }, []);
 
+  // Detect native and health availability
+  useEffect(() => {
+    const detect = async () => {
+      try {
+        const native = Capacitor.isNativePlatform();
+        if (!native) {
+          setHealthSupported(false);
+          return;
+        }
+        const { available } = await isHealthAvailable();
+        setHealthSupported(!!available);
+      } catch (e) {
+        setHealthSupported(false);
+      }
+    };
+    detect();
+  }, []);
+
   const handleSignOut = () => {
     logout();
     toast.success("Signed out successfully");
@@ -51,6 +75,44 @@ const Profile = () => {
     if (userSheet?.sheetUrl) {
       window.open(userSheet.sheetUrl, "_blank");
     }
+  };
+
+  const handleConnectHealth = async () => {
+    try {
+      if (!healthSupported) {
+        toast.error("Health not available", { description: "Install the native app to connect Apple Health / Health Connect" });
+        return;
+      }
+      const ok = await requestHealthPermissions();
+      if (!ok) {
+        toast.error("Permissions denied", { description: "Please enable permissions in your Health app" });
+        return;
+      }
+      // Optional: light import to confirm connectivity
+      await getHealthDataForAssessment();
+      setHealthConnected(true);
+      toast.success("Health connected", { description: "You're ready to sync sleep and HR data" });
+    } catch (e) {
+      toast.error("Failed to connect health");
+    }
+  };
+
+  const handleConnectStrava = () => {
+    const clientId = (import.meta as any).env?.VITE_STRAVA_CLIENT_ID;
+    const defaultRedirect = `${window.location.origin}/auth/strava/callback`;
+    const redirectUri = (import.meta as any).env?.VITE_STRAVA_REDIRECT_URI || defaultRedirect;
+    if (!clientId) {
+      toast.error("Missing Strava config", { description: "Set VITE_STRAVA_CLIENT_ID in your env" });
+      return;
+    }
+    const params = new URLSearchParams({
+      client_id: String(clientId),
+      redirect_uri: redirectUri,
+      response_type: "code",
+      approval_prompt: "auto",
+      scope: "read"
+    });
+    window.location.href = `https://www.strava.com/oauth/authorize?${params.toString()}`;
   };
 
   const initials = user.name
@@ -81,6 +143,76 @@ const Profile = () => {
       </header>
 
       <main className="container max-w-2xl mx-auto px-4 -mt-6">
+        {/* Connections */}
+        <Card className="p-6 mb-4 shadow-lg">
+          <h3 className="text-sm font-semibold text-muted-foreground mb-3">Connections</h3>
+          <div className="space-y-3">
+            {/* Native: Health Connect / HealthKit */}
+            {Capacitor.isNativePlatform() ? (
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <HeartPulse className={`w-5 h-5 ${healthConnected ? "text-green-500" : "text-muted-foreground"}`} />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Health (Apple / Android)</p>
+                    <p className="text-xs text-muted-foreground">
+                      {healthSupported ? (healthConnected ? "Connected" : "Available") : "Not available on this device"}
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" onClick={handleConnectHealth} disabled={!healthSupported}>
+                  {healthConnected ? "Reconnect" : "Connect"}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <HeartPulse className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Health (Apple / Android)</p>
+                    <p className="text-xs text-muted-foreground">Install the native app to connect</p>
+                  </div>
+                </div>
+                {!installed && (
+                  <Button size="sm" variant="outline" onClick={promptInstall}>
+                    Install App
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Web/PWA: Strava */}
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-3">
+                <Link2 className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Strava</p>
+                  <p className="text-xs text-muted-foreground">Connect to import activities</p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" onClick={handleConnectStrava}>
+                Connect Strava
+              </Button>
+            </div>
+
+            {/* PWA install (Web only) */}
+            {!Capacitor.isNativePlatform() && !installed && (
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <Smartphone className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Install RoxPT</p>
+                    <p className="text-xs text-muted-foreground">Add to your home screen for faster access</p>
+                  </div>
+                </div>
+                {installable && (
+                  <Button size="sm" onClick={promptInstall}>
+                    Install
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
         {/* HYROX Assessment - Entire card is clickable */}
         <Card 
           className="p-6 mb-4 shadow-lg bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 border-2 border-yellow-500 cursor-pointer hover:border-yellow-400 hover:shadow-xl active:scale-[0.98] transition-all duration-200"
