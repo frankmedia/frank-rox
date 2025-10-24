@@ -24,6 +24,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [healthSupported, setHealthSupported] = useState<boolean>(false);
   const [healthConnected, setHealthConnected] = useState<boolean>(false);
+  const [stravaConnected, setStravaConnected] = useState<boolean>(false);
 
   const user = {
     email: authUser?.email || "frank@example.com",
@@ -63,6 +64,14 @@ const Profile = () => {
       }
     };
     detect();
+  }, []);
+
+  // Read Strava connected flag
+  useEffect(() => {
+    try {
+      const flag = localStorage.getItem("strava_connected");
+      setStravaConnected(flag === "true");
+    } catch {}
   }, []);
 
   const handleSignOut = () => {
@@ -171,11 +180,11 @@ const Profile = () => {
                 <Link2 className="w-5 h-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Strava</p>
-                  <p className="text-xs text-muted-foreground">Connect to import activities</p>
+                  <p className="text-xs text-muted-foreground">{stravaConnected ? "Connected" : "Connect to import activities"}</p>
                 </div>
               </div>
               <Button size="sm" variant="outline" onClick={handleConnectStrava}>
-                Connect Strava
+                {stravaConnected ? "Reconnect" : "Connect Strava"}
               </Button>
             </div>
 
