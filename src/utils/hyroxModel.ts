@@ -395,7 +395,7 @@ export const calculateHyroxResults = (data: AssessmentData): HyroxResults => {
   
   // Estimated time
   const estSec = RunTotal + StationsTotal + Transitions;
-  const lowSec = estSec * 1.03;
+  const lowSec = estSec * 0.97;
   const highSec = estSec * 1.08;
   
   console.log("⏱️ Enhanced Race Time Breakdown:", {
