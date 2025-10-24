@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import AdminLayout from "./AdminLayout";
 import { supabase } from "@/utils/supabaseClient";
 
 interface Note { id: number; title: string }
@@ -27,7 +26,6 @@ const Notes = () => {
   }, []);
 
   return (
-    <AdminLayout>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold">Notes</h1>
       </div>
@@ -47,7 +45,6 @@ const Notes = () => {
           </ul>
         )}
       </div>
-    </AdminLayout>
   );
 };
 

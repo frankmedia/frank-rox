@@ -1,5 +1,3 @@
-import AdminLayout from "./AdminLayout";
-
 const Stat = ({ label, value }: { label: string; value: string }) => (
   <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
     <div className="text-zinc-400 text-sm">{label}</div>
@@ -9,7 +7,7 @@ const Stat = ({ label, value }: { label: string; value: string }) => (
 
 const AdminDashboard = () => {
   return (
-    <AdminLayout>
+    <>
       <h1 className="text-2xl font-semibold mb-4">Coach Dashboard</h1>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <Stat label="Active Clients" value="—" />
@@ -28,7 +26,7 @@ const AdminDashboard = () => {
           <p className="text-zinc-400 text-sm">No data yet.</p>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 };
 
