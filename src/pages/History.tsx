@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Medal, TrendingUp, Loader2, Calendar, Dumbbell, Clock, BookOpen, Trophy } from "lucide-react";
+import { ArrowLeft, Medal, TrendingUp, Loader2, Calendar, Dumbbell, Clock, BookOpen, Trophy, Activity } from "lucide-react";
 import { fetchWorkoutHistory, fetchUserStats } from "@/services/googleSheets";
 import { WorkoutLog, UserStats } from "@/types/workout";
 import { toast } from "sonner";
@@ -379,8 +379,17 @@ const History = () => {
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <Dumbbell className="w-4 h-4 text-primary" />
+                                    {entry.exercise.startsWith("Strava:") ? (
+                                      <Activity className="w-4 h-4 text-yellow-500" />
+                                    ) : (
+                                      <Dumbbell className="w-4 h-4 text-primary" />
+                                    )}
                                     <h4 className="font-semibold text-foreground">{entry.exercise}</h4>
+                                    {entry.exercise.startsWith("Strava:") && (
+                                      <Badge className="bg-yellow-500 text-black font-bold text-[10px] px-2 py-0.5">
+                                        Strava
+                                      </Badge>
+                                    )}
                                     {entry.isPB && (
                                       <Badge className="bg-primary/10 text-primary border border-primary/20 text-xs">
                                         <Medal className="w-3 h-3 mr-1" />
@@ -388,10 +397,31 @@ const History = () => {
                                       </Badge>
                                     )}
                                   </div>
+                                  {/* Strava details line */}
+                                  {entry.exercise.startsWith("Strava:") && (
+                                    <div className="ml-6 text-xs text-muted-foreground">
+                                      {(() => {
+                                        const sport = entry.exercise.replace("Strava:", "").trim();
+                                        const parts: string[] = [];
+                                        if (entry.distance) parts.push(`${entry.distance.toFixed(1)} km`);
+                                        if (entry.duration) parts.push(`${entry.duration} min`);
+                                        return (
+                                          <span>
+                                            {sport}
+                                            {parts.length > 0 && ` — ${parts.join(" • ")}`}
+                                          </span>
+                                        );
+                                      })()}
+                                    </div>
+                                  )}
                                   {entry.rating && entry.rating > 0 && (
                                     <div className="mt-1 ml-6">
                                       <FlameRating value={entry.rating} readonly size="sm" />
                                     </div>
+                                  )}
+                                  {/* Notes (e.g., device, avg HR) */}
+                                  {entry.notes && (
+                                    <p className="ml-6 mt-1 text-xs text-muted-foreground">{entry.notes}</p>
                                   )}
                                 </div>
                                 <div className="text-right ml-4">
