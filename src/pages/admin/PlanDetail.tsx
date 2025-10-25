@@ -758,17 +758,17 @@ const PlanDetail = () => {
       toast({ description: 'Group updated' });
     }
 
-    const label = (t:string)=> <span className="block text-[11px] text-zinc-400 mb-1">{t}</span>;
+    const label = (t:string)=> <span className="block text-sm text-zinc-400 mb-1">{t}</span>;
     const input = (val:any,setter:any,placeholder?:string)=> (
-      <input className="w-full h-9 bg-black border border-zinc-700 rounded px-3" type="number" value={val} placeholder={placeholder||''} onChange={e=>setter(e.target.value?Number(e.target.value):'')} />
+      <input className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm" type="number" value={val} placeholder={placeholder||''} onChange={e=>setter(e.target.value?Number(e.target.value):'')} />
     );
 
     return (
-      <div className="px-3 pb-3 text-xs space-y-3">
+      <div className="px-3 pb-3 text-sm space-y-3">
         {isTabata && (
           <div className="grid grid-cols-2 gap-3">
             <div>{label('Rounds')}{input(rounds,setRounds,'8')}</div>
-            <div className="col-span-2 text-[11px] text-zinc-500">Note: 20s on + 10s rest</div>
+            <div className="col-span-2 text-sm text-zinc-500">Note: 20s on + 10s rest</div>
           </div>
         )}
         {!isTabata && (fmt==='hiit' || fmt==='sprint' || fmt==='intervals' || g.blockType==='intervals') && (
@@ -777,7 +777,7 @@ const PlanDetail = () => {
             <div>{label('Rest (seconds)')}{input(rest,setRest,'30')}</div>
             <div>{label('Rounds')}{input(rounds,setRounds,'8')}</div>
             <div>{label('Intensity')}
-              <input className="w-full h-9 bg-black border border-zinc-700 rounded px-3" value={intensity} placeholder="Z3 / hard" onChange={e=>setIntensity(e.target.value)} />
+              <input className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm" value={intensity} placeholder="Z3 / hard" onChange={e=>setIntensity(e.target.value)} />
             </div>
           </div>
         )}

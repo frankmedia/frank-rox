@@ -46,27 +46,28 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      {/* Wrap only non-admin routes with DataProvider to skip Google Sheets on admin */}
-      <DataProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <ScrollToTop />
-            <TopProgressBar />
-            <Routes>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <ScrollToTop />
+          <TopProgressBar />
+          <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/access-denied" element={<AccessDenied />} />
+            <Route path="/auth/strava/callback" element={<AuthStravaCallback />} />
             
-            {/* Protected routes with bottom navigation */}
+            {/* Protected routes with bottom navigation - wrapped in DataProvider */}
             <Route
               path="/"
               element={
                 <ProtectedRoute>
-                  <AuthenticatedLayout>
-                    <Overview />
-                  </AuthenticatedLayout>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <Overview />
+                    </AuthenticatedLayout>
+                  </DataProvider>
                 </ProtectedRoute>
               }
             />
@@ -74,9 +75,11 @@ const App = () => (
               path="/today"
               element={
                 <ProtectedRoute>
-                  <AuthenticatedLayout>
-                    <Today />
-                  </AuthenticatedLayout>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <Today />
+                    </AuthenticatedLayout>
+                  </DataProvider>
                 </ProtectedRoute>
               }
             />
@@ -84,9 +87,11 @@ const App = () => (
               path="/history"
               element={
                 <ProtectedRoute>
-                  <AuthenticatedLayout>
-                    <History />
-                  </AuthenticatedLayout>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <History />
+                    </AuthenticatedLayout>
+                  </DataProvider>
                 </ProtectedRoute>
               }
             />
@@ -94,24 +99,23 @@ const App = () => (
               path="/profile"
               element={
                 <ProtectedRoute>
-                  <AuthenticatedLayout>
-                    <Profile />
-                  </AuthenticatedLayout>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <Profile />
+                    </AuthenticatedLayout>
+                  </DataProvider>
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/auth/strava/callback"
-              element={<AuthStravaCallback />}
-            />
-
-            <Route
               path="/assessment"
               element={
                 <ProtectedRoute>
-                  <AuthenticatedLayout>
-                    <Assessment />
-                  </AuthenticatedLayout>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <Assessment />
+                    </AuthenticatedLayout>
+                  </DataProvider>
                 </ProtectedRoute>
               }
             />
@@ -119,9 +123,11 @@ const App = () => (
               path="/assessment-results"
               element={
                 <ProtectedRoute>
-                  <AuthenticatedLayout>
-                    <AssessmentResults />
-                  </AuthenticatedLayout>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <AssessmentResults />
+                    </AuthenticatedLayout>
+                  </DataProvider>
                 </ProtectedRoute>
               }
             />
@@ -129,20 +135,28 @@ const App = () => (
               path="/pt-checkin"
               element={
                 <ProtectedRoute>
-                  <AuthenticatedLayout>
-                    <PTCheckIn />
-                  </AuthenticatedLayout>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <PTCheckIn />
+                    </AuthenticatedLayout>
+                  </DataProvider>
                 </ProtectedRoute>
               }
             />
-            {/* Admin routes (coach/PT) - mounted outside DataProvider to skip Sheets */}
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </DataProvider>
-      <TooltipProvider>
-        <BrowserRouter>
-          <Routes>
+            <Route
+              path="/exercise/:id"
+              element={
+                <ProtectedRoute>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <ExerciseDetail />
+                    </AuthenticatedLayout>
+                  </DataProvider>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Admin routes (coach/PT) - NO DataProvider to skip Google Sheets */}
             <Route
               path="/admin"
               element={
@@ -160,16 +174,6 @@ const App = () => (
               <Route path="settings" element={<Settings />} />
               <Route path="plans/:id" element={<PlanDetail />} />
             </Route>
-            <Route
-              path="/exercise/:id"
-              element={
-                <ProtectedRoute>
-                  <AuthenticatedLayout>
-                    <ExerciseDetail />
-                  </AuthenticatedLayout>
-                </ProtectedRoute>
-              }
-            />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
