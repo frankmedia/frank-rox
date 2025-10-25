@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/utils/supabaseClient";
 
 const Stat = ({ label, value }: { label: string; value: string }) => (
@@ -45,6 +46,20 @@ const AdminDashboard = () => {
 
   return (
     <>
+      {/* PT Profile Card */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-yellow-500 flex items-center justify-center text-black text-2xl font-bold">
+            NS
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">Natalie Shanahan</h2>
+            <p className="text-zinc-400 text-sm">nat_shanahan@hotmail.com</p>
+            <p className="text-yellow-500 text-xs mt-1">HYROX Coach • Strength & Conditioning</p>
+          </div>
+        </div>
+      </div>
+
       <h1 className="text-2xl font-semibold mb-4">Coach Dashboard</h1>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <Stat label="Active Clients" value={activeClients} />
@@ -65,7 +80,12 @@ const AdminDashboard = () => {
               {recentClients.map((c) => (
                 <li key={c.id} className="flex items-center justify-between text-sm">
                   <span className="text-zinc-200">New client</span>
-                  <span className="font-medium text-yellow-500">{c.name}</span>
+                  <Link 
+                    to={`/admin/clients`}
+                    className="font-medium text-yellow-500 hover:text-yellow-400 transition-colors"
+                  >
+                    {c.name}
+                  </Link>
                 </li>
               ))}
             </ul>

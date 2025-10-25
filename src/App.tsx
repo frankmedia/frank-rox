@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import BottomNav from "@/components/BottomNav";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { TopProgressBar } from "@/components/TopProgressBar";
 import Login from "./pages/Login";
 import Overview from "./pages/Overview";
 import Today from "./pages/Today";
@@ -28,6 +29,8 @@ import Workouts from "./pages/admin/Workouts";
 import Notes from "./pages/admin/Notes";
 import Settings from "./pages/admin/Settings";
 import PlanDetail from "./pages/admin/PlanDetail";
+import Exercises from "./pages/admin/Exercises";
+import ClientFeedback from "./pages/admin/ClientFeedback";
 
 const queryClient = new QueryClient();
 
@@ -43,12 +46,14 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      {/* Wrap only non-admin routes with DataProvider to skip Google Sheets on admin */}
       <DataProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
             <ScrollToTop />
+            <TopProgressBar />
             <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
@@ -130,7 +135,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            {/* Admin routes (coach/PT) */}
+            {/* Admin routes (coach/PT) - mounted outside DataProvider to skip Sheets */}
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </DataProvider>
+      <TooltipProvider>
+        <BrowserRouter>
+          <Routes>
             <Route
               path="/admin"
               element={
@@ -141,7 +153,9 @@ const App = () => (
             >
               <Route index element={<AdminDashboard />} />
               <Route path="clients" element={<Clients />} />
+              <Route path="clients/:clientId/feedback" element={<ClientFeedback />} />
               <Route path="workouts" element={<Workouts />} />
+              <Route path="exercises" element={<Exercises />} />
               <Route path="notes" element={<Notes />} />
               <Route path="settings" element={<Settings />} />
               <Route path="plans/:id" element={<PlanDetail />} />
@@ -162,7 +176,6 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
-      </DataProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

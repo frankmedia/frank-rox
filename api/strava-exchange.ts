@@ -20,9 +20,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Missing code" });
     }
 
-    const clientId = process.env.STRAVA_CLIENT_ID;
-    const clientSecret = process.env.STRAVA_CLIENT_SECRET;
-    const redirectUri = process.env.STRAVA_REDIRECT_URI;
+    const clientId = process.env.STRAVA_CLIENT_ID || process.env.VITE_STRAVA_CLIENT_ID;
+    const clientSecret = process.env.STRAVA_CLIENT_SECRET || process.env.VITE_STRAVA_CLIENT_SECRET;
+    const redirectUri = process.env.STRAVA_REDIRECT_URI || process.env.VITE_STRAVA_REDIRECT_URI;
 
     if (!clientId || !clientSecret) {
       return res.status(500).json({ error: "Server missing Strava credentials" });
