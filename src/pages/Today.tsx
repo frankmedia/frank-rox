@@ -5,18 +5,23 @@ import { ExerciseMedia } from "@/components/ExerciseMedia";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Trophy, ClipboardList, Flame, Info, Loader2, Share2 } from "lucide-react";
+import { Trophy, ClipboardList, Flame, Info, Share2, Loader2, CheckCircle2, SkipForward } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingDaySelector } from "@/components/TrainingDaySelector";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { ExerciseListSkeleton } from "@/components/ExerciseCardSkeleton";
 import { shareWorkout } from "@/utils/share";
+import { supabase } from "@/utils/supabaseClient";
 
 const Today = () => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const { exercises, loading, error, refresh } = useData();
+  const [syncing, setSyncing] = useState(false);
+  
   // Function to find the next incomplete training day
   const findNextIncompleteDay = () => {
     try {
@@ -184,6 +189,194 @@ const Today = () => {
       }
     };
   }, []);
+
+  // Sync today's workout logs to Supabase
+  const syncLogsToSupabase = async (status: 'completed' | 'skipped') => {
+    if (!authUser?.clientId) {
+      toast.error("Not logged in");
+      return false;
+    }
+
+    try {
+      setSyncing(true);
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (!userStr) return false;
+
+      const user = JSON.parse(userStr);
+      const storageKey = `workoutHistory_${user.username}`;
+      const workoutHistory = localStorage.getItem(storageKey);
+      
+      if (!workoutHistory) {
+        // No logs to sync, just mark day as skipped/completed
+        if (status === 'completed') {
+          toast.error("No exercises logged today");
+          return false;
+        }
+      }
+
+      const logs = workoutHistory ? JSON.parse(workoutHistory) : [];
+      const todayDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+      
+      // Filter logs for today only
+      const todayLogs = logs.filter((log: any) => 
+        log.timestamp && log.timestamp.startsWith(todayDate)
+      );
+
+      // Get active plan ID
+      const { data: plan } = await supabase
+        .from('plans')
+        .select('id')
+        .eq('client_id', authUser.clientId)
+        .eq('status', 'active')
+        .single();
+
+      const planId = plan?.id || null;
+      const trainingDay = parseInt(currentTrainingDay);
+
+      // Bulk insert workout logs if status is 'completed'
+      if (status === 'completed' && todayLogs.length > 0) {
+        const workoutLogsToInsert = todayLogs.map((log: any) => ({
+          client_id: authUser.clientId,
+          plan_id: planId,
+          training_day: trainingDay,
+          exercise_name: log.exerciseName,
+          logged_at: new Date(log.timestamp).toISOString(),
+          weight: log.weight || null,
+          weights: log.weights || null,
+          sets: log.sets || null,
+          reps: log.reps || null,
+          duration_min: log.duration || null,
+          distance_km: log.distance || null,
+          notes: log.notes || null,
+          rating: log.rating || null,
+          is_pb: log.isPB || false,
+        }));
+
+        console.log('💾 Syncing to Supabase:', {
+          count: workoutLogsToInsert.length,
+          clientId: authUser.clientId,
+          planId,
+          trainingDay,
+          logs: workoutLogsToInsert
+        });
+
+        const { error: logsError } = await supabase
+          .from('workout_logs')
+          .insert(workoutLogsToInsert);
+
+        if (logsError) {
+          console.error('❌ Error inserting logs:', logsError);
+          throw logsError;
+        }
+        
+        console.log('✅ Successfully synced logs to Supabase');
+        
+        // Clear today's logs from localStorage after successful sync
+        const newLogs = logs.filter((log: any) => 
+          !(log.timestamp && log.timestamp.startsWith(todayDate))
+        );
+        localStorage.setItem(storageKey, JSON.stringify(newLogs));
+        console.log('🧹 Cleared synced logs from localStorage');
+      } else if (status === 'completed') {
+        console.log('⚠️  No logs to sync (todayLogs.length = 0)');
+      }
+
+      // Calculate stats
+      let totalWeight = 0;
+      let totalDuration = 0;
+      let totalDistance = 0;
+
+      todayLogs.forEach((log: any) => {
+        if (log.weights && Array.isArray(log.weights)) {
+          totalWeight += log.weights.reduce((sum: number, w: number) => sum + w, 0);
+        } else if (log.weight) {
+          totalWeight += log.weight;
+        }
+        if (log.duration) totalDuration += log.duration;
+        if (log.distance) totalDistance += log.distance;
+      });
+
+      // Mark day as completed/skipped
+      const { error: dayError } = await supabase
+        .from('completed_days')
+        .upsert({
+          client_id: authUser.clientId,
+          plan_id: planId,
+          day_index: trainingDay,
+          status,
+          total_exercises: todayLogs.length,
+          total_weight_kg: totalWeight,
+          total_duration_min: totalDuration,
+          total_distance_km: totalDistance,
+        }, {
+          onConflict: 'client_id,plan_id,day_index'
+        });
+
+      if (dayError) throw dayError;
+
+      // Also update localStorage for Overview page compatibility
+      const completedDaysKey = `completedDays_${user.username}`;
+      const completedDaysStr = localStorage.getItem(completedDaysKey);
+      const completedDays: number[] = completedDaysStr ? JSON.parse(completedDaysStr) : [];
+      
+      if (!completedDays.includes(trainingDay)) {
+        completedDays.push(trainingDay);
+        localStorage.setItem(completedDaysKey, JSON.stringify(completedDays));
+      }
+
+      return true;
+    } catch (err) {
+      console.error("Error syncing to Supabase:", err);
+      toast.error("Failed to sync workout");
+      return false;
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleCompleteDay = async () => {
+    const success = await syncLogsToSupabase('completed');
+    if (success) {
+      toast.success("Day completed! 🎉", {
+        description: "Your workout has been synced"
+      });
+      
+      // Advance to next day
+      const nextDay = (parseInt(currentTrainingDay) + 1).toString();
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userKey = `currentTrainingDay_${user.username}`;
+        localStorage.setItem(userKey, nextDay);
+        setCurrentTrainingDay(nextDay);
+      }
+      
+      // Refresh exercises for next day
+      await refresh();
+    }
+  };
+
+  const handleSkipDay = async () => {
+    const success = await syncLogsToSupabase('skipped');
+    if (success) {
+      toast.info("Day skipped", {
+        description: "Moving to next training day"
+      });
+      
+      // Advance to next day
+      const nextDay = (parseInt(currentTrainingDay) + 1).toString();
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userKey = `currentTrainingDay_${user.username}`;
+        localStorage.setItem(userKey, nextDay);
+        setCurrentTrainingDay(nextDay);
+      }
+      
+      // Refresh exercises for next day
+      await refresh();
+    }
+  };
 
   useEffect(() => {
     if (error) {
@@ -695,6 +888,51 @@ const Today = () => {
             {exercises.filter(ex => ex.type !== "intro").length === 0 && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No exercises planned for today</p>
+              </div>
+            )}
+
+            {/* Complete/Skip Day Buttons */}
+            {!loading && exercises.filter(ex => ex.type !== "intro").length > 0 && (
+              <div className="container max-w-2xl mx-auto px-4 py-6">
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleSkipDay}
+                    disabled={syncing}
+                    variant="outline"
+                    className="flex-1 h-12 text-base font-semibold"
+                  >
+                    {syncing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <SkipForward className="w-5 h-5 mr-2" />
+                        Skip Day
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={handleCompleteDay}
+                    disabled={syncing}
+                    className="flex-1 h-12 text-base font-semibold"
+                    style={{ backgroundColor: '#FFCC00', color: '#000' }}
+                  >
+                    {syncing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-5 h-5 mr-2" />
+                        Complete Day
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             )}
           </>

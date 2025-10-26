@@ -91,14 +91,14 @@ const Clients = () => {
       setLoading(prev => ({ ...prev, [clientId]: true }));
       // Mark any existing active plan as completed
       await supabase.from("plans").update({ status: "completed", end_date: new Date().toISOString() }).eq("client_id", clientId).eq("status", "active");
-      // Create new plan
+      // Create new plan as DRAFT (coach must click Send to activate)
       const { data, error } = await supabase
         .from("plans")
         .insert({
           name: "Untitled Plan",
           client_id: clientId,
-          status: "active",
-          start_date: new Date().toISOString(),
+          status: "draft",
+          start_date: null, // Will be set when sent
           cycle_days: 14,
           current_day: 1
         })
@@ -117,7 +117,7 @@ const Clients = () => {
       const daysInsert = await supabase.from("plan_days").insert(days);
       if (daysInsert.error) throw daysInsert.error;
       
-      toast({ description: "New plan created with 14 days" });
+      toast({ description: "New draft plan created with 14 days" });
       navigate(`/admin/plans/${newPlanId}`);
     } catch (e: any) {
       toast({ description: e?.message || "Failed to create plan", variant: "destructive" as any });

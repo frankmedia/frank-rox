@@ -4,17 +4,20 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Flame, ChevronRight, Dumbbell, PersonStanding, Info, Zap, Repeat, Target, Footprints, User, Heart, HandMetal, CheckCircle2 } from "lucide-react";
+import { Flame, ChevronRight, Dumbbell, PersonStanding, Info, Zap, Repeat, Target, Footprints, User, Heart, HandMetal, CheckCircle2, Trophy } from "lucide-react";
 import { fetchTodayExercises, getUserSheet, getMaxTrainingDay } from "@/services/googleSheets";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { TrainingDayGridSkeleton } from "@/components/TrainingDayGridSkeleton";
 import type { Exercise } from "@/types/workout";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/utils/supabaseClient";
 
 interface DaySummary {
   day: number;
   exercises: Exercise[];
   totalExercises: number;
   isCompleted: boolean;
+  isRestDay: boolean;
   hasWeights: boolean;
   hasBodyweight: boolean;
   hasRunning: boolean;
@@ -27,9 +30,11 @@ interface DaySummary {
 
 const Overview = () => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [daySummaries, setDaySummaries] = useState<DaySummary[]>([]);
   const [maxDay, setMaxDay] = useState(14);
+  const [allRaces, setAllRaces] = useState<Array<{ id: number; race_name: string; race_date: string }>>([]);
 
   useEffect(() => {
     const loadDays = async () => {
@@ -43,10 +48,38 @@ const Overview = () => {
         const max = await getMaxTrainingDay();
         setMaxDay(max);
 
+        // Get active plan from Supabase to check for rest days
+        let restDaysMap: Record<number, boolean> = {};
+        if (authUser?.clientId) {
+          const { data: plan } = await supabase
+            .from('plans')
+            .select('id')
+            .eq('client_id', authUser.clientId)
+            .eq('status', 'active')
+            .single();
+
+          if (plan) {
+            const { data: planDays } = await supabase
+              .from('plan_days')
+              .select('day_index, is_rest')
+              .eq('plan_id', plan.id);
+
+            if (planDays) {
+              restDaysMap = planDays.reduce((acc, pd) => {
+                acc[pd.day_index] = pd.is_rest || false;
+                return acc;
+              }, {} as Record<number, boolean>);
+            }
+          }
+        }
+
         // Load exercises for each day
         const summaries: DaySummary[] = [];
 
         for (let day = 1; day <= max; day++) {
+          // Check if this is a rest day from Supabase
+          const isRestDay = restDaysMap[day - 1] === true; // day_index is 0-based
+
           // Temporarily set the day in localStorage to fetch exercises
           const userStr = localStorage.getItem("frank_rock_user");
           if (!userStr) continue;
@@ -87,6 +120,7 @@ const Overview = () => {
             exercises,
             totalExercises: workoutExercises.length,
             isCompleted,
+            isRestDay,
             hasWeights,
             hasBodyweight,
             hasRunning,
@@ -107,7 +141,41 @@ const Overview = () => {
     };
 
     loadDays();
-  }, []);
+  }, [authUser?.clientId]);
+
+  // Load all upcoming races
+  useEffect(() => {
+    const loadRaces = async () => {
+      if (!authUser?.clientId) return;
+      
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase
+          .from('races')
+          .select('id, race_name, race_date')
+          .eq('client_id', authUser.clientId)
+          .gte('race_date', today)
+          .order('race_date', { ascending: true });
+        
+        if (!error && data) {
+          setAllRaces(data);
+        }
+      } catch (e) {
+        console.error("Error loading races:", e);
+      }
+    };
+    
+    loadRaces();
+  }, [authUser?.clientId]);
+
+  const calculateDaysUntil = (raceDate: string): number => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const race = new Date(raceDate);
+    race.setHours(0, 0, 0, 0);
+    const diffTime = race.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
 
   const handleDayClick = (day: number) => {
     // Update current training day
@@ -511,6 +579,67 @@ const Overview = () => {
           </div>
         </div>
 
+        {/* Race Schedule */}
+        {allRaces.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Trophy className="w-5 h-5" style={{ color: '#FFCC00' }} />
+              Race Schedule
+            </h3>
+            <div className="space-y-2">
+              {allRaces.map((race, index) => {
+                const days = calculateDaysUntil(race.race_date);
+                const isNext = index === 0;
+                
+                return (
+                  <Card
+                    key={race.id}
+                    className={`${
+                      isNext
+                        ? 'p-4 border-2 bg-[#FFCC00]/10'
+                        : 'p-2 border'
+                    } border-border`}
+                    style={isNext ? { borderColor: '#FFCC00' } : {}}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h4 className={`${
+                          isNext ? 'text-xl font-bold' : 'text-sm font-medium'
+                        } text-foreground break-words`}>
+                          {race.race_name}
+                        </h4>
+                        <p className={`${
+                          isNext ? 'text-sm' : 'text-xs'
+                        } text-muted-foreground mt-0.5`}>
+                          {new Date(race.race_date).toLocaleDateString('en-GB', { 
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric' 
+                          })}
+                        </p>
+                      </div>
+                      <div className={`flex-shrink-0 text-right ${
+                        isNext ? 'min-w-[80px]' : 'min-w-[60px]'
+                      }`}>
+                        <div className={`${
+                          isNext ? 'text-3xl' : 'text-xl'
+                        } font-bold`} style={{ color: '#FFCC00' }}>
+                          {days}
+                        </div>
+                        <div className={`${
+                          isNext ? 'text-xs' : 'text-[10px]'
+                        } text-muted-foreground uppercase tracking-wider`}>
+                          days
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Hero Image */}
         <motion.div 
           className="mb-6 rounded-lg overflow-hidden"
@@ -537,7 +666,7 @@ const Overview = () => {
               {/* Completion Badge */}
               {summary.isCompleted && (
                 <div className="absolute top-2 right-2">
-                  <CheckCircle2 className="w-8 h-8 fill-[#FFCC00] text-black" />
+                  <CheckCircle2 className="w-16 h-16 fill-[#22c55e] text-white" />
                 </div>
               )}
               
@@ -546,7 +675,10 @@ const Overview = () => {
                   <div className="flex items-center gap-3 mb-2">
                     <div
                       className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold"
-                      style={{ backgroundColor: '#FFCC00', color: '#000' }}
+                      style={{ 
+                        backgroundColor: summary.isRestDay ? '#6B7280' : '#FFCC00', 
+                        color: summary.isRestDay ? '#FFF' : '#000' 
+                      }}
                     >
                       {summary.day}
                     </div>
@@ -554,66 +686,72 @@ const Overview = () => {
                       <h3 className="text-lg font-bold text-foreground">
                         Day {summary.day}
                       </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {summary.totalExercises} exercises
-                      </p>
+                      {summary.isRestDay ? (
+                        <p className="text-sm text-muted-foreground">
+                          Rest day
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {summary.totalExercises} exercises
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Exercise type icons */}
-                  <div className="flex flex-wrap items-center gap-2 ml-15">
-                    {summary.hasWeights && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Dumbbell className="w-4 h-4" />
-                        <span>Weights</span>
-                      </div>
-                    )}
-                    {summary.hasBodyweight && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <User className="w-4 h-4" />
-                        <span>Bodyweight</span>
-                      </div>
-                    )}
-                    {summary.hasRunning && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Footprints className="w-4 h-4" />
-                        <span>Running</span>
-                      </div>
-                    )}
-                    {summary.hasCardio && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Heart className="w-4 h-4" />
-                        <span>Cardio</span>
-                      </div>
-                    )}
-                    {summary.hasMobility && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <HandMetal className="w-4 h-4" />
-                        <span>Mobility</span>
-                      </div>
-                    )}
-                    {summary.hasHIIT && (
-                      <div className="flex items-center gap-1 text-xs" style={{ color: '#FF00B2' }}>
-                        <Flame className="w-4 h-4" />
-                        <span>HIIT</span>
-                      </div>
-                    )}
-                    {summary.hasCircuit && (
-                      <div className="flex items-center gap-1 text-xs" style={{ color: '#FFB74D' }}>
-                        <Repeat className="w-4 h-4" />
-                        <span>Circuit</span>
-                      </div>
-                    )}
-                    {summary.hasAMRAP && (
-                      <div className="flex items-center gap-1 text-xs" style={{ color: '#00E676' }}>
-                        <Target className="w-4 h-4" />
-                        <span>AMRAP</span>
-                      </div>
-                    )}
-                  </div>
+                  {/* Exercise type icons - only show if not a rest day */}
+                  {!summary.isRestDay && (
+                    <div className="flex flex-wrap items-center gap-2 ml-15">
+                      {summary.hasWeights && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Dumbbell className="w-4 h-4" />
+                          <span>Weights</span>
+                        </div>
+                      )}
+                      {summary.hasBodyweight && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <User className="w-4 h-4" />
+                          <span>Bodyweight</span>
+                        </div>
+                      )}
+                      {summary.hasRunning && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Footprints className="w-4 h-4" />
+                          <span>Running</span>
+                        </div>
+                      )}
+                      {summary.hasCardio && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Heart className="w-4 h-4" />
+                          <span>Cardio</span>
+                        </div>
+                      )}
+                      {summary.hasMobility && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <HandMetal className="w-4 h-4" />
+                          <span>Mobility</span>
+                        </div>
+                      )}
+                      {summary.hasHIIT && (
+                        <div className="flex items-center gap-1 text-xs" style={{ color: '#FF00B2' }}>
+                          <Flame className="w-4 h-4" />
+                          <span>HIIT</span>
+                        </div>
+                      )}
+                      {summary.hasCircuit && (
+                        <div className="flex items-center gap-1 text-xs" style={{ color: '#FFB74D' }}>
+                          <Repeat className="w-4 h-4" />
+                          <span>Circuit</span>
+                        </div>
+                      )}
+                      {summary.hasAMRAP && (
+                        <div className="flex items-center gap-1 text-xs" style={{ color: '#00E676' }}>
+                          <Target className="w-4 h-4" />
+                          <span>AMRAP</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-
-                <ChevronRight className="w-6 h-6 text-muted-foreground flex-shrink-0" />
               </div>
             </Card>
           ))}

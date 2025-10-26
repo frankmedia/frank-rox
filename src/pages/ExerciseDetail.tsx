@@ -16,10 +16,12 @@ import { CircuitWorkout } from "./CircuitWorkout";
 import { AMRAPWorkout } from "./AMRAPWorkout";
 import { triggerSuccessHaptic } from "@/utils/haptics";
 import { FlameRating } from "@/components/FlameRating";
+import { useData } from "@/contexts/DataContext";
 
 const ExerciseDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { exercises: contextExercises } = useData(); // Get exercises from DataContext
   
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -35,6 +37,17 @@ const ExerciseDetail = () => {
   const [restDuration, setRestDuration] = useState(60);
   const [showWorkoutTimer, setShowWorkoutTimer] = useState(false);
   const [workoutDuration, setWorkoutDuration] = useState(0);
+  const [currentSet, setCurrentSet] = useState(1); // Track current set for rehab
+  const [rehabTimerActive, setRehabTimerActive] = useState(false);
+  const [existingLogId, setExistingLogId] = useState<string | null>(null); // Track if exercise was already logged today
+  
+  // Edit mode for exercise plan
+  const [editMode, setEditMode] = useState(false);
+  const [editSets, setEditSets] = useState<number>(0);
+  const [editReps, setEditReps] = useState<number>(0);
+  const [editSuggestedKg, setEditSuggestedKg] = useState<number>(0);
+  const [editDuration, setEditDuration] = useState<number>(0);
+  const [editDistance, setEditDistance] = useState<number>(0);
   
   // Swipe gesture detection
   const [touchStart, setTouchStart] = useState(0);
@@ -69,42 +82,147 @@ const ExerciseDetail = () => {
     const loadExercises = async () => {
       try {
         setLoading(true);
-        const data = await fetchTodayExercises();
+        // Use exercises from DataContext (which uses Supabase)
+        const data = contextExercises.length > 0 ? contextExercises : await fetchTodayExercises();
         setExercises(data);
         
-        // Find exercise by ID or use first
-        const index = id ? data.findIndex(ex => ex.id === id) : 0;
-        const foundIndex = index >= 0 ? index : 0;
-        setCurrentIndex(foundIndex);
+        console.log('📋 Loaded exercises:', data.map(ex => ({ id: ex.id, name: ex.name })));
+        console.log('🔍 Looking for exercise ID:', id);
         
-        if (data[foundIndex]) {
-          const ex = data[foundIndex];
-          setExercise(ex);
+        // Find exercise by ID
+        if (id) {
+          const index = data.findIndex(ex => ex.id === id);
           
-          // Debug: Check if timer should show
-          console.log("🔍 Exercise Debug:", {
-            name: ex.name,
-            type: ex.type,
-            durationMin: ex.durationMin,
-            willShowTimer: !!ex.durationMin && ex.durationMin > 0
-          });
+          if (index >= 0) {
+            // Found the exercise by ID
+            setCurrentIndex(index);
+            const ex = data[index];
+            setExercise(ex);
           
-          // Reset rating for new exercise
-          setRating(0);
-          
-          // Pre-populate fields based on exercise data
-          if (ex.type === "weights" && ex.sets) {
-            // Initialize array with suggested weight for each set
-            const initialWeights = Array(ex.sets).fill(ex.suggestedKg?.toString() || "");
-            setSetWeights(initialWeights);
-            // Initialize all sets as not completed
-            setSetCompleted(Array(ex.sets).fill(false));
+            // Debug: Check if timer should show
+            console.log("🔍 Exercise Debug:", {
+              name: ex.name,
+              type: ex.type,
+              durationMin: ex.durationMin,
+              willShowTimer: !!ex.durationMin && ex.durationMin > 0
+            });
+            
+            // Reset rating and existing log ID for new exercise
+            setRating(0);
+            setExistingLogId(null);
+            setEditMode(false);
+            
+            // Initialize edit fields with current exercise data
+            setEditSets(ex.sets || 0);
+            setEditReps(ex.reps || 0);
+            setEditSuggestedKg(ex.suggestedKg || 0);
+            setEditDuration(ex.durationMin || 0);
+            setEditDistance(ex.targetDistanceKm || 0);
+            
+            // Pre-populate fields based on exercise data
+            if (ex.type === "weights" && ex.sets) {
+              // Initialize array with suggested weight for each set
+              const initialWeights = Array(ex.sets).fill(ex.suggestedKg?.toString() || "");
+              setSetWeights(initialWeights);
+              // Initialize all sets as not completed
+              setSetCompleted(Array(ex.sets).fill(false));
+            }
+            if (ex.targetDistanceKm) {
+              setTodaysDistance(ex.targetDistanceKm.toString());
+            }
+            if (ex.durationMin) {
+              setTodaysDuration(ex.durationMin.toString());
+            }
+            
+            // Check if this exercise was already logged today and pre-fill with that data
+            try {
+              const userStr = localStorage.getItem("frank_rock_user");
+              if (userStr) {
+                const user = JSON.parse(userStr);
+                const storageKey = `workoutHistory_${user.username}`;
+                const workoutHistory = localStorage.getItem(storageKey);
+                
+                if (workoutHistory) {
+                  const logs = JSON.parse(workoutHistory);
+                  const todayDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+                  
+                  console.log('🔍 Checking for existing log:', {
+                    exerciseName: ex.name,
+                    todayDate,
+                    totalLogs: logs.length,
+                    todayLogs: logs.filter((log: any) => log.timestamp && log.timestamp.startsWith(todayDate)).map((log: any) => log.exerciseName)
+                  });
+                  
+                  // Find today's log for this specific exercise (case-insensitive and trim whitespace)
+                  const todayLog = logs.find((log: any) => 
+                    log.exerciseName?.trim().toLowerCase() === ex.name.trim().toLowerCase() && 
+                    log.timestamp && 
+                    log.timestamp.startsWith(todayDate)
+                  );
+                  
+                  if (todayLog) {
+                    console.log('📝 Found existing log for today:', todayLog);
+                    
+                    // Store the log ID so we can update it instead of creating new
+                    setExistingLogId(todayLog.id);
+                    
+                    // Pre-fill with existing data
+                    if (ex.type === "weights" && todayLog.weights && Array.isArray(todayLog.weights)) {
+                      setSetWeights(todayLog.weights.map((w: number) => w.toString()));
+                      setSetCompleted(Array(todayLog.weights.length).fill(false)); // Allow re-editing
+                    } else if (todayLog.weight) {
+                      if (ex.sets) {
+                        setSetWeights(Array(ex.sets).fill(todayLog.weight.toString()));
+                      }
+                    }
+                    
+                    if (todayLog.sets && todayLog.reps) {
+                      // Sets/reps are read from exercise plan, but we could show a message
+                      console.log('✓ Exercise already logged with', todayLog.sets, 'sets and', todayLog.reps, 'reps');
+                    }
+                    
+                    if (todayLog.duration) {
+                      setTodaysDuration(todayLog.duration.toString());
+                    }
+                    
+                    if (todayLog.distance) {
+                      setTodaysDistance(todayLog.distance.toString());
+                    }
+                    
+                    if (todayLog.rating) {
+                      setRating(todayLog.rating);
+                    }
+                    
+                    toast.info("Exercise already logged today", {
+                      description: "Update your data and click 'Update Log' to save changes"
+                    });
+                  } else {
+                    // No existing log, clear the ID
+                    setExistingLogId(null);
+                  }
+                }
+              }
+            } catch (error) {
+              console.error("Error checking existing log:", error);
+            }
+          } else {
+            // ID not found - redirect to today page
+            console.warn("Exercise ID not found:", id, "- Redirecting to Today page");
+            toast.error("Exercise not found", {
+              description: "Redirecting to today's workout..."
+            });
+            navigate("/today");
+            return;
           }
-          if (ex.targetDistanceKm) {
-            setTodaysDistance(ex.targetDistanceKm.toString());
+        } else {
+          // No ID provided - use first non-intro exercise
+          let foundIndex = 0;
+          while (foundIndex < data.length && data[foundIndex].type === 'intro') {
+            foundIndex++;
           }
-          if (ex.durationMin) {
-            setTodaysDuration(ex.durationMin.toString());
+          if (foundIndex < data.length) {
+            setCurrentIndex(foundIndex);
+            setExercise(data[foundIndex]);
           }
         }
       } catch (error) {
@@ -116,7 +234,7 @@ const ExerciseDetail = () => {
     };
 
     loadExercises();
-  }, [id]);
+  }, [id]); // Only reload when ID changes, not when contextExercises updates
 
   const handleMarkAsDone = async (customRating?: number) => {
     if (!exercise) return;
@@ -131,12 +249,16 @@ const ExerciseDetail = () => {
       rating: finalRating > 0 ? finalRating : undefined, // Only send if rated (1-5)
     };
 
-    if (exercise.type === "cardio" || exercise.type === "running") {
+    if (exercise.type === "cardio") {
+      // Cardio exercises: duration only, no distance
+      data.duration = todaysDuration ? parseFloat(todaysDuration) : undefined;
+    } else if (exercise.type === "running") {
+      // Running exercises: both distance and duration
       data.distance = todaysDistance ? parseFloat(todaysDistance) : undefined;
-      data.duration = todaysDuration ? parseInt(todaysDuration) : undefined;
+      data.duration = todaysDuration ? parseFloat(todaysDuration) : undefined;
     } else if (exercise.type === "mobility") {
       // Mobility exercises: duration only, no PB tracking
-      data.duration = todaysDuration ? parseInt(todaysDuration) : undefined;
+      data.duration = todaysDuration ? parseFloat(todaysDuration) : undefined;
     } else if (exercise.type === "weights") {
       // Send array of weights for each set
       data.weights = setWeights.map(w => w ? parseFloat(w) : 0);
@@ -148,7 +270,73 @@ const ExerciseDetail = () => {
       data.reps = exercise.reps;
     }
 
-    // Log the exercise and check for PB
+    console.log('💾 Saving exercise data:', {
+      exerciseName: exercise.name,
+      exerciseType: exercise.type,
+      data,
+      todaysDuration,
+      todaysDistance,
+      existingLogId
+    });
+
+    // Check if we have any meaningful data to save (not just undefined rating)
+    const hasData = Object.values(data).some(value => value !== undefined && value !== null);
+    if (!hasData) {
+      toast.warning("No data to save", {
+        description: "Please enter duration, distance, or weight data before completing",
+        duration: 3000,
+      });
+      return;
+    }
+
+    // If this exercise was already logged today, UPDATE the existing log
+    if (existingLogId) {
+      try {
+        const userStr = localStorage.getItem("frank_rock_user");
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          const storageKey = `workoutHistory_${user.username}`;
+          const workoutHistory = localStorage.getItem(storageKey);
+          
+          if (workoutHistory) {
+            const logs = JSON.parse(workoutHistory);
+            const logIndex = logs.findIndex((log: any) => log.id === existingLogId);
+            
+            if (logIndex >= 0) {
+              // Update the existing log
+              logs[logIndex] = {
+                ...logs[logIndex],
+                ...data,
+                timestamp: new Date().toLocaleString("en-GB", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              };
+              
+              localStorage.setItem(storageKey, JSON.stringify(logs));
+              
+              toast.success("✓ Exercise updated!", {
+                description: "Your workout data has been saved",
+                duration: 2000,
+              });
+              
+              // Navigate back
+              navigate("/today");
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error updating log:", error);
+        toast.error("Failed to update exercise");
+        return;
+      }
+    }
+
+    // Otherwise, log as new exercise and check for PB
     const result = await logExercise(exercise.name, data);
     
     if (!result.success) {
@@ -215,7 +403,19 @@ const ExerciseDetail = () => {
 
   const handleStartWorkout = () => {
     // Use todaysDuration if user has entered a value, otherwise fallback to exercise.durationMin
-    const durationToUse = todaysDuration ? parseInt(todaysDuration) : exercise?.durationMin;
+    const durationToUse = todaysDuration ? parseFloat(todaysDuration) : exercise?.durationMin;
+    if (durationToUse && durationToUse > 0) {
+      setWorkoutDuration(durationToUse * 60); // Convert minutes to seconds
+      setShowWorkoutTimer(true);
+    } else {
+      toast.error("Please set a duration", {
+        description: "Enter a duration in minutes before starting"
+      });
+    }
+  };
+
+  const handleStartRehabTimer = () => {
+    const durationToUse = exercise?.durationMin;
     if (durationToUse) {
       setWorkoutDuration(durationToUse * 60); // Convert minutes to seconds
       setShowWorkoutTimer(true);
@@ -223,15 +423,25 @@ const ExerciseDetail = () => {
   };
 
   const handlePrevious = () => {
-    if (currentIndex > 0) {
-      const prevExercise = exercises[currentIndex - 1];
+    let prevIndex = currentIndex - 1;
+    // Skip intro exercises
+    while (prevIndex >= 0 && exercises[prevIndex].type === 'intro') {
+      prevIndex--;
+    }
+    if (prevIndex >= 0) {
+      const prevExercise = exercises[prevIndex];
       navigate(`/exercise/${prevExercise.id}`);
     }
   };
 
   const handleNext = () => {
-    if (currentIndex < exercises.length - 1) {
-      const nextExercise = exercises[currentIndex + 1];
+    let nextIndex = currentIndex + 1;
+    // Skip intro exercises
+    while (nextIndex < exercises.length && exercises[nextIndex].type === 'intro') {
+      nextIndex++;
+    }
+    if (nextIndex < exercises.length) {
+      const nextExercise = exercises[nextIndex];
       navigate(`/exercise/${nextExercise.id}`);
     }
   };
@@ -329,10 +539,185 @@ const ExerciseDetail = () => {
         <div className="space-y-4">
           {/* Exercise Title with Border */}
           <Card className="p-6 border-4 border-yellow-500">
-            <h2 className="text-4xl font-bold text-foreground text-center">
-              {exercise.name}
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-4xl font-bold text-foreground text-center flex-1">
+                {exercise.name}
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditMode(!editMode)}
+                className="ml-4"
+              >
+                {editMode ? "Cancel" : "Edit"}
+              </Button>
+            </div>
           </Card>
+          
+          {/* Edit Exercise Plan */}
+          {editMode && (
+            <Card className="p-6 bg-secondary/10 border-2 border-yellow-500">
+              <h3 className="text-4xl font-bold text-foreground mb-6">Edit Exercise Plan</h3>
+              <div className="space-y-6">
+                {(exercise.type === "weights" || exercise.type === "bodyweight") && (
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <Label className="text-3xl font-bold mb-3 block">Sets</Label>
+                      <Input
+                        type="number"
+                        value={editSets || ""}
+                        onChange={(e) => setEditSets(parseInt(e.target.value) || 0)}
+                        className="text-5xl h-20 text-center font-bold"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-3xl font-bold mb-3 block">Reps</Label>
+                      <Input
+                        type="number"
+                        value={editReps || ""}
+                        onChange={(e) => setEditReps(parseInt(e.target.value) || 0)}
+                        className="text-5xl h-20 text-center font-bold"
+                      />
+                    </div>
+                  </div>
+                )}
+                {exercise.type === "weights" && (
+                  <div>
+                    <Label className="text-3xl font-bold mb-3 block">Suggested Weight (kg)</Label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={editSuggestedKg || ""}
+                      onChange={(e) => setEditSuggestedKg(parseFloat(e.target.value) || 0)}
+                      className="text-5xl h-20 text-center font-bold"
+                    />
+                  </div>
+                )}
+                {(exercise.type === "cardio" || exercise.type === "running" || exercise.type === "mobility") && (
+                  <div>
+                    <Label className="text-3xl font-bold mb-3 block">Duration (min)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={editDuration || ""}
+                      onChange={(e) => setEditDuration(parseFloat(e.target.value) || 0)}
+                      className="text-5xl h-20 text-center font-bold"
+                    />
+                    <p className="text-sm text-muted-foreground text-center mt-2">
+                      e.g., 0.5 min = 30 seconds
+                    </p>
+                  </div>
+                )}
+                {exercise.type === "running" && (
+                  <div>
+                    <Label className="text-3xl font-bold mb-3 block">Target Distance (km)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={editDistance || ""}
+                      onChange={(e) => setEditDistance(parseFloat(e.target.value) || 0)}
+                      className="text-5xl h-20 text-center font-bold"
+                    />
+                  </div>
+                )}
+                <Button
+                  onClick={async () => {
+                    // Save changes to Supabase
+                    if (exercise) {
+                      try {
+                        const { supabase } = await import("@/utils/supabaseClient");
+                        
+                        // Prepare the updated extra data (use correct field names that match loading logic)
+                        const extra: any = {};
+                        
+                        if (exercise.type === "weights" || exercise.type === "bodyweight") {
+                          if (editSets) extra.sets = editSets;
+                          if (editReps) extra.reps = editReps;
+                        }
+                        
+                        if (exercise.type === "weights" && editSuggestedKg) {
+                          extra.weight = editSuggestedKg;
+                        }
+                        
+                        if ((exercise.type === "cardio" || exercise.type === "running" || exercise.type === "mobility") && editDuration) {
+                          extra.duration = editDuration; // Changed from duration_min to duration
+                        }
+                        
+                        if (exercise.type === "running" && editDistance) {
+                          extra.distance = editDistance; // Changed from distance_km to distance
+                        }
+                        
+                        // Update in Supabase
+                        console.log('💾 Saving to Supabase:', {
+                          exercise_id: exercise.id,
+                          exercise_name: exercise.name,
+                          extra
+                        });
+                        
+                        const { error } = await supabase
+                          .from('session_block_items')
+                          .update({ extra })
+                          .eq('id', exercise.id);
+                        
+                        if (error) throw error;
+                        
+                        console.log('✅ Saved successfully to Supabase');
+                        
+                        // Update local state with new values (use editX values when they're not 0/null)
+                        const updatedExercise = {
+                          ...exercise,
+                          sets: editSets !== 0 ? editSets : exercise.sets,
+                          reps: editReps !== 0 ? editReps : exercise.reps,
+                          suggestedKg: editSuggestedKg !== 0 ? editSuggestedKg : exercise.suggestedKg,
+                          durationMin: editDuration !== 0 ? editDuration : exercise.durationMin,
+                          targetDistanceKm: editDistance !== 0 ? editDistance : exercise.targetDistanceKm,
+                        };
+                        setExercise(updatedExercise);
+                        
+                        // Also update the exercises array to persist changes
+                        const updatedExercises = exercises.map(ex => 
+                          ex.id === exercise.id ? updatedExercise : ex
+                        );
+                        setExercises(updatedExercises);
+                        
+                        // Re-initialize weight inputs with new values
+                        if (updatedExercise.type === "weights" && updatedExercise.sets) {
+                          const initialWeights = Array(updatedExercise.sets).fill(updatedExercise.suggestedKg?.toString() || "");
+                          setSetWeights(initialWeights);
+                          setSetCompleted(Array(updatedExercise.sets).fill(false));
+                        }
+                        
+                        setEditMode(false);
+                        
+                        console.log('✅ Exercise updated:', {
+                          id: exercise.id,
+                          name: exercise.name,
+                          sets: updatedExercise.sets,
+                          reps: updatedExercise.reps,
+                          suggestedKg: updatedExercise.suggestedKg,
+                          durationMin: updatedExercise.durationMin,
+                          targetDistanceKm: updatedExercise.targetDistanceKm
+                        });
+                        
+                        toast.success("Exercise updated!", {
+                          description: `Now: ${updatedExercise.sets}×${updatedExercise.reps} @ ${updatedExercise.suggestedKg}kg`
+                        });
+                      } catch (error) {
+                        console.error("Error saving exercise:", error);
+                        toast.error("Failed to save changes", {
+                          description: error instanceof Error ? error.message : "Please try again"
+                        });
+                      }
+                    }
+                  }}
+                  className="w-full h-20 text-3xl font-bold"
+                  style={{ backgroundColor: '#FFCC00', color: '#000' }}
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </Card>
+          )}
           
           {/* Media & Notes */}
           {(exercise.notes || exercise.mediaUrl) && (
@@ -371,7 +756,7 @@ const ExerciseDetail = () => {
 
         {/* Target Card - Hide when timer is running for mobility exercises or when empty */}
         {!(exercise.type === "mobility" && showWorkoutTimer) && 
-         !(exercise.type === "cardio" && !exercise.durationMin && !exercise.targetDistanceKm) &&
+         !(exercise.type === "cardio" && !exercise.durationMin) &&
          !(exercise.type === "running" && !exercise.durationMin && !exercise.targetDistanceKm) && (
         <Card className="p-6 bg-secondary/10 border-secondary">
           <div className="text-center">
@@ -379,7 +764,15 @@ const ExerciseDetail = () => {
             {exercise.type !== "mobility" && (
               <p className="text-sm text-muted-foreground mb-2">Target</p>
             )}
-            {(exercise.type === "cardio" || exercise.type === "running") ? (
+            {exercise.type === "cardio" ? (
+              <>
+                {exercise.durationMin && exercise.durationMin > 0 && (
+                  <p className="text-5xl font-bold text-foreground mb-4">
+                    {exercise.durationMin} min
+                  </p>
+                )}
+              </>
+            ) : exercise.type === "running" ? (
               <>
                 {exercise.durationMin && exercise.durationMin > 0 && (
                   <p className="text-5xl font-bold text-foreground mb-4">
@@ -395,10 +788,11 @@ const ExerciseDetail = () => {
             ) : exercise.type === "mobility" ? (
               <>
                 <Label htmlFor="mobility-duration" className="text-xl font-bold block text-center mb-4">Duration (minutes)</Label>
+                <p className="text-sm text-muted-foreground text-center mb-2">0.5 min = 30 seconds</p>
                 <div className="flex items-center justify-center gap-3">
                   <Button
                     type="button"
-                    onClick={() => setTodaysDuration((prev) => Math.max(1, parseFloat(prev || exercise.durationMin?.toString() || "1") - 1).toString())}
+                    onClick={() => setTodaysDuration((prev) => Math.max(0.5, parseFloat(prev || exercise.durationMin?.toString() || "0.5") - 0.5).toFixed(1))}
                     className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
                   >
@@ -407,20 +801,52 @@ const ExerciseDetail = () => {
                   <Input
                     id="mobility-duration"
                     type="number"
-                    value={todaysDuration || exercise.durationMin?.toString()}
+                    step="0.1"
+                    value={todaysDuration || exercise.durationMin?.toString() || ""}
                     onChange={(e) => setTodaysDuration(e.target.value)}
                     className="text-center text-6xl h-32 border-2 font-bold flex-1"
                     placeholder={exercise.durationMin?.toString() || "8"}
                   />
                   <Button
                     type="button"
-                    onClick={() => setTodaysDuration((prev) => (parseFloat(prev || exercise.durationMin?.toString() || "0") + 1).toString())}
+                    onClick={() => setTodaysDuration((prev) => (parseFloat(prev || exercise.durationMin?.toString() || "0") + 0.5).toFixed(1))}
                     className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
                   >
                     +
                   </Button>
                 </div>
+              </>
+            ) : exercise.type === "rehab" ? (
+              <>
+                {exercise.sets ? (
+                  <>
+                    {/* Show sets × reps if reps exist, otherwise sets × Sets */}
+                    <p className="text-7xl font-bold text-foreground mb-4">
+                      {exercise.reps ? `${exercise.sets} × ${exercise.reps}` : `${exercise.sets} × Sets`}
+                    </p>
+                    {exercise.durationMin && (
+                      <p className="text-2xl text-blue-400 font-semibold mb-2">
+                        {exercise.durationMin} min per set
+                      </p>
+                    )}
+                    {exercise.suggestedKg && exercise.suggestedKg > 0 && (
+                      <p className="text-xl text-secondary font-semibold">
+                        Weight: {exercise.suggestedKg}kg
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Simple duration display for rehab without sets */}
+                    <p className="text-7xl font-bold text-foreground mb-4">
+                      {exercise.durationMin} min
+                    </p>
+                    <p className="text-xl text-blue-400 font-medium">
+                      Rehab Exercise
+                    </p>
+                  </>
+                )}
               </>
             ) : (
               <>
@@ -444,32 +870,47 @@ const ExerciseDetail = () => {
         )}
 
         {/* Workout Countdown Timer (for mobility exercises only - right after Duration card) */}
-        {exercise.type === "mobility" && exercise.durationMin && exercise.durationMin > 0 && (
+        {exercise.type === "mobility" && (
           <>
             {showWorkoutTimer ? (
-              <Card className="p-6 bg-primary/5 border-primary">
-                <h3 className="text-2xl font-bold mb-4 text-center text-primary">Workout Timer</h3>
-                <Timer
-                  mode="countdown"
-                  initialSeconds={workoutDuration}
-                  autoStart={true}
-                  onComplete={() => {
-                    const completedDuration = Math.round(workoutDuration / 60);
-                    toast.success("🎉 Workout Complete!", {
-                      description: `${completedDuration} minutes completed!`,
-                      duration: 3000,
-                    });
-                    setTodaysDuration(completedDuration.toString());
-                    setShowWorkoutTimer(false);
-                  }}
-                  onCancel={() => setShowWorkoutTimer(false)}
-                />
-              </Card>
+              <>
+                <div className="overflow-hidden rounded-xl border-2 border-primary">
+                  <Timer
+                      mode="countdown"
+                      initialSeconds={workoutDuration}
+                      autoStart={true}
+                      onComplete={() => {
+                        const completedDuration = Math.round(workoutDuration / 60);
+                        setTodaysDuration(completedDuration.toString());
+                        setShowWorkoutTimer(false);
+                        
+                        // Auto-save the workout when timer completes
+                        toast.success("🎉 Workout Complete!", {
+                          description: `${completedDuration} minutes completed! Saving...`,
+                          duration: 2000,
+                        });
+                        
+                        // Save automatically with no rating (user can rate later if they want)
+                        setTimeout(() => handleMarkAsDone(), 500);
+                      }}
+                    />
+                </div>
+                <div className="flex justify-center mt-4">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowWorkoutTimer(false)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel Workout
+                  </Button>
+                </div>
+              </>
             ) : (
               <Button
                 size="lg"
                 onClick={handleStartWorkout}
                 className="h-24 px-16 text-3xl font-bold w-full"
+                style={{ backgroundColor: '#FFCC00', color: '#000' }}
               >
                 START COUNTDOWN
               </Button>
@@ -478,35 +919,160 @@ const ExerciseDetail = () => {
         )}
         
         {/* Workout Countdown Timer (for cardio/running exercises - shown later) */}
-        {(exercise.type === "cardio" || exercise.type === "running") && exercise.durationMin && exercise.durationMin > 0 && (
+        {(exercise.type === "cardio" || exercise.type === "running") && (
           <>
             {showWorkoutTimer ? (
-              <Card className="p-6 bg-primary/5 border-primary">
-                <h3 className="text-2xl font-bold mb-4 text-center text-primary">Workout Timer</h3>
-                <Timer
-                  mode="countdown"
-                  initialSeconds={workoutDuration}
-                  autoStart={true}
-                  onComplete={() => {
-                    const completedDuration = Math.round(workoutDuration / 60);
-                    toast.success("🎉 Workout Complete!", {
-                      description: `${completedDuration} minutes completed!`,
-                      duration: 3000,
-                    });
-                    setTodaysDuration(completedDuration.toString());
-                    setShowWorkoutTimer(false);
-                  }}
-                  onCancel={() => setShowWorkoutTimer(false)}
-                />
-              </Card>
+              <>
+                <div className="overflow-hidden rounded-xl border-2 border-primary">
+                  <Timer
+                      mode="countdown"
+                      initialSeconds={workoutDuration}
+                      autoStart={true}
+                      onComplete={() => {
+                        const completedDuration = Math.round(workoutDuration / 60);
+                        setTodaysDuration(completedDuration.toString());
+                        setShowWorkoutTimer(false);
+                        
+                        // Auto-save the workout when timer completes
+                        toast.success("🎉 Workout Complete!", {
+                          description: `${completedDuration} minutes completed! Saving...`,
+                          duration: 2000,
+                        });
+                        
+                        // Save automatically with no rating (user can rate later if they want)
+                        setTimeout(() => handleMarkAsDone(), 500);
+                      }}
+                    />
+                </div>
+                <div className="flex justify-center mt-4">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowWorkoutTimer(false)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel Workout
+                  </Button>
+                </div>
+              </>
             ) : (
               <Button
                 size="lg"
                 onClick={handleStartWorkout}
                 className="h-24 px-16 text-3xl font-bold w-full"
+                style={{ backgroundColor: '#FFCC00', color: '#000' }}
               >
                 START COUNTDOWN
               </Button>
+            )}
+          </>
+        )}
+        
+        {/* Simple Timer for Rehab Exercises without sets */}
+        {exercise.type === "rehab" && !exercise.sets && exercise.durationMin && exercise.durationMin > 0 && (
+          <>
+            {showWorkoutTimer ? (
+              <>
+                <div className="overflow-hidden rounded-xl border-2 border-blue-500">
+                  <Timer
+                    mode="countdown"
+                    initialSeconds={(exercise.durationMin || 1) * 60}
+                    autoStart={true}
+                    onComplete={() => {
+                      const completedDuration = Math.round((exercise.durationMin || 1));
+                      toast.success("🎉 Rehab Complete!", {
+                        description: `${completedDuration} minutes completed!`,
+                        duration: 3000,
+                      });
+                      setTodaysDuration(completedDuration.toString());
+                      setShowWorkoutTimer(false);
+                    }}
+                  />
+                </div>
+                <div className="flex justify-center mt-4">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowWorkoutTimer(false)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel Workout
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <Button
+                size="lg"
+                onClick={handleStartRehabTimer}
+                className="h-24 px-16 text-3xl font-bold w-full bg-blue-500 hover:bg-blue-600"
+              >
+                START
+              </Button>
+            )}
+          </>
+        )}
+        
+        {/* Set-based Timer for Rehab Exercises with sets */}
+        {exercise.type === "rehab" && exercise.sets && exercise.durationMin && exercise.durationMin > 0 && (
+          <>
+            {rehabTimerActive ? (
+              <>
+                <Card className="p-6 bg-blue-500/10 border-blue-500">
+                  <h3 className="text-2xl font-bold mb-2 text-center text-blue-400">
+                    Set {currentSet} of {exercise.sets}
+                  </h3>
+                  <p className="text-center text-sm text-muted-foreground mb-4">
+                    {exercise.durationMin} min × {exercise.reps} reps
+                  </p>
+                  <Timer
+                    mode="countdown"
+                    initialSeconds={(exercise.durationMin || 1) * 60}
+                    autoStart={true}
+                    onComplete={() => {
+                      if (currentSet < (exercise.sets || 1)) {
+                        toast.success(`Set ${currentSet} Complete!`, {
+                          description: `Ready for Set ${currentSet + 1}?`,
+                          duration: 3000,
+                        });
+                        setCurrentSet(prev => prev + 1);
+                        setRehabTimerActive(false);
+                      } else {
+                        toast.success("🎉 All Sets Complete!", {
+                          description: `${exercise.sets} sets completed!`,
+                          duration: 3000,
+                        });
+                        setRehabTimerActive(false);
+                        setCurrentSet(1);
+                      }
+                    }}
+                  />
+                </Card>
+                <div className="flex justify-center mt-4">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setRehabTimerActive(false);
+                      setCurrentSet(1);
+                    }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel Workout
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <Button
+                size="lg"
+                onClick={() => {
+                  setRehabTimerActive(true);
+                }}
+                className="h-24 px-16 text-3xl font-bold w-full bg-blue-500 hover:bg-blue-600"
+              >
+                {currentSet === 1 ? 'START SET 1' : `START SET ${currentSet}`}
+              </Button>
+            )}
+            {currentSet > 1 && !rehabTimerActive && (
+              <p className="text-center text-sm text-muted-foreground mt-2">
+                Completed {currentSet - 1} of {exercise.sets} sets
+              </p>
             )}
           </>
         )}
@@ -586,7 +1152,43 @@ const ExerciseDetail = () => {
             </div>
           )}
           
-          {(exercise.type === "cardio" || exercise.type === "running") && (
+          {exercise.type === "cardio" && (
+            <>
+              <div>
+                <Label htmlFor="duration" className="text-xl font-bold">Duration (minutes)</Label>
+                <p className="text-sm text-muted-foreground mt-1">0.5 min = 30 seconds</p>
+                <div className="flex items-center gap-3 mt-3">
+                  <Button
+                    type="button"
+                    onClick={() => setTodaysDuration((prev) => Math.max(0.5, parseFloat(prev || "0") - 0.5).toFixed(1))}
+                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                    variant="default"
+                  >
+                    -
+                  </Button>
+                  <Input
+                    id="duration"
+                    type="number"
+                    step="0.1"
+                    value={todaysDuration || ""}
+                    onChange={(e) => setTodaysDuration(e.target.value)}
+                    className="text-6xl font-bold h-32 text-center border-2 flex-1"
+                    placeholder="20"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => setTodaysDuration((prev) => (parseFloat(prev || "0") + 0.5).toFixed(1))}
+                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                    variant="default"
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+          
+          {exercise.type === "running" && (
             <>
               <div>
                 <Label htmlFor="distance" className="text-xl font-bold">Distance (km)</Label>
@@ -603,7 +1205,7 @@ const ExerciseDetail = () => {
                     id="distance"
                     type="number"
                     step="0.1"
-                    value={todaysDistance}
+                    value={todaysDistance || ""}
                     onChange={(e) => setTodaysDistance(e.target.value)}
                     className="text-6xl font-bold h-32 text-center border-2 flex-1"
                     placeholder="5.0"
@@ -620,10 +1222,11 @@ const ExerciseDetail = () => {
               </div>
               <div>
                 <Label htmlFor="duration" className="text-xl font-bold">Duration (minutes)</Label>
+                <p className="text-sm text-muted-foreground mt-1">0.5 min = 30 seconds</p>
                 <div className="flex items-center gap-3 mt-3">
                   <Button
                     type="button"
-                    onClick={() => setTodaysDuration((prev) => Math.max(0, parseFloat(prev || "0") - 1).toString())}
+                    onClick={() => setTodaysDuration((prev) => Math.max(0.5, parseFloat(prev || "0") - 0.5).toFixed(1))}
                     className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
                   >
@@ -632,14 +1235,15 @@ const ExerciseDetail = () => {
                   <Input
                     id="duration"
                     type="number"
-                    value={todaysDuration}
+                    step="0.1"
+                    value={todaysDuration || ""}
                     onChange={(e) => setTodaysDuration(e.target.value)}
                     className="text-6xl font-bold h-32 text-center border-2 flex-1"
-                    placeholder="20"
+                    placeholder={exercise.durationMin?.toString() || "30"}
                   />
                   <Button
                     type="button"
-                    onClick={() => setTodaysDuration((prev) => (parseFloat(prev || "0") + 1).toString())}
+                    onClick={() => setTodaysDuration((prev) => (parseFloat(prev || "0") + 0.5).toFixed(1))}
                     className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
                   >
@@ -685,7 +1289,9 @@ const ExerciseDetail = () => {
         {/* Flame Rating - Click to Rate & Complete */}
         <Card className="p-6 bg-yellow-500/10 border-4 border-yellow-500">
           <div className="flex flex-col items-center gap-4">
-            <Label className="text-3xl font-bold text-foreground text-center">Rate to Continue</Label>
+            <Label className="text-3xl font-bold text-foreground text-center">
+              {existingLogId ? "Update & Rate" : "Rate to Continue"}
+            </Label>
             
             <FlameRating 
               value={rating} 
@@ -714,7 +1320,7 @@ const ExerciseDetail = () => {
               onClick={() => handleMarkAsDone()}
               className="text-muted-foreground hover:text-foreground mt-2"
             >
-              Skip and complete without rating
+              {existingLogId ? "Update without rating" : "Skip and complete without rating"}
             </Button>
           </div>
         </Card>

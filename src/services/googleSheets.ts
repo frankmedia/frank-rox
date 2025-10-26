@@ -17,12 +17,6 @@ function getCurrentUser(): string {
   return "frank"; // Fallback
 }
 
-// Debug logging
-console.log("🔧 Google Sheets Service Configuration:");
-console.log("  API_KEY:", API_KEY ? `${API_KEY.substring(0, 20)}...` : "❌ MISSING");
-console.log("  MASTER_SHEET_ID:", MASTER_SHEET_ID || "❌ MISSING");
-console.log("  CURRENT_USER:", getCurrentUser());
-
 // Cache for API responses (5 minutes TTL)
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -65,19 +59,11 @@ async function fetchSheetData(sheetId: string, range: string): Promise<any[][]> 
   
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${API_KEY}`;
   
-  console.log(`📡 Fetching sheet data:`, {
-    sheetId,
-    range,
-    url: url.replace(API_KEY || '', 'API_KEY_HIDDEN'),
-  });
-  
   // Wait for rate limit
   await waitForRateLimit();
   
   try {
     const response = await fetch(url);
-    
-    console.log(`📥 Response status:`, response.status, response.statusText);
     
     if (response.status === 429) {
       console.error("❌ Rate limit exceeded! Waiting 2 seconds...");
@@ -99,13 +85,6 @@ async function fetchSheetData(sheetId: string, range: string): Promise<any[][]> 
     }
     
     const data = await response.json();
-    console.log(`✅ Data received:`, {
-      range,
-      rows: data.values?.length || 0,
-      columns: data.values?.[0]?.length || 0,
-      firstRow: data.values?.[0],
-      sample: data.values?.slice(0, 3),
-    });
     
     // Cache the response
     const values = data.values || [];
@@ -146,22 +125,13 @@ async function appendSheetData(
  * Get user's sheet ID from master sheet
  */
 export async function getUserSheet(username: string = getCurrentUser()): Promise<UserSheet | null> {
-  console.log(`👤 Getting user sheet for: ${username}`);
-  
   try {
     // Fetch from first tab without specifying tab name (A:C will use first tab by default)
     const data = await fetchSheetData(MASTER_SHEET_ID, "A:C");
     
-    console.log(`📋 Master sheet data:`, {
-      totalRows: data.length,
-      allUsers: data.slice(1).map(row => row[0]),
-      fullData: data,
-    });
-    
     // Skip header row and find user
     for (let i = 1; i < data.length; i++) {
       const [user, password, sheetUrl] = data[i];
-      console.log(`  Checking row ${i}:`, { user, password: password ? '***' : 'none', sheetUrl, match: user?.toLowerCase() === username.toLowerCase() });
       
       if (user?.toLowerCase() === username.toLowerCase()) {
         const userSheet = {
@@ -170,12 +140,10 @@ export async function getUserSheet(username: string = getCurrentUser()): Promise
           sheetUrl,
           sheetId: extractSheetId(sheetUrl),
         };
-        console.log(`✅ Found user sheet:`, userSheet);
         return userSheet;
       }
     }
     
-    console.warn(`⚠️ User "${username}" not found in master sheet`);
     return null;
   } catch (error) {
     console.error("❌ Error fetching user sheet:", error);
@@ -220,21 +188,12 @@ export async function getMaxTrainingDay(username: string = getCurrentUser()): Pr
 
   try {
     const data = await fetchSheetData(userSheet.sheetId, "Plan!A2:A500");
-    console.log(`📊 Raw day data from sheet:`, {
-      totalRows: data.length,
-      firstFewRows: data.slice(0, 20).map(row => row[0]),
-      allDayValues: data.map(row => row[0])
-    });
     
     const dayNumbers = data
       .map(row => parseInt(row[0]?.toString().trim()))
       .filter(num => !isNaN(num) && num > 0);
     
-    console.log(`📊 Parsed day numbers:`, dayNumbers);
-    console.log(`📊 Unique days:`, [...new Set(dayNumbers)].sort((a, b) => a - b));
-    
     const maxDay = dayNumbers.length > 0 ? Math.max(...dayNumbers) : 1;
-    console.log(`🔄 Program cycle length: ${maxDay} days (from ${dayNumbers.length} total rows)`);
     return maxDay;
   } catch (error) {
     console.error("❌ Error getting max training day:", error);
@@ -247,8 +206,6 @@ export async function getMaxTrainingDay(username: string = getCurrentUser()): Pr
  * Expected format in Plan tab: Weekday | Exercise Name | Type | Sets | Reps | Suggested Weight | Personal Best | Duration | Distance | Notes | Media URL
  */
 export async function fetchTodayExercises(username: string = getCurrentUser(), providedUserSheet?: UserSheet): Promise<Exercise[]> {
-  console.log(`🏋️ Fetching today's exercises for: ${username}`);
-  
   // Use provided userSheet if available, otherwise fetch it
   const userSheet = providedUserSheet || await getUserSheet(username);
   

@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/utils/supabaseClient";
 
 interface User {
   username: string;
   email: string;
   name: string;
+  clientId?: string; // Supabase client ID
 }
 
 interface AuthContextType {
@@ -76,10 +78,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (sheetUsername && sheetUsername.toLowerCase() === username.toLowerCase()) {
           // Check password
           if (sheetPassword === password) {
+            // Try to fetch client_id from Supabase
+            let clientId: string | undefined;
+            try {
+              const { data: clientData } = await supabase
+                .from("clients")
+                .select("id")
+                .ilike("name", sheetUsername)
+                .single();
+              
+              if (clientData) {
+                clientId = String(clientData.id);
+                console.log("✅ Found Supabase client ID:", clientId);
+              } else {
+                console.log("⚠️ No Supabase client found for:", sheetUsername);
+              }
+            } catch (err) {
+              console.log("⚠️ Could not fetch Supabase client:", err);
+            }
+
             const userData: User = {
               username: sheetUsername,
               email: `${sheetUsername}@example.com`,
               name: sheetUsername.charAt(0).toUpperCase() + sheetUsername.slice(1),
+              clientId,
             };
             setUser(userData);
             localStorage.setItem("frank_rock_user", JSON.stringify(userData));

@@ -10,6 +10,8 @@ import { fetchWorkoutHistory, fetchUserStats } from "@/services/googleSheets";
 import { WorkoutLog, UserStats } from "@/types/workout";
 import { toast } from "sonner";
 import { FlameRating } from "@/components/FlameRating";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/utils/supabaseClient";
 
 interface DailyWorkout {
   date: string; // YYYY-MM-DD format
@@ -111,6 +113,7 @@ interface PersonalBest {
 
 const History = () => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [activeTab, setActiveTab] = useState("history");
   const [history, setHistory] = useState<WorkoutLog[]>([]);
   const [dailyWorkouts, setDailyWorkouts] = useState<DailyWorkout[]>([]);
@@ -123,31 +126,86 @@ const History = () => {
       try {
         setLoading(true);
         
-        // Load from user-specific localStorage
-        const userStr = localStorage.getItem("frank_rock_user");
-        if (!userStr) {
+        if (!authUser?.clientId) {
           setLoading(false);
           return;
         }
         
-        const user = JSON.parse(userStr);
-        const storageKey = `workoutHistory_${user.username}`;
-        const existingLogs = localStorage.getItem(storageKey);
-        const logs = existingLogs ? JSON.parse(existingLogs) : [];
+        // Fetch workout logs from Supabase
+        const { data: logs, error } = await supabase
+          .from('workout_logs')
+          .select('*')
+          .eq('client_id', authUser.clientId)
+          .order('logged_at', { ascending: false });
         
-        // Convert to WorkoutLog format
-        const historyData: WorkoutLog[] = logs.map((log: any) => ({
-          id: log.id,
-          exercise: log.exerciseName,
-          date: log.timestamp,
+        if (error) throw error;
+        
+        console.log('📊 Supabase workout logs:', logs);
+        console.log('📊 Total logs from Supabase:', logs?.length || 0);
+        
+        // Convert Supabase logs to WorkoutLog format
+        const supabaseHistory: WorkoutLog[] = (logs || []).map((log: any) => ({
+          id: String(log.id),
+          exercise: log.exercise_name,
+          date: new Date(log.logged_at).toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          sets: log.sets,
+          reps: log.reps,
           weight: log.weight,
-          weights: log.weights, // Array of weights per set
-          isPB: false, // TODO: Calculate PB
-          duration: log.duration,
-          distance: log.distance,
+          weights: log.weights,
+          isPB: log.is_pb || false,
+          duration: log.duration_min,
+          distance: log.distance_km,
           notes: log.notes,
-          rating: typeof log.rating === 'number' ? log.rating : (log.rating ? parseInt(log.rating) : undefined), // Flame rating (0-5)
+          rating: log.rating,
         }));
+        
+        // Also load today's workouts from localStorage (not yet synced)
+        const userStr = localStorage.getItem("frank_rock_user");
+        let localHistory: WorkoutLog[] = [];
+        
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          const storageKey = `workoutHistory_${user.username}`;
+          const workoutHistory = localStorage.getItem(storageKey);
+          
+          console.log('📦 LocalStorage key:', storageKey);
+          console.log('📦 LocalStorage data:', workoutHistory);
+          
+          if (workoutHistory) {
+            const localLogs = JSON.parse(workoutHistory);
+            
+            console.log('📦 Total local logs:', localLogs.length);
+            
+            // Show ALL localStorage logs (they haven't been synced to Supabase yet)
+            // Once synced via "Complete Day", they'll be in Supabase and can be removed from localStorage
+            localHistory = localLogs.map((log: any, index: number) => ({
+              id: `local-${index}`,
+              exercise: log.exerciseName,
+              date: log.timestamp,
+              weight: log.weight,
+              weights: log.weights,
+              isPB: log.isPB || false,
+              duration: log.duration,
+              distance: log.distance,
+              notes: log.notes,
+              rating: log.rating,
+            }));
+              
+            console.log('📦 Total local history:', localHistory.length);
+          }
+        }
+        
+        // Merge both sources (localStorage first for today, then Supabase for history)
+        const historyData = [...localHistory, ...supabaseHistory];
+        
+        console.log('✅ Total history (merged):', historyData.length);
+        console.log('✅ clientId used:', authUser?.clientId);
         
         setHistory(historyData);
         
@@ -226,11 +284,12 @@ const History = () => {
         pbs.sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
         setPersonalBests(pbs);
         
-        // Calculate basic stats from logs
-        const thisWeekLogs = logs.filter((log: any) => {
-          const logDate = new Date(log.timestamp);
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
+        // Calculate basic stats from Supabase logs
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        
+        const thisWeekLogs = (logs || []).filter((log: any) => {
+          const logDate = new Date(log.logged_at);
           return logDate >= weekAgo;
         });
         
@@ -238,18 +297,21 @@ const History = () => {
           thisWeek: {
             workouts: thisWeekLogs.length,
             exercises: thisWeekLogs.length,
-            totalWeight: thisWeekLogs.reduce((sum: number, log: any) => sum + (log.weight || 0), 0),
+            totalWeight: thisWeekLogs.reduce((sum: number, log: any) => {
+              if (log.weights && Array.isArray(log.weights)) {
+                return sum + log.weights.reduce((s: number, w: number) => s + w, 0);
+              }
+              return sum + (log.weight || 0);
+            }, 0),
           },
-          personalBests: [], // TODO: Calculate PBs
+          personalBests: [], // PBs are calculated above
         };
         
         setStats(statsData);
-        
-        console.log("✅ Loaded history from localStorage:", historyData.length, "entries");
       } catch (error) {
         console.error("Error loading history:", error);
         toast.error("Failed to load history", {
-          description: "Could not load local storage data",
+          description: error instanceof Error ? error.message : "Could not load workout history",
         });
       } finally {
         setLoading(false);
@@ -257,7 +319,7 @@ const History = () => {
     };
 
     loadData();
-  }, []);
+  }, [authUser?.clientId]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -433,7 +495,16 @@ const History = () => {
                                       </p>
                                     </div>
                                   ) : entry.weight ? (
-                                    <p className="text-xl font-bold text-secondary">{entry.weight}kg</p>
+                                    <div>
+                                      <p className="text-xl font-bold text-secondary">{entry.weight}kg</p>
+                                      {entry.sets && entry.reps && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {entry.sets} × {entry.reps}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : entry.sets && entry.reps ? (
+                                    <p className="text-base font-bold text-secondary">{entry.sets} × {entry.reps}</p>
                                   ) : null}
                                   {entry.distance && (
                                     <div>
@@ -444,6 +515,11 @@ const History = () => {
                                           {entry.duration} min
                                         </p>
                                       )}
+                                    </div>
+                                  )}
+                                  {!entry.weight && !entry.weights && !entry.distance && entry.duration && (
+                                    <div>
+                                      <p className="text-xl font-bold text-secondary">{entry.duration} min</p>
                                     </div>
                                   )}
                                 </div>

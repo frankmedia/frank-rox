@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Dumbbell, Medal, Activity, Zap, Repeat, Target, PersonStanding } from "lucide-react";
+import { Clock, Dumbbell, Medal, Activity, Zap, Repeat, Target, PersonStanding, HeartPulse } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InlineHeartRate } from "@/components/HeartRateZone";
 
@@ -8,7 +8,7 @@ interface ExerciseCardProps {
   exercise: {
     id: string;
     name: string;
-    type: "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap" | "intro";
+    type: "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap" | "intro" | "amrap_exercise" | "circuit_exercise" | "hiit_exercise" | "rehab";
     sets?: number;
     reps?: number;
     suggestedKg?: number;
@@ -33,9 +33,12 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
   const getBorderColor = () => {
     if (completed) return "border-yellow-500";
     switch (exercise.type) {
-      case "hiit": return "border-[#FF00B2]"; // Hot pink
-      case "circuit": return "border-[#FFB74D]"; // Amber (better contrast 7.2:1)
-      case "amrap": return "border-[#00E676]"; // Material green (better contrast)
+      case "hiit":
+      case "hiit_exercise": return "border-[#FF00B2]"; // Hot pink
+      case "circuit":
+      case "circuit_exercise": return "border-[#FFB74D]"; // Amber (better contrast 7.2:1)
+      case "amrap":
+      case "amrap_exercise": return "border-[#00E676]"; // Material green (better contrast)
       default: return "border-border hover:border-secondary/50";
     }
   };
@@ -44,11 +47,15 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
   const getIcon = () => {
     switch (exercise.type) {
       case "hiit": return <Zap className="w-5 h-5" style={{ color: "#FF00B2" }} />;
+      case "hiit_exercise": return <Zap className="w-5 h-5" style={{ color: "#FF00B2" }} />;
       case "circuit": return <Repeat className="w-5 h-5" style={{ color: "#FFB74D" }} />;
+      case "circuit_exercise": return <Repeat className="w-5 h-5" style={{ color: "#FFB74D" }} />;
       case "amrap": return <Target className="w-5 h-5" style={{ color: "#00E676" }} />;
+      case "amrap_exercise": return <Target className="w-5 h-5" style={{ color: "#00E676" }} />;
       case "cardio": return <Clock className="w-5 h-5 text-primary" />;
       case "mobility": return <Activity className="w-5 h-5 text-primary" />;
       case "running": return <PersonStanding className="w-5 h-5 text-primary" />;
+      case "rehab": return <HeartPulse className="w-5 h-5 text-blue-400" />;
       default: return <Dumbbell className="w-5 h-5 text-primary" />;
     }
   };
@@ -84,11 +91,43 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
         </div>
 
         <div className="space-y-2">
+          {/* Child exercises (amrap_exercise, circuit_exercise, hiit_exercise) render as simple cards */}
+          {(exercise.type === "amrap_exercise" || exercise.type === "circuit_exercise" || exercise.type === "hiit_exercise") && (
+            <div className="flex items-center gap-4 text-muted-foreground flex-wrap">
+              {exercise.sets && exercise.reps && (
+                <span className="text-4xl font-bold text-foreground">
+                  {exercise.sets} × {exercise.reps}
+                </span>
+              )}
+              {exercise.suggestedKg && exercise.suggestedKg > 0 && (
+                <span className="text-lg">
+                  <span className="font-semibold text-secondary">{exercise.suggestedKg}kg</span>
+                </span>
+              )}
+              {exercise.durationMin && exercise.durationMin > 0 && (
+                <span className="text-lg">
+                  <span className="font-semibold text-secondary">{exercise.durationMin} min</span>
+                </span>
+              )}
+              {exercise.targetDistanceKm && exercise.targetDistanceKm > 0 && (
+                <span className="text-lg">
+                  <span className="font-semibold text-secondary">{exercise.targetDistanceKm.toFixed(1)}km</span>
+                </span>
+              )}
+              {/* Only show "Bodyweight" if there's truly no data at all */}
+              {!exercise.sets && !exercise.reps && !exercise.durationMin && !exercise.targetDistanceKm && !exercise.suggestedKg && (
+                <span className="text-sm text-muted-foreground">Bodyweight</span>
+              )}
+            </div>
+          )}
+
           {(exercise.type === "weights" || exercise.type === "bodyweight") && (
             <div className="flex items-center gap-4 text-muted-foreground">
-              <span className="text-4xl font-bold text-foreground">
-                {exercise.sets} × {exercise.reps}
-              </span>
+              {exercise.sets && exercise.reps && (
+                <span className="text-4xl font-bold text-foreground">
+                  {exercise.sets} × {exercise.reps}
+                </span>
+              )}
               {exercise.type === "weights" && exercise.suggestedKg && (
                 <span className="text-lg">
                   Target: <span className="font-semibold text-secondary">{exercise.suggestedKg}kg</span>
@@ -96,6 +135,10 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
               )}
               {exercise.type === "bodyweight" && (
                 <span className="text-sm text-muted-foreground">Bodyweight</span>
+              )}
+              {/* Show message if no data */}
+              {!exercise.sets && !exercise.reps && !exercise.suggestedKg && (
+                <span className="text-sm text-muted-foreground italic">No plan set yet</span>
               )}
             </div>
           )}
@@ -112,17 +155,69 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                   Target: <span className="font-semibold text-secondary">{exercise.targetDistanceKm.toFixed(1)}km</span>
                 </span>
               )}
+              {/* Show message if no data */}
+              {!exercise.durationMin && !exercise.targetDistanceKm && (
+                <span className="text-sm text-muted-foreground italic">No plan set yet</span>
+              )}
             </div>
           )}
 
           {exercise.type === "mobility" && (
             <div className="flex items-center gap-4 text-muted-foreground">
-              {exercise.durationMin && (
+              {exercise.durationMin ? (
                 <span className="text-4xl font-bold text-foreground">
                   {exercise.durationMin} min
                 </span>
+              ) : (
+                <span className="text-sm text-muted-foreground italic">No plan set yet</span>
               )}
               <span className="text-sm text-muted-foreground">Mobility</span>
+            </div>
+          )}
+
+          {exercise.type === "rehab" && (
+            <div className="space-y-2">
+              {/* Main display: sets × reps OR sets × Sets OR just duration */}
+              {exercise.sets && exercise.reps ? (
+                <div className="flex items-center gap-4 text-muted-foreground">
+                  <span className="text-4xl font-bold text-foreground">
+                    {exercise.sets} × {exercise.reps}
+                  </span>
+                  {exercise.durationMin && (
+                    <span className="text-lg">
+                      <span className="font-semibold text-blue-400">{exercise.durationMin} min</span> per set
+                    </span>
+                  )}
+                </div>
+              ) : exercise.sets && !exercise.reps && exercise.durationMin ? (
+                <div className="flex items-center gap-4 text-muted-foreground">
+                  <span className="text-4xl font-bold text-foreground">
+                    {exercise.sets} × {exercise.durationMin} min
+                  </span>
+                </div>
+              ) : exercise.durationMin && !exercise.sets ? (
+                <div className="flex items-center gap-4 text-muted-foreground">
+                  <span className="text-4xl font-bold text-foreground">
+                    {exercise.durationMin} min
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-4 text-muted-foreground">
+                  <span className="text-4xl font-bold text-foreground">
+                    {exercise.sets} × Sets
+                  </span>
+                </div>
+              )}
+              
+              {/* Weight if present */}
+              {exercise.suggestedKg && exercise.suggestedKg > 0 && (
+                <div className="text-lg text-muted-foreground">
+                  Weight: <span className="font-semibold text-secondary">{exercise.suggestedKg}kg</span>
+                </div>
+              )}
+              
+              {/* Rehab label */}
+              <div className="text-sm text-blue-400">Rehab Exercise</div>
             </div>
           )}
 
@@ -137,6 +232,10 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                 <span className="text-lg">
                   Target: <span className="font-semibold text-secondary">{exercise.durationMin} min</span>
                 </span>
+              )}
+              {/* Show message if no data */}
+              {!exercise.targetDistanceKm && !exercise.durationMin && (
+                <span className="text-sm text-muted-foreground italic">No plan set yet</span>
               )}
             </div>
           )}

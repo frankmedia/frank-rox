@@ -1,5 +1,6 @@
 // HealthKit and Health Connect integration service
 import { Health } from '@capgo/capacitor-health';
+import { Capacitor } from '@capacitor/core';
 import type { HealthData, HeartRateZone, HeartRateSample, SleepData, WorkoutSummary, HealthPermission } from '@/types/health';
 
 /**
@@ -184,6 +185,11 @@ export const getRestingHeartRate = async (): Promise<number | null> => {
  * Get real-time heart rate (most recent reading)
  */
 export const getCurrentHeartRate = async (): Promise<number | null> => {
+  // Only available on native platforms (iOS/Android)
+  if (!Capacitor.isNativePlatform()) {
+    return null;
+  }
+  
   try {
     const startDate = new Date(Date.now() - 5 * 60 * 1000); // Last 5 minutes
     const endDate = new Date();
@@ -198,6 +204,7 @@ export const getCurrentHeartRate = async (): Promise<number | null> => {
     if (samples.length === 0) return null;
     return Math.round(samples[0].value);
   } catch (error) {
+    // Only log errors on native platforms where this should actually work
     console.error('Failed to get current heart rate:', error);
     return null;
   }
@@ -207,6 +214,11 @@ export const getCurrentHeartRate = async (): Promise<number | null> => {
  * Get heart rate samples for a time period (for zone tracking during workout)
  */
 export const getHeartRateSamples = async (startDate: Date, endDate: Date): Promise<HeartRateSample[]> => {
+  // Only available on native platforms (iOS/Android)
+  if (!Capacitor.isNativePlatform()) {
+    return [];
+  }
+  
   try {
     const { samples } = await Health.readSamples({
       dataType: 'heartRate',

@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, LogOut, Mail, User as UserIcon, ClipboardCheck, HeartPulse, Link2, Smartphone } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ExternalLink, LogOut, Mail, User as UserIcon, ClipboardCheck, HeartPulse, Link2, Smartphone, Trophy, Calendar, Save, Loader2, Trash2 } from "lucide-react";
 import { getUserSheet } from "@/services/googleSheets";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -12,6 +13,7 @@ import { Capacitor } from "@capacitor/core";
 import { usePWAInstall } from "@/utils/pwaInstall";
 import { isHealthAvailable, requestHealthPermissions, getHealthDataForAssessment } from "@/services/healthKit";
 import { importRecentActivities, saveActivitiesToLog } from "@/services/strava";
+import { supabase } from "@/utils/supabaseClient";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -26,6 +28,11 @@ const Profile = () => {
   const [healthSupported, setHealthSupported] = useState<boolean>(false);
   const [healthConnected, setHealthConnected] = useState<boolean>(false);
   const [stravaConnected, setStravaConnected] = useState<boolean>(false);
+  const [raceName, setRaceName] = useState<string>("");
+  const [raceDate, setRaceDate] = useState<string>("");
+  const [savingRace, setSavingRace] = useState<boolean>(false);
+  const [allRaces, setAllRaces] = useState<Array<{ id: number; race_name: string; race_date: string }>>([]);
+  const [showAllRaces, setShowAllRaces] = useState<boolean>(false);
 
   const user = {
     email: authUser?.email || "frank@example.com",
@@ -74,6 +81,36 @@ const Profile = () => {
       setStravaConnected(flag === "true");
     } catch {}
   }, []);
+
+  // Load all upcoming races
+  const loadAllRaces = async () => {
+    if (!authUser?.clientId) return;
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('races')
+        .select('id, race_name, race_date')
+        .eq('client_id', authUser.clientId)
+        .gte('race_date', today)
+        .order('race_date', { ascending: true });
+      
+      if (!error && data) {
+        setAllRaces(data);
+        // Set the first race as the current race in the form
+        if (data.length > 0) {
+          setRaceName(data[0].race_name || "");
+          setRaceDate(data[0].race_date || "");
+        }
+      }
+    } catch (e) {
+      console.error("Error loading races:", e);
+    }
+  };
+
+  useEffect(() => {
+    loadAllRaces();
+  }, [authUser?.clientId]);
 
   const handleSignOut = () => {
     logout();
@@ -133,6 +170,93 @@ const Profile = () => {
     } catch (e: any) {
       toast.error("Strava sync failed", { description: e?.message || String(e) });
     }
+  };
+
+  const handleSaveRace = async () => {
+    if (!authUser?.clientId) {
+      toast.error("Not logged in");
+      return;
+    }
+
+    if (!raceName.trim()) {
+      toast.error("Please enter a race name");
+      return;
+    }
+
+    if (!raceDate) {
+      toast.error("Please select a race date");
+      return;
+    }
+
+    try {
+      setSavingRace(true);
+      
+      // Check if a race already exists for this date
+      const { data: existing } = await supabase
+        .from('races')
+        .select('id')
+        .eq('client_id', authUser.clientId)
+        .eq('race_date', raceDate)
+        .single();
+
+      if (existing) {
+        // Update existing race
+        const { error } = await supabase
+          .from('races')
+          .update({
+            race_name: raceName.trim(),
+          })
+          .eq('id', existing.id);
+
+        if (error) throw error;
+      } else {
+        // Insert new race
+        const { error } = await supabase
+          .from('races')
+          .insert({
+            client_id: authUser.clientId,
+            race_name: raceName.trim(),
+            race_date: raceDate
+          });
+
+        if (error) throw error;
+      }
+
+      toast.success("Race saved successfully!");
+      // Clear form and reload all races
+      setRaceName("");
+      setRaceDate("");
+      await loadAllRaces();
+    } catch (e: any) {
+      toast.error("Failed to save race", { description: e?.message || String(e) });
+    } finally {
+      setSavingRace(false);
+    }
+  };
+
+  const handleDeleteRace = async (raceId: number) => {
+    try {
+      const { error } = await supabase
+        .from('races')
+        .delete()
+        .eq('id', raceId);
+
+      if (error) throw error;
+
+      toast.success("Race deleted");
+      await loadAllRaces();
+    } catch (e: any) {
+      toast.error("Failed to delete race", { description: e?.message || String(e) });
+    }
+  };
+
+  const calculateDaysUntil = (raceDate: string): number => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const race = new Date(raceDate);
+    race.setHours(0, 0, 0, 0);
+    const diffTime = race.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
   const initials = user.name
@@ -245,6 +369,125 @@ const Profile = () => {
             </div>
           </div>
         </Card>
+
+        {/* Next Race */}
+        <Card className="p-6 mb-4 shadow-lg">
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="w-5 h-5 text-yellow-500" />
+            <h3 className="text-sm font-semibold text-muted-foreground">Next Race</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-2">
+                Race Name
+              </label>
+              <Input
+                placeholder="e.g. HYROX London"
+                value={raceName}
+                onChange={(e) => setRaceName(e.target.value)}
+                className="bg-background"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-2">
+                Race Date
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  type="date"
+                  value={raceDate}
+                  onChange={(e) => setRaceDate(e.target.value)}
+                  className="bg-background pl-10"
+                />
+              </div>
+            </div>
+
+            <Button
+              onClick={handleSaveRace}
+              disabled={savingRace}
+              className="w-full"
+              size="lg"
+            >
+              {savingRace ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-5 h-5 mr-2" />
+                  Save Race
+                </>
+              )}
+            </Button>
+          </div>
+        </Card>
+
+        {/* All Upcoming Races */}
+        {allRaces.length > 0 && (
+          <Card className="p-6 mb-4 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-yellow-500" />
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  Upcoming Races ({allRaces.length})
+                </h3>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAllRaces(!showAllRaces)}
+              >
+                {showAllRaces ? 'Hide' : 'Show'}
+              </Button>
+            </div>
+
+            {showAllRaces && (
+              <div className="space-y-3">
+                {allRaces.map((race) => {
+                  const daysUntil = calculateDaysUntil(race.race_date);
+                  return (
+                    <div
+                      key={race.id}
+                      className="flex items-center justify-between p-3 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <div className="font-semibold text-foreground">{race.race_name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {new Date(race.race_date).toLocaleDateString('en-GB', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-yellow-500">{daysUntil}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {daysUntil === 1 ? 'day' : 'days'}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteRace(race.id)}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* Workout Sheet Info */}
         <Card className="p-6 mb-4 shadow-lg">

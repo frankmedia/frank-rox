@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, RotateCcw, X } from "lucide-react";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 interface TimerProps {
@@ -15,15 +14,82 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
   const [seconds, setSeconds] = useState(initialSeconds);
   const [isRunning, setIsRunning] = useState(autoStart);
   const intervalRef = useRef<number>();
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   // Keep screen awake during timer
   useWakeLock(isRunning);
+
+  // Create beep sound
+  const playBeep = (secondsLeft: number) => {
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      
+      const context = audioContextRef.current;
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      
+      if (secondsLeft === 1) {
+        // Last second: longest, lowest pitch beep (completion signal)
+        oscillator.frequency.value = 500;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.5, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 1.5);
+        
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 1.5); // 1.5 seconds
+      } else if (secondsLeft <= 5) {
+        // Last 5 seconds: medium beeps for countdown
+        oscillator.frequency.value = 900;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.35, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.12);
+        
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 0.12);
+      } else if (secondsLeft === 30) {
+        // 30 seconds warning: single beep
+        oscillator.frequency.value = 700;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15);
+        
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 0.15);
+      } else if (secondsLeft === 60) {
+        // 1 minute warning: single beep
+        oscillator.frequency.value = 650;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15);
+        
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 0.15);
+      }
+    } catch (error) {
+      console.error('Audio playback failed:', error);
+    }
+  };
 
   useEffect(() => {
     if (isRunning) {
       intervalRef.current = window.setInterval(() => {
         setSeconds((prev) => {
           if (mode === "countdown") {
+            // Play beep at specific times:
+            // - 1 minute (60s), 30s, and every second from 5s to 1s
+            if (prev === 60 || prev === 30 || (prev > 0 && prev <= 5)) {
+              playBeep(prev);
+            }
+            
             if (prev <= 1) {
               setIsRunning(false);
               onComplete?.();
@@ -59,38 +125,47 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
     setSeconds(initialSeconds);
   };
 
+  const isLastFive = mode === "countdown" && seconds > 0 && seconds <= 5;
+  
   return (
-    <div className="flex flex-col items-center gap-6">
-      <div className="text-8xl font-bold tabular-nums text-primary">
+    <div 
+      className={`flex flex-col items-center gap-6 w-full transition-all p-6 ${
+        isLastFive && isRunning ? 'animate-pulse' : ''
+      }`}
+      style={{ 
+        backgroundColor: isLastFive && isRunning ? '#EF4444' : 'transparent',
+      }}
+    >
+      {/* Tap timer to start/pause */}
+      <div 
+        className={`font-bold tabular-nums cursor-pointer select-none active:scale-95 transition-all text-center ${
+          isRunning ? 'opacity-100' : 'opacity-40'
+        }`}
+        style={{ 
+          fontSize: 'clamp(95px, 23.4vw, 214px)', 
+          lineHeight: '1.1',
+          color: isLastFive && isRunning ? '#FFFFFF' : 'hsl(var(--primary))',
+        }}
+        onClick={() => setIsRunning(!isRunning)}
+      >
         {formatTime(seconds)}
       </div>
-      <div className="flex gap-3">
-        <Button
-          size="lg"
-          variant={isRunning ? "secondary" : "default"}
-          onClick={() => setIsRunning(!isRunning)}
-          className="rounded-full w-16 h-16"
-        >
-          {isRunning ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
-        </Button>
-        <Button
-          size="lg"
-          variant="outline"
-          onClick={reset}
-          className="rounded-full w-16 h-16"
-        >
-          <RotateCcw className="w-6 h-6" />
-        </Button>
-        {onCancel && (
+      <div className="mt-12">
+        {/* Stop button (resets timer) */}
+        <div className="flex justify-center">
           <Button
             size="lg"
             variant="outline"
-            onClick={onCancel}
-            className="rounded-full w-16 h-16 border-2 border-red-500 hover:bg-red-500/10"
+            onClick={reset}
+            className="rounded-full w-20 h-20 text-lg"
+            style={{
+              color: isLastFive && isRunning ? '#FFFFFF' : undefined,
+              borderColor: isLastFive && isRunning ? '#FFFFFF' : undefined,
+            }}
           >
-            <X className="w-6 h-6 text-red-500" />
+            Stop
           </Button>
-        )}
+        </div>
       </div>
     </div>
   );

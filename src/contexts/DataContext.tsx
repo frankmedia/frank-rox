@@ -1,6 +1,10 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { getUserSheet, fetchTodayExercises } from "@/services/googleSheets";
+import { getTodayExercises } from "@/services/supabasePlans";
 import { Exercise } from "@/types/workout";
+
+// 🔄 FEATURE FLAG: Toggle between Supabase and Google Sheets
+const USE_SUPABASE = true; // Set to false to use Google Sheets
 
 interface DataContextType {
   exercises: Exercise[];
@@ -9,6 +13,7 @@ interface DataContextType {
   error: string | null;
   userSheet: any;
   refresh: () => Promise<void>;
+  useSupabase: boolean; // Expose flag to components
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -34,30 +39,80 @@ export const DataProvider = ({ children }: DataProviderProps) => {
   const [currentUser, setCurrentUser] = useState<string>("");
   const [currentTrainingDay, setCurrentTrainingDay] = useState<string>("");
 
+  // Flatten nested AMRAP/Circuit/HIIT exercises to individual cards (like old Google Sheets format)
+  const flattenExercises = (exercises: Exercise[]): Exercise[] => {
+    const flattened: Exercise[] = [];
+    
+    exercises.forEach((exercise, index) => {
+      // Check if this is a grouped exercise (AMRAP/Circuit/HIIT with child exercises)
+      const hasChildren = (exercise.type === "amrap" || exercise.type === "circuit" || exercise.type === "hiit") 
+        && exercise.exercises && exercise.exercises.length > 0;
+      
+      if (hasChildren) {
+        // Add the parent header (without the child exercises array to avoid ExerciseCard grouping)
+        const parentHeader: Exercise = {
+          ...exercise,
+          isGroupHeader: true,
+          exercises: undefined, // Remove children so ExerciseCard doesn't group them
+        };
+        flattened.push(parentHeader);
+        
+        // Add each child exercise as individual card
+        exercise.exercises!.forEach((child: any, childIndex) => {
+          const childType = `${exercise.type}_exercise` as any; // e.g., "amrap_exercise", "circuit_exercise"
+          
+          // Copy all properties from child, but override type and add marker
+          // DON'T change the ID - child already has the correct session_block_items.id!
+          const childExercise: Exercise = {
+            ...child, // Preserve all existing data (sets, reps, ID, etc.)
+            type: childType, // Override with child type (amrap_exercise, circuit_exercise, etc.)
+            _isChildExercise: true,
+          };
+          flattened.push(childExercise);
+        });
+      } else {
+        // Regular standalone exercise
+        flattened.push(exercise);
+      }
+    });
+    
+    return flattened;
+  };
+
   const loadData = async () => {
-    console.log("🚀 Loading data for user:", currentUser || "unknown", "day:", currentTrainingDay || "unknown");
     setLoading(true);
     setError(null);
 
     try {
-      // 1. Get user sheet (ONE API call)
-      console.log("1️⃣ Fetching user sheet...");
-      const sheet = await getUserSheet();
-      setUserSheet(sheet);
+      // Get user data to check for clientId
+      const userStr = localStorage.getItem("frank_rock_user");
+      const user = userStr ? JSON.parse(userStr) : null;
+      const clientId = user?.clientId;
 
-      if (!sheet) {
-        throw new Error("User sheet not found in master sheet");
+      // Decide which data source to use
+      if (USE_SUPABASE && clientId) {
+        // 🆕 SUPABASE PATH
+        const exerciseData = await getTodayExercises(clientId);
+        
+        // Flatten nested AMRAP/Circuit/HIIT to individual cards (like old Google Sheets)
+        const flattenedData = flattenExercises(exerciseData);
+        
+        setExercises(flattenedData);
+        setAllExercises(flattenedData);
+        setUserSheet({ user: currentUser, source: "supabase" }); // Mock sheet object for compatibility
+      } else {
+        // 📄 GOOGLE SHEETS PATH (fallback)
+        const sheet = await getUserSheet();
+        setUserSheet(sheet);
+
+        if (!sheet) {
+          throw new Error("User sheet not found in master sheet");
+        }
+
+        const exerciseData = await fetchTodayExercises(currentUser, sheet);
+        setExercises(exerciseData);
+        setAllExercises(exerciseData);
       }
-
-      // 2. Get exercises for current training day (passing sheet to avoid duplicate call)
-      console.log("2️⃣ Fetching exercises...");
-      const exerciseData = await fetchTodayExercises(currentUser, sheet);
-      setExercises(exerciseData);
-      setAllExercises(exerciseData);
-
-      console.log("✅ All data loaded successfully!");
-      console.log(`   - User: ${sheet.user}`);
-      console.log(`   - Exercises: ${exerciseData.length}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load data";
       setError(message);
@@ -68,7 +123,6 @@ export const DataProvider = ({ children }: DataProviderProps) => {
   };
 
   const refresh = async () => {
-    console.log("🔄 Manual refresh requested...");
     await loadData();
   };
 
@@ -81,7 +135,6 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         const username = user.username || "";
         
         if (username !== currentUser) {
-          console.log("👤 User changed from", currentUser || "(none)", "to", username);
           setCurrentUser(username);
         }
       }
@@ -101,7 +154,6 @@ export const DataProvider = ({ children }: DataProviderProps) => {
           const trainingDay = localStorage.getItem(userKey) || "1";
           
           if (trainingDay !== currentTrainingDay) {
-            console.log("📅 Training day changed from", currentTrainingDay || "(none)", "to", trainingDay);
             setCurrentTrainingDay(trainingDay);
           }
         }
@@ -138,6 +190,7 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         error,
         userSheet,
         refresh,
+        useSupabase: USE_SUPABASE,
       }}
     >
       {children}

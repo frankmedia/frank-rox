@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/utils/supabaseClient";
-import { Pause, Check, Dumbbell, Activity, Gauge, Timer, Repeat, AlarmClock, Package, Move, Lightbulb, CircleDot, Trash2, StretchHorizontal, Loader2, RefreshCcw, Save, Send } from "lucide-react";
+import { Pause, Check, Dumbbell, Activity, Gauge, Timer, Repeat, AlarmClock, Package, Move, Lightbulb, CircleDot, Trash2, StretchHorizontal, Loader2, RefreshCcw, Save, Send, Footprints } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { DndContext, useDraggable, useDroppable, DragEndEvent } from "@dnd-kit/core";
 import { useSortable, SortableContext, arrayMove } from "@dnd-kit/sortable";
@@ -15,6 +15,28 @@ interface RenderedItem { id: string; name: string; modality?: string; item_order
 interface GroupItem { id: string; name: string; modality?: string }
 interface Group { blockId: string; sessionId: string; title: string; blockType: string; collapsed?: boolean; parameters?: any; items: GroupItem[] }
 
+// Helper function to get default extra values based on exercise modality
+function getDefaultExtraForModality(modality?: string): any {
+  const mod = modality?.toLowerCase();
+  
+  if (mod === 'strength') {
+    return { sets: 3, reps: 10, weight: 0, rest: 60 };
+  } else if (mod === 'bodyweight') {
+    return { sets: 3, reps: 10, rest: 60 };
+  } else if (mod === 'cardio' || mod === 'running') {
+    return { duration: 10, distance: 1 };
+  } else if (mod === 'mobility') {
+    return { duration: 5 };
+  } else if (mod === 'rehab') {
+    return { sets: 3, reps: 10, weight: 0, duration: 5, rest: 60 };
+  } else if (mod === 'erg') {
+    return { duration: 10, distance: 1 };
+  } else {
+    // Default for unknown types
+    return { sets: 3, reps: 10, rest: 60 };
+  }
+}
+
 const PlanDetail = () => {
   const { id } = useParams();
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -27,11 +49,12 @@ const PlanDetail = () => {
   const [week, setWeek] = useState<"all" | "w1" | "w2">("all");
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [search, setSearch] = useState<string>("");
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const [modalityFilter, setModalityFilter] = useState<string | null>(null);
   const { toast } = useToast();
   const [itemsByDay, setItemsByDay] = useState<Record<string, RenderedItem[]>>({});
   const [readyDays, setReadyDays] = useState<Record<string, boolean>>({});
-  const [editing, setEditing] = useState<{ id: string; dayId: string; sets?: number; reps?: number; weight?: number; rest?: number; tempo?: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; dayId: string; sets?: number | string; reps?: number | string; weight?: number | string; rest?: number | string; tempo?: string; duration?: number | string } | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [openMetcon, setOpenMetcon] = useState<boolean>(() => localStorage.getItem('ui.metconOpen') === '1');
   const [openIntervals, setOpenIntervals] = useState<boolean>(() => localStorage.getItem('ui.intervalsOpen') === '1');
@@ -63,6 +86,18 @@ const PlanDetail = () => {
         });
         return;
       }
+      if (mod === 'rehab') {
+        setEditing({
+          id: itemId,
+          dayId,
+          sets: typeof extra.sets === 'number' ? String(extra.sets) : '',
+          reps: typeof extra.reps === 'number' ? String(extra.reps) : '',
+          weight: typeof extra.weight === 'number' ? String(extra.weight) : '',
+          duration: typeof extra.duration === 'number' ? String(extra.duration) : '',
+          rest: typeof extra.rest === 'number' ? String(extra.rest) : '',
+        });
+        return;
+      }
       if (mod === 'intervals' || mod === 'hiit' || mod === 'emom') {
         setEditing({
           id: itemId,
@@ -86,8 +121,8 @@ const PlanDetail = () => {
       setEditing({
         id: itemId,
         dayId,
-        rest: typeof extra.duration_min === 'number' ? extra.duration_min : undefined,
-        weight: typeof extra.distance_m === 'number' ? extra.distance_m : undefined,
+        rest: typeof extra.duration === 'number' ? extra.duration : undefined,
+        weight: typeof extra.distance === 'number' ? extra.distance : undefined,
         tempo: typeof extra.intensity === 'string' ? extra.intensity : undefined,
       });
     } catch {
@@ -97,50 +132,72 @@ const PlanDetail = () => {
 
   function EditorStrength(itId: string, dayId: string) {
     return (
-      <div className="space-y-2">
-        <div className="flex flex-wrap gap-2 text-xs">
-          <button onClick={() => setEditing({ ...editing!, sets: 3, reps: 10 })} className="h-8 px-2 rounded border border-zinc-700">3×10</button>
-          <button onClick={() => setEditing({ ...editing!, sets: 4, reps: 8 })} className="h-8 px-2 rounded border border-zinc-700">4×8</button>
-          <button onClick={() => setEditing({ ...editing!, sets: 5, reps: 5 })} className="h-8 px-2 rounded border border-zinc-700">5×5</button>
-          <button onClick={() => setEditing({ ...editing!, sets: 4, reps: 12 })} className="h-8 px-2 rounded border border-zinc-700">4×12</button>
-          <button onClick={() => setEditing({ ...editing!, sets: 3, reps: 15 })} className="h-8 px-2 rounded border border-zinc-700">3×15</button>
+      <div className="space-y-4 p-4 bg-zinc-900/50 rounded-lg border border-zinc-800">
+        {/* Quick Select Presets */}
+        <div>
+          <label className="block text-xs font-medium text-zinc-400 mb-2">Quick Select</label>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setEditing({ ...editing!, sets: 3, reps: 10 })} className="px-4 py-2 rounded border border-zinc-700 hover:border-yellow-500 hover:bg-yellow-500/10 transition-colors text-sm">3×10</button>
+            <button onClick={() => setEditing({ ...editing!, sets: 4, reps: 8 })} className="px-4 py-2 rounded border border-zinc-700 hover:border-yellow-500 hover:bg-yellow-500/10 transition-colors text-sm">4×8</button>
+            <button onClick={() => setEditing({ ...editing!, sets: 5, reps: 5 })} className="px-4 py-2 rounded border border-zinc-700 hover:border-yellow-500 hover:bg-yellow-500/10 transition-colors text-sm">5×5</button>
+            <button onClick={() => setEditing({ ...editing!, sets: 4, reps: 12 })} className="px-4 py-2 rounded border border-zinc-700 hover:border-yellow-500 hover:bg-yellow-500/10 transition-colors text-sm">4×12</button>
+            <button onClick={() => setEditing({ ...editing!, sets: 3, reps: 15 })} className="px-4 py-2 rounded border border-zinc-700 hover:border-yellow-500 hover:bg-yellow-500/10 transition-colors text-sm">3×15</button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-4 text-xs">
-          <div className="flex items-center gap-2"><span>Sets</span>
-            <input type="number" className="w-20 h-10 bg-black border border-zinc-700 rounded px-2" value={editing?.sets ?? ''} onChange={(e)=>setEditing({ ...editing!, sets: Number(e.target.value) })} />
+
+        {/* Sets & Reps */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-2">Sets</label>
+            <input type="number" className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm focus:border-yellow-500 focus:outline-none" value={editing?.sets ?? ''} onChange={(e)=>setEditing({ ...editing!, sets: Number(e.target.value) })} placeholder="3" />
           </div>
-          <div className="flex items-center gap-2"><span>Reps</span>
-            <input type="number" className="w-20 h-10 bg-black border border-zinc-700 rounded px-2" value={editing?.reps ?? ''} onChange={(e)=>setEditing({ ...editing!, reps: Number(e.target.value) })} />
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-2">Reps</label>
+            <input type="number" className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm focus:border-yellow-500 focus:outline-none" value={editing?.reps ?? ''} onChange={(e)=>setEditing({ ...editing!, reps: Number(e.target.value) })} placeholder="10" />
           </div>
-          <div className="flex items-center gap-2"><span>Kg</span>
-            <button onClick={()=>setEditing({ ...editing!, weight: Math.max(0,(editing?.weight??0)-2.5) })} className="w-20 h-10 border border-zinc-700 rounded">-2.5</button>
-            <input type="number" className="w-20 h-10 bg-black border border-zinc-700 rounded px-2" value={editing?.weight ?? ''} onChange={(e)=>setEditing({ ...editing!, weight: Number(e.target.value) })} />
-            <button onClick={()=>setEditing({ ...editing!, weight: (editing?.weight??0)+2.5 })} className="w-20 h-10 border border-zinc-700 rounded">+2.5</button>
+        </div>
+
+        {/* Weight */}
+        <div>
+          <label className="block text-xs font-medium text-zinc-400 mb-2">Weight (kg)</label>
+          <div className="flex items-center gap-2">
+            <button onClick={()=>setEditing({ ...editing!, weight: Math.max(0,Number(editing?.weight??0)-2.5) })} className="w-16 h-10 border border-zinc-700 rounded hover:border-yellow-500 hover:bg-yellow-500/10 transition-colors">-2.5</button>
+            <input type="number" step="0.5" className="flex-1 h-10 bg-black border border-zinc-700 rounded px-3 text-sm text-center focus:border-yellow-500 focus:outline-none" value={editing?.weight ?? ''} onChange={(e)=>setEditing({ ...editing!, weight: Number(e.target.value) })} placeholder="7.5" />
+            <button onClick={()=>setEditing({ ...editing!, weight: Number(editing?.weight??0)+2.5 })} className="w-16 h-10 border border-zinc-700 rounded hover:border-yellow-500 hover:bg-yellow-500/10 transition-colors">+2.5</button>
           </div>
-          <div className="flex items-center gap-2"><span>Rest</span>
-            <select className="w-20 h-10 bg-black border border-zinc-700 rounded px-2" value={editing?.rest ?? 60} onChange={(e)=>setEditing({ ...editing!, rest: Number(e.target.value) })}>
-              <option value={30}>30</option>
-              <option value={60}>60</option>
-              <option value={90}>90</option>
-              <option value={120}>120</option>
+        </div>
+
+        {/* Rest & Tempo */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-2">Rest (seconds)</label>
+            <select className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm focus:border-yellow-500 focus:outline-none" value={editing?.rest ?? 60} onChange={(e)=>setEditing({ ...editing!, rest: Number(e.target.value) })}>
+              <option value={30}>30s</option>
+              <option value={60}>60s</option>
+              <option value={90}>90s</option>
+              <option value={120}>120s</option>
             </select>
           </div>
-          <div className="flex items-center gap-2"><span>Tempo</span>
-            <input className="w-20 h-10 bg-black border border-zinc-700 rounded px-2" placeholder="e.g. 3-1-1" value={editing?.tempo ?? ''} onChange={(e)=>setEditing({ ...editing!, tempo: e.target.value })} />
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-2">Tempo</label>
+            <input className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm focus:border-yellow-500 focus:outline-none" placeholder="e.g. 3-1-1" value={editing?.tempo ?? ''} onChange={(e)=>setEditing({ ...editing!, tempo: e.target.value })} />
           </div>
-          <div className="ml-auto">
-            <button
-              onClick={async ()=>{
-                try {
-                  const extra:any = { sets: editing?.sets, reps: editing?.reps, weight_kg: editing?.weight, rest_sec: editing?.rest, tempo: editing?.tempo };
-                  await supabase.from('session_block_items').update({ extra }).eq('id', itId);
-                  setEditing(null);
-                  toast({ description: 'Saved' });
-                } catch(e:any){ toast({ description: e?.message || 'Save failed', variant: 'destructive' as any}); }
-              }}
-              className="px-3 py-1 rounded border border-yellow-500 text-yellow-400 text-xs"
-            >Save</button>
-          </div>
+        </div>
+
+        {/* Save Button */}
+        <div className="flex justify-end pt-2">
+          <button
+            onClick={async ()=>{
+              try {
+                const extra:any = { sets: editing?.sets, reps: editing?.reps, weight: editing?.weight, rest: editing?.rest, tempo: editing?.tempo };
+                await supabase.from('session_block_items').update({ extra }).eq('id', itId);
+                setEditing(null);
+                await loadDayGroups(dayId);
+                toast({ description: '✓ Saved' });
+              } catch(e:any){ toast({ description: e?.message || 'Save failed', variant: 'destructive' as any}); }
+            }}
+            className="px-6 py-2 rounded border-2 border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-black transition-colors font-medium"
+          >Save</button>
         </div>
       </div>
     );
@@ -159,12 +216,12 @@ const PlanDetail = () => {
               );
             })}
           </div>
-          <div className="flex flex-wrap items-center gap-2 max-w-full"><span>Distance (m)</span>
-            <input type="number" className="w-14 h-8 bg-black border border-zinc-700 rounded px-1" value={editing?.weight ?? ''} onChange={(e)=>setEditing({ ...editing!, weight: Number(e.target.value) })} />
-            {[1000,5000,10000].map(d=> {
+          <div className="flex flex-wrap items-center gap-2 max-w-full"><span>Distance (km)</span>
+            <input type="number" step="0.1" className="w-14 h-8 bg-black border border-zinc-700 rounded px-1" value={editing?.weight ?? ''} onChange={(e)=>setEditing({ ...editing!, weight: Number(e.target.value) })} />
+            {[1, 5, 10].map(d=> {
               const active = editing?.weight === d;
               return (
-                <button key={d} onClick={()=>setEditing({ ...editing!, weight: d })} className={`w-14 h-8 inline-flex items-center justify-center rounded border ${active ? 'border-yellow-500 text-yellow-400 bg-yellow-500/10' : 'border-zinc-700'}`}>{d/1000}k</button>
+                <button key={d} onClick={()=>setEditing({ ...editing!, weight: d })} className={`w-14 h-8 inline-flex items-center justify-center rounded border ${active ? 'border-yellow-500 text-yellow-400 bg-yellow-500/10' : 'border-zinc-700'}`}>{d}</button>
               );
             })}
           </div>
@@ -184,7 +241,7 @@ const PlanDetail = () => {
             <button
               onClick={async ()=>{
                 try {
-                  const extra:any = { duration_min: editing?.rest, distance_m: editing?.weight, intensity: editing?.tempo };
+                  const extra:any = { duration: editing?.rest, distance: editing?.weight, intensity: editing?.tempo };
                   const { error } = await supabase.from('session_block_items').update({ extra }).eq('id', itId);
                   if (error) throw error;
                   setEditing(null); toast({ description: 'Saved' });
@@ -247,6 +304,84 @@ const PlanDetail = () => {
               className="px-3 py-1 rounded border border-yellow-500 text-yellow-400"
             >Save</button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  function EditorRehab(itId: string, dayId: string) {
+    // Use local refs to avoid re-renders on every keystroke
+    const setsRef = React.useRef<HTMLInputElement>(null);
+    const repsRef = React.useRef<HTMLInputElement>(null);
+    const weightRef = React.useRef<HTMLInputElement>(null);
+    const durationRef = React.useRef<HTMLInputElement>(null);
+    
+    return (
+      <div className="space-y-4 p-4 bg-zinc-900/50 rounded-lg border border-zinc-800">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-2">Sets</label>
+            <input 
+              ref={setsRef}
+              type="number" 
+              className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm" 
+              defaultValue={editing?.sets ?? ''} 
+              placeholder="3" 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-2">Reps</label>
+            <input 
+              ref={repsRef}
+              type="number" 
+              className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm" 
+              defaultValue={editing?.reps ?? ''} 
+              placeholder="10" 
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-2">Weight (kg)</label>
+            <input 
+              ref={weightRef}
+              type="number" 
+              step="0.5" 
+              className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm" 
+              defaultValue={editing?.weight ?? ''} 
+              placeholder="0" 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-2">Duration (min)</label>
+            <input 
+              ref={durationRef}
+              type="number" 
+              className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm" 
+              defaultValue={editing?.duration ?? ''} 
+              placeholder="5" 
+            />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <button
+            onClick={async ()=>{
+              try {
+                const extra:any = { 
+                  sets: setsRef.current?.value ? Number(setsRef.current.value) : undefined, 
+                  reps: repsRef.current?.value ? Number(repsRef.current.value) : undefined, 
+                  weight: weightRef.current?.value ? Number(weightRef.current.value) : undefined, 
+                  duration: durationRef.current?.value ? Number(durationRef.current.value) : undefined, 
+                  rest: editing?.rest ? Number(editing.rest) : undefined 
+                };
+                await supabase.from('session_block_items').update({ extra }).eq('id', itId);
+                setEditing(null);
+                await loadDayGroups(dayId);
+                toast({ description: '✓ Saved' });
+              } catch(e:any){ toast({ description: e?.message || 'Save failed', variant: 'destructive' as any}); }
+            }}
+            className="px-6 py-2 rounded border-2 border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-black transition-colors font-medium"
+          >Save</button>
         </div>
       </div>
     );
@@ -317,21 +452,26 @@ const PlanDetail = () => {
 
   const filteredExercises = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let list = exercises;
+    let list = [...exercises];
+    
+    // Apply modality filter first
     if (modalityFilter) {
       list = list.filter((e) => (e.modality || "").toLowerCase() === modalityFilter);
     }
+    
+    // If no search query, return the filtered list
     if (!q) return list;
+    
+    // Apply search filter
     return list.filter((e) => {
       const haystack = [
-        e.name,
-        e.modality,
-        e.primary_area,
-        e.pattern,
+        e.name || "",
+        e.modality || "",
+        e.primary_area || "",
+        e.pattern || "",
         e.tags || "",
         (e.equipment || []).join(","),
       ]
-        .filter(Boolean)
         .join(" ")
         .toLowerCase();
       return haystack.includes(q);
@@ -348,6 +488,7 @@ const PlanDetail = () => {
       "core",
       "erg",
       "mobility",
+      "rehab",
       "strength",
       "circuit",
       "intervals",
@@ -357,6 +498,7 @@ const PlanDetail = () => {
     // Always show 'running'; show others only if present
     return baseOrder.filter((m) => m === "running" || present.has(m));
   }, [exercises]);
+
 
   function modalityStyle(mod?: string) {
     const m = (mod || '').toLowerCase();
@@ -368,11 +510,13 @@ const PlanDetail = () => {
       case 'erg':
         return { chip: 'border-cyan-500/40 text-cyan-300 bg-cyan-500/15', Icon: Gauge };
       case 'running':
-        return { chip: 'border-emerald-500/40 text-emerald-300 bg-emerald-500/15', Icon: Activity };
+        return { chip: 'border-emerald-500/40 text-emerald-300 bg-emerald-500/15', Icon: Footprints };
       case 'core':
         return { chip: 'border-purple-500/40 text-purple-300 bg-purple-500/15', Icon: CircleDot };
       case 'mobility':
         return { chip: 'border-teal-500/40 text-teal-300 bg-teal-500/15', Icon: StretchHorizontal };
+      case 'rehab':
+        return { chip: 'border-blue-500/40 text-blue-300 bg-blue-500/15', Icon: Activity };
       case 'skill':
         return { chip: 'border-indigo-500/40 text-indigo-300 bg-indigo-500/15', Icon: Lightbulb };
       case 'carry':
@@ -433,27 +577,340 @@ const PlanDetail = () => {
     );
   };
 
-  const CompactItemRow = React.memo(({ sid, it, dayId, chip, Icon, editing, toggleEditorWithData, removeItem, EditorStrength, EditorEndurance, EditorIntervals, EditorAccessory }: any) => {
+  const CompactItemRow = React.memo(({ sid, it, dayId, chip, Icon, editing, toggleEditorWithData, removeItem, EditorStrength, EditorEndurance, EditorIntervals, EditorAccessory, EditorRehab }: any) => {
+    console.log('🔄 CompactItemRow RENDER:', it.name, { id: it.id, modality: it.modality });
+    
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: sid });
     const style = { transform: CSS.Transform.toString(transform), transition } as React.CSSProperties;
+    const [sets, setSets] = useState<number>(3);
+    const [reps, setReps] = useState<number>(10);
+    const [weight, setWeight] = useState<number>(0);
+    const [duration, setDuration] = useState<number>(10);
+    const [distance, setDistance] = useState<number>(1000);
+    const [intensity, setIntensity] = useState<string>('Z2');
+    const [loading, setLoading] = useState(false);
+    const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const hasLoadedRef = React.useRef<string | null>(null);
+
+    // Load existing values from DB on mount (only once per exercise ID)
+    useEffect(() => {
+      console.log('🔍 useEffect running for:', it.name, { 
+        exerciseId: it.id, 
+        alreadyLoaded: hasLoadedRef.current === it.id 
+      });
+      
+      // Skip if we've already loaded this exercise
+      if (hasLoadedRef.current === it.id) {
+        console.log('⏭️ Skipping load (already loaded):', it.name);
+        return;
+      }
+      
+      const loadValues = async () => {
+        console.log('📥 Loading data for:', it.name);
+        setLoading(true);
+        try {
+          const res = await supabase.from('session_block_items').select('extra').eq('id', it.id).single();
+          if (!res.error && res.data?.extra) {
+            const extra = res.data.extra as any;
+            console.log('✅ Loaded data:', it.name, extra);
+            setSets(extra.sets ?? 3);
+            setReps(extra.reps ?? 10);
+            setWeight(extra.weight ?? 0);
+            setDuration(extra.duration ?? 10);
+            setDistance(extra.distance ?? 1);
+            setIntensity(extra.intensity ?? 'Z2');
+          }
+          hasLoadedRef.current = it.id;
+        } catch (e) {
+          console.error('Failed to load exercise data:', e);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadValues();
+    }, [it.id, it.name]);
+
+    // Debounced save function - saves 500ms after user stops typing
+    const debouncedSave = React.useCallback((newSets: number, newReps: number, newWeight: number, newDuration?: number, newDistance?: number, newIntensity?: string) => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          let extra: any;
+          
+          // For cardio/running/erg exercises
+          if (['cardio', 'running', 'erg'].includes(it.modality)) {
+            extra = { 
+              duration: newDuration ?? duration, 
+              distance: newDistance ?? distance, 
+              intensity: newIntensity ?? intensity 
+            };
+          }
+          // For mobility/core/skill/carry/circuit, only save sets and reps
+          else if (['mobility', 'core', 'skill', 'carry', 'circuit'].includes(it.modality)) {
+            extra = { sets: newSets, reps: newReps };
+          }
+          // For strength exercises
+          else {
+            extra = { sets: newSets, reps: newReps, weight: newWeight };
+          }
+          
+          await supabase.from('session_block_items').update({ extra }).eq('id', it.id);
+        } catch (e) {
+          console.error('Failed to save:', e);
+        }
+      }, 500);
+    }, [it.id, it.modality, duration, distance, intensity]);
+
+    const handleSetsChange = (val: number) => {
+      console.log('✏️ Sets changed:', it.name, val);
+      setSets(val);
+      debouncedSave(val, reps, weight);
+    };
+
+    const handleRepsChange = (val: number) => {
+      console.log('✏️ Reps changed:', it.name, val);
+      setReps(val);
+      debouncedSave(sets, val, weight);
+    };
+
+    const handleWeightChange = (val: number) => {
+      console.log('✏️ Weight changed:', it.name, val);
+      setWeight(val);
+      debouncedSave(sets, reps, val);
+    };
+
+    // Prevent auto-scroll when input gets focus
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+      e.preventDefault();
+      e.target.select();
+    };
+
+    const handleDurationChange = (val: number) => {
+      console.log('✏️ Duration changed:', it.name, val);
+      setDuration(val);
+      debouncedSave(sets, reps, weight, val, distance, intensity);
+    };
+
+    // Prevent non-numeric input
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Allow: backspace, delete, tab, escape, enter, arrows
+      if ([8, 9, 27, 13, 37, 38, 39, 40, 46].includes(e.keyCode)) {
+        return;
+      }
+      // Allow: Ctrl/Cmd+A, Ctrl/Cmd+C, Ctrl/Cmd+V, Ctrl/Cmd+X
+      if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) {
+        return;
+      }
+      // Allow decimal point for weight field
+      if (e.key === '.' || e.key === ',') {
+        return;
+      }
+      // Block if not a number
+      if (!/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+      }
+    };
+
+    const handleDistanceChange = (val: number) => {
+      console.log('✏️ Distance changed:', it.name, val);
+      setDistance(val);
+      debouncedSave(sets, reps, weight, duration, val, intensity);
+    };
+
+    const handleIntensityChange = (val: string) => {
+      console.log('✏️ Intensity changed:', it.name, val);
+      setIntensity(val);
+      debouncedSave(sets, reps, weight, duration, distance, val);
+    };
+
     return (
-      <div ref={setNodeRef} style={style} className={`w-full text-xs px-2 py-1 rounded border ${chip}`}>
-        <div className="inline-flex items-center justify-between w-full">
-          <div className="inline-flex items-center gap-2">
-            <span title="Drag to reorder" {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-yellow-500">
+      <div ref={setNodeRef} style={style} className={`w-full text-xs px-2 py-2 rounded border ${chip}`}>
+        {/* First line: Exercise name and controls */}
+        <div className="flex items-start w-full pr-4">
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <span title="Drag to reorder" {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-yellow-500 flex-shrink-0 mt-1">
               <Move className="w-5 h-5" />
             </span>
-            <Icon className="w-3 h-3" />
-            <span>{it.name}</span>
+            <Icon className="w-4 h-4 flex-shrink-0 mt-1" />
+            <span className="break-words leading-snug text-sm font-medium">{it.name}</span>
           </div>
-          <div className="inline-flex items-center gap-2">
-            <button onClick={() => toggleEditorWithData(it.id, dayId, it.modality)} className="text-[11px] underline opacity-80 hover:opacity-100">Edit</button>
-            <button onClick={()=>removeItem(it.id, dayId)} className="opacity-70 hover:opacity-100" title="Delete exercise"><Trash2 className="w-3 h-3" /></button>
+          
+          <div className="inline-flex items-start gap-1.5 flex-shrink-0 ml-2">
+            {/* Only show Edit button for exercises that need advanced fields */}
+            {!['strength', 'mobility', 'core', 'skill', 'carry', 'circuit', 'cardio', 'running', 'erg'].includes(it.modality) && (
+              <button onClick={() => toggleEditorWithData(it.id, dayId, it.modality)} className="text-xs underline opacity-80 hover:opacity-100 whitespace-nowrap">Edit</button>
+            )}
+            <button onClick={()=>removeItem(it.id, dayId)} className="opacity-70 hover:opacity-100" title="Delete exercise"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         </div>
+        
+        {/* Second line: Inline inputs for strength exercises (sets, reps, kg) */}
+        {it.modality === 'strength' && !loading && (
+          <div className="flex items-center justify-end gap-3 mt-2 pr-3">
+              <div className="inline-flex items-center gap-1.5">
+                <label className="text-xs text-zinc-400 font-medium">Sets</label>
+                <input 
+                  type="number" 
+                  value={sets === 0 ? '' : sets}
+                  onChange={(e) => handleSetsChange(Number(e.target.value) || 0)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={handleKeyDown}
+                  className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                  min="1"
+                  placeholder="0"
+                />
+              </div>
+              <div className="inline-flex items-center gap-1.5">
+                <label className="text-xs text-zinc-400 font-medium">Reps</label>
+                <input 
+                  type="number" 
+                  value={reps === 0 ? '' : reps}
+                  onChange={(e) => handleRepsChange(Number(e.target.value) || 0)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={handleKeyDown}
+                  className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                  min="1"
+                  placeholder="0"
+                />
+              </div>
+              <div className="inline-flex items-center gap-1.5">
+                <label className="text-xs text-zinc-400 font-medium">kg</label>
+                <input 
+                  type="number" 
+                  value={weight === 0 ? '' : weight}
+                  onChange={(e) => handleWeightChange(Number(e.target.value) || 0)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={handleKeyDown}
+                  className="w-16 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                  min="0"
+                  step="0.5"
+                  placeholder="0"
+                />
+              </div>
+          </div>
+        )}
+        
+        {/* Second line: Inline inputs for mobility/core/skill/carry/circuit (sets, reps only) */}
+        {['mobility', 'core', 'skill', 'carry', 'circuit'].includes(it.modality) && !loading && (
+          <div className="flex items-center justify-end gap-3 mt-2 pr-3">
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">Sets</label>
+              <input 
+                type="number" 
+                value={sets === 0 ? '' : sets}
+                onChange={(e) => handleSetsChange(Number(e.target.value) || 0)}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                min="1"
+                placeholder="0"
+              />
+            </div>
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">Reps</label>
+              <input 
+                type="number" 
+                value={reps === 0 ? '' : reps}
+                onChange={(e) => handleRepsChange(Number(e.target.value) || 0)}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                min="1"
+                placeholder="0"
+              />
+            </div>
+          </div>
+        )}
+        
+        {/* Second line: Inline inputs for cardio (duration only - no distance) */}
+        {it.modality === 'cardio' && !loading && (
+          <div className="flex items-center justify-end gap-3 mt-2 pr-3 flex-wrap">
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">min</label>
+              <input 
+                type="number" 
+                value={duration === 0 ? '' : duration}
+                onChange={(e) => handleDurationChange(Number(e.target.value) || 0)}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                min="1"
+                placeholder="0"
+              />
+            </div>
+            <div className="inline-flex items-center gap-1">
+              {['Z2', 'Z3', 'Z4'].map((zone) => (
+                <button
+                  key={zone}
+                  onClick={() => handleIntensityChange(zone)}
+                  className={`h-9 px-2 rounded text-sm font-medium transition-colors ${
+                    intensity === zone 
+                      ? 'bg-yellow-500 text-black border-2 border-yellow-500' 
+                      : 'bg-black text-zinc-400 border-2 border-zinc-700 hover:border-yellow-500'
+                  }`}
+                >
+                  {zone}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Second line: Inline inputs for running/erg (duration, distance, zone buttons) */}
+        {['running', 'erg'].includes(it.modality) && !loading && (
+          <div className="flex items-center justify-end gap-3 mt-2 pr-3 flex-wrap">
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">min</label>
+              <input 
+                type="number" 
+                value={duration === 0 ? '' : duration}
+                onChange={(e) => handleDurationChange(Number(e.target.value) || 0)}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                min="1"
+                placeholder="0"
+              />
+            </div>
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">km</label>
+              <input 
+                type="number"
+                step="0.1"
+                value={distance === 0 ? '' : distance}
+                onChange={(e) => handleDistanceChange(Number(e.target.value) || 0)}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-16 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                min="0"
+                placeholder="0"
+              />
+            </div>
+            <div className="inline-flex items-center gap-1">
+              {['Z2', 'Z3', 'Z4'].map((zone) => (
+                <button
+                  key={zone}
+                  onClick={() => handleIntensityChange(zone)}
+                  className={`h-9 px-2 rounded text-sm font-medium transition-colors ${
+                    intensity === zone 
+                      ? 'bg-yellow-500 text-black border-2 border-yellow-500' 
+                      : 'bg-black text-zinc-400 border-2 border-zinc-700 hover:border-yellow-500'
+                  }`}
+                >
+                  {zone}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
         {editing?.id === it.id && editing.dayId === dayId && (
           <div className="mt-2 bg-black/30 rounded-md p-2 border border-zinc-800">
             {it.modality === 'strength' ? EditorStrength(it.id, dayId) : null}
+            {it.modality === 'rehab' ? EditorRehab(it.id, dayId) : null}
             {it.modality === 'running' || it.modality === 'cardio' || it.modality === 'erg' ? EditorEndurance(it.id, dayId) : null}
             {it.modality === 'intervals' || it.modality === 'hiit' || it.modality === 'emom' ? EditorIntervals(it.id) : null}
             {it.modality === 'core' || it.modality === 'mobility' || it.modality === 'skill' || it.modality === 'carry' || it.modality === 'circuit' ? EditorAccessory(it.id) : null}
@@ -461,11 +918,40 @@ const PlanDetail = () => {
         )}
       </div>
     );
+  }, (prevProps, nextProps) => {
+    // Custom comparison: IGNORE function props (they always change but we don't care)
+    // Only check data props that actually matter
+    const shouldSkipRender = (
+      prevProps.sid === nextProps.sid &&
+      prevProps.it.id === nextProps.it.id &&
+      prevProps.it.name === nextProps.it.name &&
+      prevProps.it.modality === nextProps.it.modality &&
+      prevProps.dayId === nextProps.dayId &&
+      prevProps.editing?.id === nextProps.editing?.id &&
+      prevProps.editing?.dayId === nextProps.editing?.dayId &&
+      prevProps.chip === nextProps.chip
+    );
+    
+    if (!shouldSkipRender) {
+      console.log('🔁 CompactItemRow MEMO: Re-rendering', nextProps.it.name, {
+        sidChanged: prevProps.sid !== nextProps.sid,
+        idChanged: prevProps.it.id !== nextProps.it.id,
+        nameChanged: prevProps.it.name !== nextProps.it.name,
+        modalityChanged: prevProps.it.modality !== nextProps.it.modality,
+        dayIdChanged: prevProps.dayId !== nextProps.dayId,
+        editingIdChanged: prevProps.editing?.id !== nextProps.editing?.id,
+        editingDayIdChanged: prevProps.editing?.dayId !== nextProps.editing?.dayId,
+        chipChanged: prevProps.chip !== nextProps.chip
+      });
+    }
+    
+    return shouldSkipRender;
   });
 
   async function onDragEnd(event: DragEndEvent) {
     const overId = event.over?.id as string | undefined;
     const activeId = event.active?.id as string | undefined;
+    
     if (!overId || !activeId) return;
     // Find group and index containing a given item id
     const findGroupByItem = (dayId:string, itemId:string) => {
@@ -481,28 +967,160 @@ const PlanDetail = () => {
       const [, activeItemId, dayIdA] = activeId.split(':');
       const [, overItemId, dayIdB] = overId.split(':');
       if (dayIdA !== dayIdB) return;
+      
       const { group: srcG, index: srcIdx } = findGroupByItem(dayIdA, activeItemId);
       const { group: dstG, index: dstIdx } = findGroupByItem(dayIdA, overItemId);
-      if (!dstG || dstIdx < 0) return;
-      try {
-        if (srcG && srcG.blockId === dstG.blockId) {
-          // Reorder within same block using item_order
-          if (srcIdx === dstIdx) return;
-          const items = [...(srcG.items || [])];
-          const moved = items.splice(srcIdx, 1)[0];
-          items.splice(dstIdx, 0, moved);
-          await Promise.all(items.map((it, idx) => supabase.from('session_block_items').update({ item_order: idx }).eq('id', it.id)));
-          await loadDayGroups(dayIdA);
-        } else {
-          // Move across blocks: change block_id and append to end
-          const maxOrder = Math.max(0, ...(dstG.items || []).map((it:any) => it.item_order || 0));
-          await supabase.from('session_block_items').update({ block_id: dstG.blockId, item_order: maxOrder + 1 }).eq('id', activeItemId);
-          await loadDayGroups(dayIdA);
+      
+      // If both items are in groups, handle group reordering
+      if (dstG && dstIdx >= 0) {
+        try {
+          if (srcG && srcG.blockId === dstG.blockId) {
+            // Reorder within same block using item_order
+            if (srcIdx === dstIdx) return;
+            const items = [...(srcG.items || [])];
+            const moved = items.splice(srcIdx, 1)[0];
+            items.splice(dstIdx, 0, moved);
+            await Promise.all(items.map((it, idx) => supabase.from('session_block_items').update({ item_order: idx }).eq('id', it.id)));
+            await loadDayGroups(dayIdA);
+          } else {
+            // Move across blocks: change block_id and append to end
+            const maxOrder = Math.max(0, ...(dstG.items || []).map((it:any) => it.item_order || 0));
+            await supabase.from('session_block_items').update({ block_id: dstG.blockId, item_order: maxOrder + 1 }).eq('id', activeItemId);
+            await loadDayGroups(dayIdA);
+          }
+        } catch(e) {
+          console.error('Move failed:', e);
         }
-      } catch(e) {
-        console.error('Move failed:', e);
+        return;
       }
-      return;
+      
+      // If both items are standalone (not in groups), reorder standalone items
+      if (!srcG && !dstG) {
+        try {
+          console.log('🔧 Reordering standalone items:', { activeItemId, overItemId, dayIdA });
+          
+          const standaloneItems = itemsByDay[dayIdA] || [];
+          const fromIdx = standaloneItems.findIndex(it => it.id === activeItemId);
+          const toIdx = standaloneItems.findIndex(it => it.id === overItemId);
+          
+          console.log('🔧 Found indices:', { fromIdx, toIdx, totalItems: standaloneItems.length });
+          
+          if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) {
+            console.log('🔧 Skipping reorder - invalid indices');
+            return;
+          }
+          
+          // Reorder in memory
+          const reordered = arrayMove(standaloneItems, fromIdx, toIdx);
+          setItemsByDay(prev => ({ ...prev, [dayIdA]: reordered }));
+          
+          console.log('🔧 New order:', reordered.map((it, idx) => ({ idx, id: it.id, name: it.name })));
+          
+          // All exercises are in ONE session with multiple blocks
+          // We need to move each block to its own session with the correct order_index
+          
+          console.log('🔧 Moving each block to its own session with correct order...');
+          
+          const oldSessionIds = new Set<string>();
+          
+          // Track sessions with multiple blocks to delete later
+          const { data: allSessions } = await supabase
+            .from('sessions')
+            .select('id, session_blocks(id)')
+            .eq('plan_day_id', dayIdA);
+          
+          if (allSessions) {
+            for (const session of allSessions) {
+              const blocks = (session as any).session_blocks || [];
+              if (blocks.length > 1) {
+                console.log(`🔧 Found old session with ${blocks.length} blocks, marking for deletion`);
+                oldSessionIds.add(session.id);
+              }
+            }
+          }
+          
+          for (let idx = 0; idx < reordered.length; idx++) {
+            const item = reordered[idx];
+            
+            // Get the block_id for this item
+            const { data: itemData } = await supabase
+              .from('session_block_items')
+              .select('block_id')
+              .eq('id', item.id)
+              .single();
+            
+            if (!itemData?.block_id) continue;
+            
+            // Get the current session for this block
+            const { data: blockData } = await supabase
+              .from('session_blocks')
+              .select('session_id, block_type, title')
+              .eq('id', itemData.block_id)
+              .single();
+            
+            if (!blockData?.session_id) continue;
+            
+            // Check if this block is already in its own session
+            const { data: sessionBlocks } = await supabase
+              .from('session_blocks')
+              .select('id')
+              .eq('session_id', blockData.session_id);
+            
+            // If the session has multiple blocks, we need to move this block to a new session
+            if (sessionBlocks && sessionBlocks.length > 1) {
+              oldSessionIds.add(blockData.session_id); // Track old session for cleanup
+              
+              // Create a new session for this block
+              const { data: newSession } = await supabase
+                .from('sessions')
+                .insert({
+                  plan_day_id: dayIdA,
+                  name: blockData.title || 'Exercise',
+                  order_index: idx
+                })
+                .select('id')
+                .single();
+              
+              if (newSession) {
+                // Move the block to the new session
+                await supabase
+                  .from('session_blocks')
+                  .update({ session_id: newSession.id })
+                  .eq('id', itemData.block_id);
+                
+                console.log(`🔧 Moved block to new session with order_index ${idx}`);
+              }
+            } else {
+              // Block is already in its own session, just update the order_index
+              await supabase
+                .from('sessions')
+                .update({ order_index: idx })
+                .eq('id', blockData.session_id);
+              
+              console.log(`🔧 Updated existing session order_index to ${idx}`);
+            }
+          }
+          
+          // Clean up old sessions (even if they still have blocks, they're duplicates)
+          for (const oldSessionId of oldSessionIds) {
+            // Delete all blocks in the old session first
+            await supabase.from('session_blocks').delete().eq('session_id', oldSessionId);
+            // Then delete the session
+            await supabase.from('sessions').delete().eq('id', oldSessionId);
+            console.log(`🔧 Deleted old session and its blocks: ${oldSessionId}`);
+          }
+          
+          console.log('🔧 All blocks moved to separate sessions!');
+          
+          toast({ description: 'Reordered exercises' });
+          console.log('🔧 Reorder complete, reloading...');
+          await loadDayGroups(dayIdA);
+        } catch(e) {
+          console.error('❌ Reorder failed:', e);
+          toast({ description: 'Failed to reorder', variant: 'destructive' as any });
+        }
+        return;
+      }
     }
     // Reorder groups within a day
     if (activeId.startsWith('group:') && overId.startsWith('group:')) {
@@ -567,7 +1185,10 @@ const PlanDetail = () => {
         const blockType = ex.modality === 'strength' ? 'strength' : 'cardio';
         const bIns = await supabase.from('session_blocks').insert({ session_id: sessionId, block_type: blockType, title: name }).select('id').single();
         const blockId = String((bIns.data as any).id);
-        await supabase.from('session_block_items').insert({ block_id: blockId, exercise_id: ex.id, status: 'draft' });
+        
+        // Add default extra values based on modality
+        const defaultExtra = getDefaultExtraForModality(ex.modality);
+        await supabase.from('session_block_items').insert({ block_id: blockId, exercise_id: ex.id, status: 'draft', extra: defaultExtra });
         await loadDayGroups(dayId);
       } finally {
         setSavingDayId(null);
@@ -588,7 +1209,9 @@ const PlanDetail = () => {
       const ex = event.active.data.current as Exercise;
       const [, blockId, dayId] = overId.split(':');
       try {
-        await supabase.from('session_block_items').insert({ block_id: blockId, exercise_id: ex.id, status: 'draft' });
+        // Add default extra values based on modality
+        const defaultExtra = getDefaultExtraForModality(ex.modality);
+        await supabase.from('session_block_items').insert({ block_id: blockId, exercise_id: ex.id, status: 'draft', extra: defaultExtra });
         await loadDayGroups(dayId);
       } catch(e:any){ toast({ description: e?.message || 'Add failed', variant: 'destructive' as any }); }
       return;
@@ -916,13 +1539,16 @@ const PlanDetail = () => {
     setGroupsByDay(prev=> ({ ...prev, [dayId]: groups }));
     const nonGroupRows = blocks.filter((b:any)=> !(b.parameters && (b.parameters.format_group === true || b.parameters.format))).flatMap((b:any)=> (b.itemRows||[]));
     const allRows = blocks.flatMap((b:any)=> (b.itemRows||[]));
-    const flatItems: RenderedItem[] = nonGroupRows.map((r:any)=> ({ id: String(r.id), name: exMap[String(r.exercise_id)]?.name || 'Exercise', modality: exMap[String(r.exercise_id)]?.modality }));
+    // Sort standalone items by item_order before mapping
+    const flatItems: RenderedItem[] = nonGroupRows
+      .sort((a:any,b:any)=>(a.item_order??0)-(b.item_order??0))
+      .map((r:any)=> ({ id: String(r.id), name: exMap[String(r.exercise_id)]?.name || 'Exercise', modality: exMap[String(r.exercise_id)]?.modality, item_order: r.item_order }));
     setItemsByDay(prev=> ({ ...prev, [dayId]: flatItems }));
     const allReady = allRows.length>0 && allRows.every((r:any)=> (r.status || 'draft') === 'ready');
     setReadyDays(prev=> ({ ...prev, [dayId]: allReady }));
   }
 
-  async function removeItem(itemId: string, dayId: string) {
+  const removeItem = useCallback(async (itemId: string, dayId: string) => {
     try {
       const { error } = await supabase.from("session_block_items").delete().eq("id", itemId);
       if (error) throw error;
@@ -936,7 +1562,215 @@ const PlanDetail = () => {
     } catch (e: any) {
       toast({ description: e?.message || "Failed to remove", variant: "destructive" as any });
     }
-  }
+  }, [toast]);
+
+  // Memoize the entire days grid to prevent re-renders when search changes
+  const DaysGrid = useMemo(() => {
+    console.log('🏗️ DaysGrid RENDERING - something in dependencies changed');
+    return (
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 lg:col-span-2 relative">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 text-sm">
+            <button onClick={() => setWeek("all")} className={`px-2 py-1 rounded ${week === "all" ? "bg-yellow-500 text-black" : "bg-black border border-zinc-800"}`}>All</button>
+            <button onClick={() => setWeek("w1")} className={`px-2 py-1 rounded ${week === "w1" ? "bg-yellow-500 text-black" : "bg-black border border-zinc-800"}`}>Week 1</button>
+            <button onClick={() => setWeek("w2")} className={`px-2 py-1 rounded ${week === "w2" ? "bg-yellow-500 text-black" : "bg-black border border-zinc-800"}`}>Week 2</button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Hyrox</span>
+            {[3,4,5,6].map((n) => (
+              <button
+                key={n}
+                disabled={generating}
+                onClick={async () => {
+                  try {
+                    setGenerating(true);
+                    setTrainingDaysSel(n);
+                    const allDayIds = days.map((d) => d.id);
+                    for (const d of allDayIds) {
+                      setItemsByDay((prev) => ({ ...prev, [d]: [] }));
+                      setReadyDays((prev) => ({ ...prev, [d]: false }));
+                      setDays((prev) => prev.map((x) => (x.id === d ? { ...x, is_rest: false, description: "" } : x)));
+                    }
+                    await generateHyroxWeek((supabase as any), plan?.id || "", allDayIds, { template: "balanced", trainingDays: n });
+                    for (const d of allDayIds) await reloadDayItems(d);
+                    toast({ description: `Hyrox • ${n} training days generated` });
+                  } catch (e: any) {
+                    toast({ description: e?.message || 'Failed to generate', variant: 'destructive' as any });
+                  } finally {
+                    setGenerating(false);
+                  }
+                }}
+                className={`w-8 h-8 rounded-full border ${generating ? 'opacity-40 cursor-not-allowed' : 'hover:bg-yellow-500/10'} ${trainingDaysSel===n ? 'border-yellow-500 text-yellow-400 bg-yellow-500/10' : 'border-zinc-700'}`}
+              >{n}</button>
+            ))}
+          </div>
+        </div>
+
+        {generating && (
+          <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-xl">
+            <div className="flex flex-col items-center gap-3 text-yellow-400">
+              <Loader2 className="w-10 h-10 animate-spin" />
+              <div className="text-sm">Generating HYROX plan…</div>
+            </div>
+          </div>
+        )}
+
+        {loading && <div className="text-zinc-400">Loading…</div>}
+        {!loading && filteredDays.length === 0 && (
+          <div className="text-zinc-400">No days for this view.</div>
+        )}
+        {!loading && filteredDays.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {filteredDays.map((d) => (
+              <div key={d.id} onClick={()=>setSelectedDayId(d.id)} className={`rounded-lg p-3 border ${d.is_rest ? "border-zinc-700 bg-black/40 opacity-40" : readyDays[d.id] ? "border-green-400 bg-black/60" : "border-zinc-800 bg-black"} ${savingDayId===d.id? 'animate-pulse': ''}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{d.label ? d.label : `Day ${d.day_index + 1}`}</div>
+                    {d.label && d.label.trim().toLowerCase() !== `day ${d.day_index + 1}`.toLowerCase() && (
+                      <div className="text-xs text-zinc-400">Day {d.day_index + 1}</div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      title="Clear day"
+                      className="inline-flex items-center justify-center text-xs w-9 h-9 rounded border border-zinc-600 hover:bg-zinc-800"
+                      onClick={async ()=>{
+                        try { setSavingDayId(d.id); await clearHyroxDay(supabase as any, d.id); await reloadDayItems(d.id); toast({ description: `Day ${d.day_index+1} cleared`}); }
+                        catch(e:any){ toast({ description: e?.message || 'Failed to clear', variant: 'destructive' as any }); }
+                        finally { setSavingDayId(null); }
+                      }}
+                    >
+                      <RefreshCcw className="w-5 h-5" />
+                    </button>
+                    <button disabled={savingDayId===d.id} title={d.is_rest ? 'Rest' : 'Mark Rest'} onClick={() => toggleRest(d)} className={`inline-flex items-center justify-center text-xs w-9 h-9 rounded border ${d.is_rest ? "border-zinc-700 text-zinc-300 bg-transparent" : "border-yellow-500 text-yellow-400 bg-transparent hover:bg-yellow-500/10"} ${savingDayId===d.id? 'opacity-60 cursor-not-allowed':''}`}>
+                      <Pause className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => markDayReady(d)} disabled={savingDayId===d.id || (!d.is_rest && !(itemsByDay[d.id]?.length > 0))} className={`inline-flex items-center justify-center text-xs w-9 h-9 rounded border ${(!d.is_rest && !(itemsByDay[d.id]?.length > 0)) ? 'opacity-40 cursor-not-allowed border-zinc-700' : 'border-zinc-600 hover:bg-zinc-800'} ${savingDayId===d.id? 'opacity-60 cursor-wait':''}`} title="Ready">
+                      <Check className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <input
+                    className="w-full bg-black border border-zinc-800 rounded-md px-2 py-1 text-xs"
+                    placeholder="Add a short description…"
+                    defaultValue={d.description || ''}
+                    onBlur={async (e) => {
+                      const val = e.currentTarget.value;
+                      if (val === d.description) return;
+                      await supabase.from('plan_days').update({ description: val }).eq('id', d.id);
+                      setDays((prev) => prev.map((x) => x.id === d.id ? { ...x, description: val } : x));
+                    }}
+                  />
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  <div className="space-y-2">
+                    <SortableContext items={(groupsByDay[d.id] || []).map(g => `group:${g.sessionId}:${d.id}`)}>
+                      <InlineRootDrop id={`rootdrop:${d.id}:0`} />
+                      {(groupsByDay[d.id] || []).map((g, gi) => {
+                        const sidG = `group:${g.sessionId}:${d.id}`;
+                        const RowGroup = () => {
+                          const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: sidG });
+                          const style = { transform: CSS.Transform.toString(transform), transition } as React.CSSProperties;
+                          return (
+                            <div ref={setNodeRef} style={style} className="rounded-md border border-slate-600 bg-slate-800">
+                              <div className="flex items-center justify-between px-3 py-2">
+                                <div className="inline-flex items-center gap-2">
+                                  <span title="Drag group" {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-yellow-500"><Move className="w-5 h-5" /></span>
+                                  <Repeat className="w-4 h-4 text-yellow-400" />
+                                  <div className="font-medium text-sm">{g.title}</div>
+                                </div>
+                                <div className="inline-flex items-center gap-2">
+                                  <button className="text-xs underline opacity-80 hover:opacity-100" onClick={()=> setEditingGroup(g.blockId)}>Edit</button>
+                                  <button
+                                    className="text-xs opacity-80 hover:opacity-100"
+                                    onClick={async ()=>{
+                                      try {
+                                        setSavingDayId(d.id);
+                                        await supabase.from('session_block_items').delete().eq('block_id', g.blockId);
+                                        await supabase.from('session_blocks').delete().eq('id', g.blockId);
+                                        const remain = await supabase.from('session_blocks').select('id').eq('session_id', g.sessionId).limit(1);
+                                        if (!remain.error && (!remain.data || remain.data.length === 0)) {
+                                          await supabase.from('sessions').delete().eq('id', g.sessionId);
+                                        }
+                                        await loadDayGroups(d.id);
+                                        toast({ description: 'Group deleted' });
+                                      } catch(e:any) {
+                                        toast({ description: e?.message || 'Failed to delete group', variant: 'destructive' as any });
+                                      } finally { setSavingDayId(null); }
+                                    }}
+                                  >Delete</button>
+                                </div>
+                              </div>
+                              {!g.collapsed && (
+                                <div className="px-3 pb-2">
+                                  <GroupInnerDrop id={`groupdrop:${g.blockId}:${d.id}`}>
+                                    <SortableContext items={(g.items || []).map(i => `item:${i.id}:${d.id}`)}>
+                                      <div className="space-y-2">
+                                        {(g.items || []).map((it) => {
+                                          const { chip, Icon } = modalityStyle(it.modality);
+                                          const sid = `item:${it.id}:${d.id}`;
+                                          return <CompactItemRow key={sid} sid={sid} it={it} dayId={d.id} chip={chip} Icon={Icon} editing={editing} toggleEditorWithData={toggleEditorWithData} removeItem={removeItem} EditorStrength={EditorStrength} EditorEndurance={EditorEndurance} EditorIntervals={EditorIntervals} EditorAccessory={EditorAccessory} EditorRehab={EditorRehab} />;
+                                        })}
+                                        {(g.items || []).length === 0 && (
+                                          <div className="text-xs text-zinc-400">Drop exercises here</div>
+                                        )}
+                                      </div>
+                                    </SortableContext>
+                                  </GroupInnerDrop>
+                                </div>
+                              )}
+                              {editingGroup===g.blockId && (
+                                <GroupEditor g={g} dayId={d.id} />
+                              )}
+                            </div>
+                          );
+                        };
+                        return (
+                          <div key={`grpwrap:${g.sessionId}:${g.blockId}`}>
+                            <RowGroup />
+                            <InlineRootDrop id={`rootdrop:${d.id}:${gi+1}`} />
+                          </div>
+                        );
+                      })}
+                    </SortableContext>
+                  </div>
+                  <SortableContext items={(itemsByDay[d.id] || []).map(i => `item:${i.id}:${d.id}`)}>
+                    <div className="space-y-1 mt-2">
+                      {(itemsByDay[d.id] || []).map((it) => {
+                        const { chip, Icon } = modalityStyle(it.modality);
+                        const sid = `item:${it.id}:${d.id}`;
+                        return (
+                          <CompactItemRow 
+                            key={sid} 
+                            sid={sid} 
+                            it={it} 
+                            dayId={d.id} 
+                            chip={chip} 
+                            Icon={Icon} 
+                            editing={editing} 
+                            toggleEditorWithData={toggleEditorWithData} 
+                            removeItem={removeItem} 
+                            EditorStrength={EditorStrength} 
+                            EditorEndurance={EditorEndurance} 
+                            EditorIntervals={EditorIntervals} 
+                            EditorAccessory={EditorAccessory}
+                            EditorRehab={EditorRehab}
+                          />
+                        );
+                      })}
+                    </div>
+                  </SortableContext>
+                  <DroppableZone id={`drop:${d.id}`} label={savingDayId===d.id? 'Saving…' : 'Drop exercises here'} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }, [filteredDays, groupsByDay, itemsByDay, readyDays, editing, editingGroup, generating, loading, savingDayId, selectedDayId, trainingDaysSel, week, days, plan?.id]);
 
   async function markDayReady(day: PlanDay) {
     try {
@@ -1022,8 +1856,48 @@ const PlanDetail = () => {
             <Save className="w-5 h-5" />
           </button>
           <button
-            onClick={() => {
-              toast({ description: "Send to client feature coming soon!" });
+            onClick={async () => {
+              if (!plan?.id) return;
+              
+              // Check if any days are marked as ready
+              const readyCount = Object.values(readyDays).filter(Boolean).length;
+              if (readyCount === 0) {
+                toast({ 
+                  description: "Please mark at least one day as ready before sending", 
+                  variant: "destructive" as any 
+                });
+                return;
+              }
+              
+              if (!confirm(`Send plan "${plan.name}" to client? This will make it active and visible to them.`)) {
+                return;
+              }
+              
+              try {
+                // Update plan status to 'active' and set start_date
+                const { error } = await supabase
+                  .from('plans')
+                  .update({ 
+                    status: 'active',
+                    start_date: new Date().toISOString()
+                  })
+                  .eq('id', plan.id);
+                
+                if (error) throw error;
+                
+                toast({ 
+                  description: `✓ Plan sent to client! ${readyCount} days are now active.`,
+                  duration: 5000
+                });
+                
+                // Update local state
+                setPlan(prev => prev ? { ...prev, status: 'active' as any } : prev);
+              } catch (e: any) {
+                toast({ 
+                  description: e?.message || "Failed to send plan", 
+                  variant: "destructive" as any 
+                });
+              }
             }}
             className="inline-flex items-center justify-center w-9 h-9 rounded border border-blue-500 text-blue-400 hover:bg-blue-500/10 transition-colors"
             title="Send plan to client"
@@ -1042,7 +1916,7 @@ const PlanDetail = () => {
 
       {/* Two-column layout with DnD context */}
       <DndContext onDragEnd={onDragEnd}>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" key="main-grid">
         {/* Left: Library */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
           <div className="flex items-center justify-between mb-3">
@@ -1097,225 +1971,7 @@ const PlanDetail = () => {
         </div>
 
         {/* Right: Days */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 lg:col-span-2 relative">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-sm">
-              <button onClick={() => setWeek("all")} className={`px-2 py-1 rounded ${week === "all" ? "bg-yellow-500 text-black" : "bg-black border border-zinc-800"}`}>All</button>
-              <button onClick={() => setWeek("w1")} className={`px-2 py-1 rounded ${week === "w1" ? "bg-yellow-500 text-black" : "bg-black border border-zinc-800"}`}>Week 1</button>
-              <button onClick={() => setWeek("w2")} className={`px-2 py-1 rounded ${week === "w2" ? "bg-yellow-500 text-black" : "bg-black border border-zinc-800"}`}>Week 2</button>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm">Hyrox</span>
-              {[3,4,5,6].map((n) => (
-                <button
-                  key={n}
-                  disabled={generating}
-                  onClick={async () => {
-                    try {
-                      setGenerating(true);
-                      setTrainingDaysSel(n);
-                      // Always generate across all days (both weeks)
-                      const allDayIds = days.map((d) => d.id);
-                      // Immediately clear all days in UI so old data disappears at once
-                      for (const d of allDayIds) {
-                        setItemsByDay((prev) => ({ ...prev, [d]: [] }));
-                        setReadyDays((prev) => ({ ...prev, [d]: false }));
-                        setDays((prev) => prev.map((x) => (x.id === d ? { ...x, is_rest: false, description: "" } : x)));
-                      }
-                      await generateHyroxWeek((supabase as any), plan?.id || "", allDayIds, { template: "balanced", trainingDays: n });
-                      for (const d of allDayIds) await reloadDayItems(d);
-                      toast({ description: `Hyrox • ${n} training days generated` });
-                    } catch (e: any) {
-                      toast({ description: e?.message || 'Failed to generate', variant: 'destructive' as any });
-                    } finally {
-                      setGenerating(false);
-                    }
-                  }}
-                  className={`w-8 h-8 rounded-full border ${generating ? 'opacity-40 cursor-not-allowed' : 'hover:bg-yellow-500/10'} ${trainingDaysSel===n ? 'border-yellow-500 text-yellow-400 bg-yellow-500/10' : 'border-zinc-700'}`}
-                >{n}</button>
-              ))}
-            </div>
-          </div>
-
-          {generating && (
-            <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-xl">
-              <div className="flex flex-col items-center gap-3 text-yellow-400">
-                <Loader2 className="w-10 h-10 animate-spin" />
-                <div className="text-sm">Generating HYROX plan…</div>
-              </div>
-            </div>
-          )}
-
-          {loading && <div className="text-zinc-400">Loading…</div>}
-          {!loading && filteredDays.length === 0 && (
-            <div className="text-zinc-400">No days for this view.</div>
-          )}
-          {!loading && filteredDays.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {filteredDays.map((d) => (
-                <div key={d.id} onClick={()=>setSelectedDayId(d.id)} className={`rounded-lg p-3 border ${d.is_rest ? "border-zinc-700 bg-black/40 opacity-40" : readyDays[d.id] ? "border-green-400 bg-black/60" : "border-zinc-800 bg-black"} ${savingDayId===d.id? 'animate-pulse': ''}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">{d.label ? d.label : `Day ${d.day_index + 1}`}</div>
-                      {d.label && d.label.trim().toLowerCase() !== `day ${d.day_index + 1}`.toLowerCase() && (
-                        <div className="text-xs text-zinc-400">Day {d.day_index + 1}</div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        title="Clear day"
-                        className="inline-flex items-center justify-center text-xs w-9 h-9 rounded border border-zinc-600 hover:bg-zinc-800"
-                        onClick={async ()=>{
-                          try { setSavingDayId(d.id); await clearHyroxDay(supabase as any, d.id); await reloadDayItems(d.id); toast({ description: `Day ${d.day_index+1} cleared`}); }
-                          catch(e:any){ toast({ description: e?.message || 'Failed to clear', variant: 'destructive' as any }); }
-                          finally { setSavingDayId(null); }
-                        }}
-                      >
-                        <RefreshCcw className="w-5 h-5" />
-                      </button>
-                      <button disabled={savingDayId===d.id} title={d.is_rest ? 'Rest' : 'Mark Rest'} onClick={() => toggleRest(d)} className={`inline-flex items-center justify-center text-xs w-9 h-9 rounded border ${d.is_rest ? "border-zinc-700 text-zinc-300 bg-transparent" : "border-yellow-500 text-yellow-400 bg-transparent hover:bg-yellow-500/10"} ${savingDayId===d.id? 'opacity-60 cursor-not-allowed':''}`}>
-                        <Pause className="w-5 h-5" />
-                      </button>
-                      <button onClick={() => markDayReady(d)} disabled={savingDayId===d.id || (!d.is_rest && !(itemsByDay[d.id]?.length > 0))} className={`inline-flex items-center justify-center text-xs w-9 h-9 rounded border ${(!d.is_rest && !(itemsByDay[d.id]?.length > 0)) ? 'opacity-40 cursor-not-allowed border-zinc-700' : 'border-zinc-600 hover:bg-zinc-800'} ${savingDayId===d.id? 'opacity-60 cursor-wait':''}`} title="Ready">
-                        <Check className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                  {/* Day description editable below controls */}
-                  <div className="mt-2">
-                    <input
-                      className="w-full bg-black border border-zinc-800 rounded-md px-2 py-1 text-xs"
-                      placeholder="Add a short description…"
-                      defaultValue={d.description || ''}
-                      onBlur={async (e) => {
-                        const val = e.currentTarget.value;
-                        if (val === d.description) return;
-                        await supabase.from('plan_days').update({ description: val }).eq('id', d.id);
-                        setDays((prev) => prev.map((x) => x.id === d.id ? { ...x, description: val } : x));
-                      }}
-                    />
-                  </div>
-
-                  {/* One drop zone + rendered items */}
-                  <div className="mt-3 space-y-2">
-                    {/* Render groups (format containers) */}
-                    <div className="space-y-2">
-                      <SortableContext items={(groupsByDay[d.id] || []).map(g => `group:${g.sessionId}:${d.id}`)}>
-                        <InlineRootDrop id={`rootdrop:${d.id}:0`} />
-                        {(groupsByDay[d.id] || []).map((g, gi) => {
-                          const sidG = `group:${g.sessionId}:${d.id}`;
-                          const RowGroup = () => {
-                            const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: sidG });
-                            const style = { transform: CSS.Transform.toString(transform), transition } as React.CSSProperties;
-                            return (
-                              <div ref={setNodeRef} style={style} className="rounded-md border border-slate-600 bg-slate-800">
-                                <div className="flex items-center justify-between px-3 py-2">
-                                  <div className="inline-flex items-center gap-2">
-                                    <span title="Drag group" {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-yellow-500"><Move className="w-5 h-5" /></span>
-                                    <Repeat className="w-4 h-4 text-yellow-400" />
-                                    <div className="font-medium text-sm">{g.title}</div>
-                                  </div>
-                                  <div className="inline-flex items-center gap-2">
-                                    <button className="text-xs underline opacity-80 hover:opacity-100" onClick={()=> setEditingGroup(g.blockId)}>Edit</button>
-                                    <button
-                                      className="text-xs opacity-80 hover:opacity-100"
-                                      onClick={async ()=>{
-                                        try {
-                                          setSavingDayId(d.id);
-                                          await supabase.from('session_block_items').delete().eq('block_id', g.blockId);
-                                          await supabase.from('session_blocks').delete().eq('id', g.blockId);
-                                          const remain = await supabase.from('session_blocks').select('id').eq('session_id', g.sessionId).limit(1);
-                                          if (!remain.error && (!remain.data || remain.data.length === 0)) {
-                                            await supabase.from('sessions').delete().eq('id', g.sessionId);
-                                          }
-                                          await loadDayGroups(d.id);
-                                          toast({ description: 'Group deleted' });
-                                        } catch(e:any) {
-                                          toast({ description: e?.message || 'Failed to delete group', variant: 'destructive' as any });
-                                        } finally { setSavingDayId(null); }
-                                      }}
-                                    >Delete</button>
-                                  </div>
-                                </div>
-                                {!g.collapsed && (
-                                  <div className="px-3 pb-2">
-                                    <GroupInnerDrop id={`groupdrop:${g.blockId}:${d.id}`}>
-                                      <SortableContext items={(g.items || []).map(i => `item:${i.id}:${d.id}`)}>
-                                        <div className="space-y-2">
-                                          {(g.items || []).map((it) => {
-                                            const { chip, Icon } = modalityStyle(it.modality);
-                                            const sid = `item:${it.id}:${d.id}`;
-                                            return <CompactItemRow key={sid} sid={sid} it={it} dayId={d.id} chip={chip} Icon={Icon} editing={editing} toggleEditorWithData={toggleEditorWithData} removeItem={removeItem} EditorStrength={EditorStrength} EditorEndurance={EditorEndurance} EditorIntervals={EditorIntervals} EditorAccessory={EditorAccessory} />;
-                                          })}
-                                          {(g.items || []).length === 0 && (
-                                            <div className="text-xs text-zinc-400">Drop exercises here</div>
-                                          )}
-                                        </div>
-                                      </SortableContext>
-                                    </GroupInnerDrop>
-                                  </div>
-                                )}
-                                {editingGroup===g.blockId && (
-                                  <GroupEditor g={g} dayId={d.id} />
-                                )}
-                              </div>
-                            );
-                          };
-                          return (
-                            <div key={`grpwrap:${g.sessionId}:${g.blockId}`}>
-                              <RowGroup />
-                              <InlineRootDrop id={`rootdrop:${d.id}:${gi+1}`} />
-                            </div>
-                          );
-                        })}
-                      </SortableContext>
-                    </div>
-                    {/* Backward compatibility list (non-group items if any) */}
-                    <SortableContext items={(itemsByDay[d.id] || []).map(i => `item:${i.id}:${d.id}`)}>
-                      <div className="space-y-1 mt-2">
-                        {(itemsByDay[d.id] || []).map((it) => {
-                          const { chip, Icon } = modalityStyle(it.modality);
-                          const sid = `item:${it.id}:${d.id}`;
-                          const Row = () => {
-                            const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: sid });
-                            const style = { transform: CSS.Transform.toString(transform), transition } as React.CSSProperties;
-                            return (
-                              <div ref={setNodeRef} style={style} className={`w-full text-sm px-2 py-1 rounded border ${chip}`}>
-                                <div className="inline-flex items-center justify-between w-full">
-                                  <div className="inline-flex items-center gap-1.5">
-                                  <span title="Drag to reorder" {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-yellow-500">
-                                    <Move className="w-4 h-4" />
-                                  </span>
-                                  <Icon className="w-3.5 h-3.5" />
-                                  <span>{it.name}</span>
-                                  </div>
-                                  <div className="inline-flex items-center gap-2">
-                                    <button onClick={() => toggleEditorWithData(it.id, d.id, it.modality)} className="text-xs underline opacity-80 hover:opacity-100">{editing?.id === it.id && editing.dayId === d.id ? 'Close' : 'Edit'}</button>
-                                    <button onClick={() => removeItem(it.id, d.id)} className="opacity-70 hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
-                                  </div>
-                                </div>
-                                {editing?.id === it.id && editing.dayId === d.id && (
-                                  <div className="mt-2 bg-black/30 rounded-md py-2 px-1 border border-zinc-800">
-                                    {it.modality === 'strength' ? EditorStrength(it.id, d.id) : null}
-                                    {it.modality === 'running' || it.modality === 'cardio' || it.modality === 'erg' ? EditorEndurance(it.id, d.id) : null}
-                                    {it.modality === 'intervals' || it.modality === 'hiit' || it.modality === 'emom' ? EditorIntervals(it.id) : null}
-                                    {it.modality === 'core' || it.modality === 'mobility' || it.modality === 'skill' || it.modality === 'carry' || it.modality === 'circuit' ? EditorAccessory(it.id) : null}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          };
-                          return <Row key={sid} />;
-                        })}
-                      </div>
-                    </SortableContext>
-                    <DroppableZone id={`drop:${d.id}`} label={savingDayId===d.id? 'Saving…' : 'Drop exercises here'} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {DaysGrid}
       </div>
       </DndContext>
     </>

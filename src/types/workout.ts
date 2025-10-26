@@ -1,4 +1,4 @@
-export type ExerciseType = "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap" | "intro";
+export type ExerciseType = "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap" | "intro" | "rehab" | "amrap_exercise" | "circuit_exercise" | "hiit_exercise";
 
 export interface Exercise {
   id: string;
@@ -20,12 +20,15 @@ export interface Exercise {
   workRestRatio?: string; // For HIIT (e.g., "20s/10s")
   totalRounds?: number; // For circuit (fixed rounds) or tracking amrap
   timeCap?: number; // For AMRAP (minutes)
+  _isChildExercise?: boolean; // Marker for child exercises (used by rendering logic)
 }
 
 export interface WorkoutLog {
   id: string;
   exercise: string;
   date: string;
+  sets?: number;
+  reps?: number;
   weight?: number;
   weights?: number[]; // Array of weights per set
   isPB?: boolean;
