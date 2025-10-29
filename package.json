@@ -99,5 +99,8 @@
     "vite": "^6.4.1",
     "vite-plugin-pwa": "^1.1.0",
     "workbox-window": "^7.3.0"
+  },
+  "engines": {
+    "node": ">=20.19.0"
   }
 }
