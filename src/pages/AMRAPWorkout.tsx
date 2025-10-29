@@ -7,6 +7,12 @@ import { toast } from "sonner";
 import type { Exercise } from "@/types/workout";
 import { triggerSuccessHaptic } from "@/utils/haptics";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useAuth } from "@/contexts/AuthContext";
+import { 
+  markExerciseComplete,
+  syncWorkoutLogToSupabase 
+} from "@/services/workoutCache";
+import { supabase } from "@/utils/supabaseClient";
 
 interface AMRAPWorkoutProps {
   exercise: Exercise;
@@ -15,6 +21,7 @@ interface AMRAPWorkoutProps {
 
 export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const timeCap = exercise.timeCap || 10; // minutes
   const exercises = exercise.exercises || [];
   
@@ -58,9 +65,57 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
     setIsRunning(true);
   };
   
-  const handleComplete = () => {
+  const handleComplete = async () => {
     triggerSuccessHaptic();
-    toast.success("✅ AMRAP Logged!");
+    
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const username = user.username || "";
+        
+        // Get training day
+        const userKey = `currentTrainingDay_${username}`;
+        const trainingDay = parseInt(localStorage.getItem(userKey) || "1");
+        
+        // Mark as complete in cache
+        markExerciseComplete(username, trainingDay, exercise.id, authUser?.clientId);
+        
+        // Calculate duration completed
+        const timeElapsed = Math.round((timeCap * 60 - timeRemaining) / 60);
+        
+        // Sync to Supabase if logged in
+        if (authUser?.clientId) {
+          const { data: plan } = await supabase
+            .from("plans")
+            .select("id")
+            .eq("client_id", authUser.clientId)
+            .eq("status", "active")
+            .single();
+            
+          await syncWorkoutLogToSupabase(
+            authUser.clientId,
+            plan?.id || null,
+            trainingDay,
+            {
+              exerciseName: exercise.name,
+              duration: timeElapsed,
+              notes: `${timeCap} min time cap - ${exercises.length} exercises`,
+            }
+          );
+          
+          toast.success("✅ AMRAP Logged!", {
+            description: "Synced to cloud!"
+          });
+        } else {
+          toast.success("✅ AMRAP Logged!");
+        }
+      }
+    } catch (e) {
+      console.error("Error logging AMRAP workout:", e);
+      toast.success("✅ AMRAP Logged!");
+    }
+    
     onComplete();
   };
   

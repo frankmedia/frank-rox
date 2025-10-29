@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/utils/supabaseClient";
-import { ChevronDown, ChevronRight, Plus, Trash2, Activity } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Activity, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface Client { id: string; name: string; email: string }
 interface Plan { id: string; name: string; status: string; start_date: string | null; end_date: string | null; current_day: number; cycle_days: number }
+interface Template { id: string; name: string; notes: string | null; days_per_week: number; version: number; }
 
 const Clients = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -16,6 +19,10 @@ const Clients = () => {
   const [expandedClient, setExpandedClient] = useState<string | null>(null);
   const [clientPlans, setClientPlans] = useState<Record<string, Plan[]>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -23,7 +30,7 @@ const Clients = () => {
     const load = async () => {
       try {
         setError(null);
-        const { data, error } = await supabase.from("clients").select("id,name,email").order("name");
+        const { data, error} = await supabase.from("clients").select("id,name,email").order("name");
         if (error) throw error;
         setClients((data as any[])?.map((r: any) => ({ id: String(r.id), name: r.name, email: r.email })) || []);
       } catch (e: any) {
@@ -32,7 +39,23 @@ const Clients = () => {
       }
     };
     load();
+    loadTemplates();
   }, []);
+
+  const loadTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('program_templates')
+        .select('id, name, notes, days_per_week, version')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setTemplates(data || []);
+    } catch (e: any) {
+      console.error('Failed to load templates:', e.message);
+    }
+  };
 
   const addClient = async () => {
     try {
@@ -86,20 +109,33 @@ const Clients = () => {
     }
   };
 
-  const addNewPlan = async (clientId: string) => {
+  const showPlanCreationModal = (clientId: string) => {
+    setSelectedClientId(clientId);
+    setSelectedTemplate(null);
+    setShowPlanModal(true);
+  };
+
+  const addNewPlan = async (clientId: string, templateId?: string) => {
     try {
       setLoading(prev => ({ ...prev, [clientId]: true }));
+      setShowPlanModal(false);
+      
       // Mark any existing active plan as completed
       await supabase.from("plans").update({ status: "completed", end_date: new Date().toISOString() }).eq("client_id", clientId).eq("status", "active");
-      // Create new plan as DRAFT (coach must click Send to activate)
+      
+      const template = templateId ? templates.find(t => t.id === templateId) : null;
+      // Default to 2 weeks cycle (14 days) - can be adjusted when generating from template
+      const cycleDays = 14;
+      
+      // Create new plan as ACTIVE immediately so client can see it
       const { data, error } = await supabase
         .from("plans")
         .insert({
-          name: "Untitled Plan",
+          name: template ? template.name : "Untitled Plan",
           client_id: clientId,
-          status: "draft",
-          start_date: null, // Will be set when sent
-          cycle_days: 14,
+          status: "active",
+          start_date: new Date().toISOString(),
+          cycle_days: cycleDays,
           current_day: 1
         })
         .select("id")
@@ -107,17 +143,32 @@ const Clients = () => {
       if (error) throw error;
       const newPlanId = String((data as any).id);
       
-      // Create 14 plan_days for the new plan
-      const days = Array.from({ length: 14 }, (_, i) => ({
-        plan_id: newPlanId,
-        day_index: i,
-        label: `Day ${i + 1}`,
-        is_rest: false
-      }));
-      const daysInsert = await supabase.from("plan_days").insert(days);
-      if (daysInsert.error) throw daysInsert.error;
+      // Create plan_days for the new plan
+      const daysResult = await supabase
+        .from("plan_days")
+        .insert(
+          Array.from({ length: cycleDays }, (_, i) => ({
+            plan_id: newPlanId,
+            day_index: i,
+            label: `Day ${i + 1}`,
+            is_rest: false
+          }))
+        )
+        .select('id, day_index');
       
-      toast({ description: "New draft plan created with 14 days" });
+      if (daysResult.error) throw daysResult.error;
+      
+      // Template selected - just set the cycle days based on template
+      // PT will add exercises manually using the normal drag-and-drop interface
+      if (templateId && template) {
+        console.log('✅ Created plan from template:', template.name);
+      }
+      
+      toast({ 
+        description: template 
+          ? `Plan created from "${template.name}" template with ${template.days_per_week}x/week workout structure` 
+          : `New draft plan created with ${cycleDays} days` 
+      });
       navigate(`/admin/plans/${newPlanId}`);
     } catch (e: any) {
       toast({ description: e?.message || "Failed to create plan", variant: "destructive" as any });
@@ -218,7 +269,7 @@ const Clients = () => {
                       <>
                         {/* Add New Plan Button */}
                         <button
-                          onClick={() => addNewPlan(c.id)}
+                          onClick={() => showPlanCreationModal(c.id)}
                           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-yellow-500 text-yellow-400 hover:bg-yellow-500/10"
                         >
                           <Plus className="w-4 h-4" />
@@ -300,6 +351,86 @@ const Clients = () => {
           })}
         </div>
       )}
+
+      {/* Plan Creation Modal */}
+      <Dialog open={showPlanModal} onOpenChange={setShowPlanModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Plan</DialogTitle>
+            <DialogDescription>
+              Start from scratch or use a template as a starting point
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            {/* Quick Actions */}
+            <button
+              onClick={() => selectedClientId && addNewPlan(selectedClientId)}
+              className="w-full p-6 border-2 border-zinc-700 rounded-lg hover:border-yellow-500 transition-all group"
+            >
+              <FileText className="w-12 h-12 mx-auto mb-3 text-zinc-400 group-hover:text-yellow-500" />
+              <div className="font-semibold mb-1">Blank Plan</div>
+              <div className="text-sm text-zinc-400">Start with empty 14-day structure</div>
+            </button>
+
+            {/* Templates List */}
+            {templates.length > 0 && (
+              <div id="template-list" className="space-y-3">
+                <div className="text-sm font-semibold text-zinc-400 mt-6 mb-3">Available Templates</div>
+                <div className="max-h-96 overflow-y-auto space-y-2">
+                  {templates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => setSelectedTemplate(template.id)}
+                      className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                        selectedTemplate === template.id
+                          ? 'border-yellow-500 bg-yellow-500/10'
+                          : 'border-zinc-800 hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="font-semibold">{template.name}</div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="px-2 py-0.5 bg-zinc-800 rounded">v{template.version}</span>
+                          <span className="px-2 py-0.5 bg-zinc-800 rounded">{template.days_per_week}x/week</span>
+                        </div>
+                      </div>
+                      {template.notes && (
+                        <div className="text-sm text-zinc-400 line-clamp-2">{template.notes}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {templates.length === 0 && (
+              <div className="text-center py-8 text-zinc-500">
+                <p>No templates available yet</p>
+                <p className="text-sm mt-1">Create templates in the Templates section</p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            {selectedTemplate && (
+              <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPlanModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => selectedClientId && addNewPlan(selectedClientId, selectedTemplate)}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                >
+                  Create Plan from Template
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

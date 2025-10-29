@@ -50,74 +50,43 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      // Fetch from master sheet to validate credentials
-      const API_KEY = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY;
-      const MASTER_SHEET_ID = import.meta.env.VITE_MASTER_SHEET_ID;
+      console.log("🔐 Attempting login for:", username);
       
-      if (!API_KEY || !MASTER_SHEET_ID) {
-        console.error("Missing API key or master sheet ID");
+      // Authenticate against Supabase clients table
+      const { data: clientData, error } = await supabase
+        .from("clients")
+        .select("id, name, email, password")
+        .ilike("name", username)
+        .single();
+      
+      if (error || !clientData) {
+        console.log("❌ User not found:", username);
         return false;
       }
       
-      const response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${MASTER_SHEET_ID}/values/A:C?key=${API_KEY}`
-      );
-      
-      if (!response.ok) {
-        console.error("Failed to fetch master sheet:", response.status);
+      // Check password
+      if (clientData.password !== password) {
+        console.log("❌ Invalid password for user:", username);
         return false;
       }
       
-      const data = await response.json();
-      const rows = data.values || [];
+      console.log("✅ Login successful for:", clientData.name);
       
-      // Find matching user (skip header row)
-      for (let i = 1; i < rows.length; i++) {
-        const [sheetUsername, sheetPassword, sheetUrl] = rows[i];
-        
-        if (sheetUsername && sheetUsername.toLowerCase() === username.toLowerCase()) {
-          // Check password
-          if (sheetPassword === password) {
-            // Try to fetch client_id from Supabase
-            let clientId: string | undefined;
-            try {
-              const { data: clientData } = await supabase
-                .from("clients")
-                .select("id")
-                .ilike("name", sheetUsername)
-                .single();
-              
-              if (clientData) {
-                clientId = String(clientData.id);
-                console.log("✅ Found Supabase client ID:", clientId);
-              } else {
-                console.log("⚠️ No Supabase client found for:", sheetUsername);
-              }
-            } catch (err) {
-              console.log("⚠️ Could not fetch Supabase client:", err);
-            }
-
-            const userData: User = {
-              username: sheetUsername,
-              email: `${sheetUsername}@example.com`,
-              name: sheetUsername.charAt(0).toUpperCase() + sheetUsername.slice(1),
-              clientId,
-            };
-            setUser(userData);
-            localStorage.setItem("frank_rock_user", JSON.stringify(userData));
-            localStorage.setItem("VITE_USER_NAME", sheetUsername); // Store for API calls
-            return true;
-          } else {
-            console.log("Invalid password for user:", username);
-            return false;
-          }
-        }
-      }
+      // Create user session
+      const userData: User = {
+        username: clientData.name,
+        email: clientData.email || `${clientData.name}@example.com`,
+        name: clientData.name.charAt(0).toUpperCase() + clientData.name.slice(1),
+        clientId: String(clientData.id),
+      };
       
-      console.log("User not found:", username);
-      return false;
+      setUser(userData);
+      localStorage.setItem("frank_rock_user", JSON.stringify(userData));
+      localStorage.setItem("VITE_USER_NAME", clientData.name); // Store for compatibility
+      
+      return true;
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("❌ Login error:", error);
       return false;
     }
   };
@@ -142,4 +111,3 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     </AuthContext.Provider>
   );
 };
-

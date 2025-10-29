@@ -41,6 +41,9 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
               <NavLink to="/admin/exercises" className={navLinkClass}>
                 Exercises
               </NavLink>
+              <NavLink to="/admin/templates" className={navLinkClass}>
+                Templates
+              </NavLink>
               <NavLink to="/admin/settings" className={navLinkClass}>
                 Settings
               </NavLink>
@@ -67,6 +70,9 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
               </NavLink>
               <NavLink to="/admin/exercises" className={mobileNavLinkClass} onClick={closeMobileMenu}>
                 Exercises
+              </NavLink>
+              <NavLink to="/admin/templates" className={mobileNavLinkClass} onClick={closeMobileMenu}>
+                Templates
               </NavLink>
               <NavLink to="/admin/settings" className={mobileNavLinkClass} onClick={closeMobileMenu}>
                 Settings

@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Flame, ChevronRight, Dumbbell, PersonStanding, Info, Zap, Repeat, Target, Footprints, User, Heart, HandMetal, CheckCircle2, Trophy } from "lucide-react";
-import { fetchTodayExercises, getUserSheet, getMaxTrainingDay } from "@/services/googleSheets";
+import { getTodayExercises } from "@/services/supabasePlans";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { TrainingDayGridSkeleton } from "@/components/TrainingDayGridSkeleton";
 import type { Exercise } from "@/types/workout";
@@ -41,58 +41,74 @@ const Overview = () => {
       try {
         setLoading(true);
 
-        // Get max training day
-        const userSheet = await getUserSheet();
-        if (!userSheet) return;
+        if (!authUser?.clientId) {
+          setLoading(false);
+          return;
+        }
 
-        const max = await getMaxTrainingDay();
+        // Get active plan from Supabase
+        const { data: plan } = await supabase
+          .from('plans')
+          .select('id')
+          .eq('client_id', authUser.clientId)
+          .eq('status', 'active')
+          .single();
+
+        if (!plan) {
+          console.log("No active plan found");
+          setLoading(false);
+          return;
+        }
+
+        // Get all plan days to determine max day and rest days
+        const { data: planDays } = await supabase
+          .from('plan_days')
+          .select('day_index, is_rest, id')
+          .eq('plan_id', plan.id)
+          .order('day_index', { ascending: true });
+
+        if (!planDays || planDays.length === 0) {
+          console.log("No plan days found");
+          setLoading(false);
+          return;
+        }
+
+        // Calculate max day from plan_days
+        const maxDayIndex = Math.max(...planDays.map(pd => pd.day_index));
+        const max = maxDayIndex + 1; // day_index is 0-based
         setMaxDay(max);
 
-        // Get active plan from Supabase to check for rest days
-        let restDaysMap: Record<number, boolean> = {};
-        if (authUser?.clientId) {
-          const { data: plan } = await supabase
-            .from('plans')
-            .select('id')
-            .eq('client_id', authUser.clientId)
-            .eq('status', 'active')
-            .single();
-
-          if (plan) {
-            const { data: planDays } = await supabase
-              .from('plan_days')
-              .select('day_index, is_rest')
-              .eq('plan_id', plan.id);
-
-            if (planDays) {
-              restDaysMap = planDays.reduce((acc, pd) => {
-                acc[pd.day_index] = pd.is_rest || false;
-                return acc;
-              }, {} as Record<number, boolean>);
-            }
-          }
-        }
+        // Create rest days map
+        const restDaysMap: Record<number, boolean> = {};
+        planDays.forEach(pd => {
+          restDaysMap[pd.day_index] = pd.is_rest || false;
+        });
 
         // Load exercises for each day
         const summaries: DaySummary[] = [];
+
+        // Store original training day
+        const userStr = localStorage.getItem("frank_rock_user");
+        if (!userStr) {
+          setLoading(false);
+          return;
+        }
+        const user = JSON.parse(userStr);
+        const userKey = `currentTrainingDay_${user.username}`;
+        const originalDay = localStorage.getItem(userKey);
 
         for (let day = 1; day <= max; day++) {
           // Check if this is a rest day from Supabase
           const isRestDay = restDaysMap[day - 1] === true; // day_index is 0-based
 
           // Temporarily set the day in localStorage to fetch exercises
-          const userStr = localStorage.getItem("frank_rock_user");
-          if (!userStr) continue;
-
-          const user = JSON.parse(userStr);
-          const userKey = `currentTrainingDay_${user.username}`;
-          const originalDay = localStorage.getItem(userKey);
-
           localStorage.setItem(userKey, day.toString());
-          const exercises = await fetchTodayExercises(user.username, userSheet);
+          
+          // Fetch exercises from Supabase for this day
+          const exercises = await getTodayExercises(authUser.clientId);
 
-          // Restore original day
-          if (originalDay) {
+          // Restore original day after last iteration
+          if (day === max && originalDay) {
             localStorage.setItem(userKey, originalDay);
           }
 
@@ -184,6 +200,8 @@ const Overview = () => {
       const user = JSON.parse(userStr);
       const userKey = `currentTrainingDay_${user.username}`;
       localStorage.setItem(userKey, day.toString());
+      
+      console.log(`📅 Day ${day} selected, updated training day to: ${day}`);
     }
 
     // Navigate to today page

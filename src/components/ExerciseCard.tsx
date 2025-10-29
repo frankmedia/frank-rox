@@ -106,7 +106,11 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
               )}
               {exercise.durationMin && exercise.durationMin > 0 && (
                 <span className="text-lg">
-                  <span className="font-semibold text-secondary">{exercise.durationMin} min</span>
+                  <span className="font-semibold text-secondary">
+                    {exercise.durationMin < 1 
+                      ? `${Math.round(exercise.durationMin * 60)} sec` 
+                      : `${exercise.durationMin} min`}
+                  </span>
                 </span>
               )}
               {exercise.targetDistanceKm && exercise.targetDistanceKm > 0 && (
@@ -147,7 +151,9 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
             <div className="flex items-center gap-4 text-muted-foreground">
               {exercise.durationMin && (
                 <span className="text-4xl font-bold text-foreground">
-                  {exercise.durationMin} min
+                  {exercise.durationMin < 1 
+                    ? `${Math.round(exercise.durationMin * 60)} sec` 
+                    : `${exercise.durationMin} min`}
                 </span>
               )}
               {exercise.targetDistanceKm && (
@@ -166,7 +172,9 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
             <div className="flex items-center gap-4 text-muted-foreground">
               {exercise.durationMin ? (
                 <span className="text-4xl font-bold text-foreground">
-                  {exercise.durationMin} min
+                  {exercise.durationMin < 1 
+                    ? `${Math.round(exercise.durationMin * 60)} sec` 
+                    : `${exercise.durationMin} min`}
                 </span>
               ) : (
                 <span className="text-sm text-muted-foreground italic">No plan set yet</span>
@@ -185,20 +193,28 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                   </span>
                   {exercise.durationMin && (
                     <span className="text-lg">
-                      <span className="font-semibold text-blue-400">{exercise.durationMin} min</span> per set
+                      <span className="font-semibold text-blue-400">
+                        {exercise.durationMin < 1 
+                          ? `${Math.round(exercise.durationMin * 60)} sec` 
+                          : `${exercise.durationMin} min`}
+                      </span> per set
                     </span>
                   )}
                 </div>
               ) : exercise.sets && !exercise.reps && exercise.durationMin ? (
                 <div className="flex items-center gap-4 text-muted-foreground">
                   <span className="text-4xl font-bold text-foreground">
-                    {exercise.sets} × {exercise.durationMin} min
+                    {exercise.sets} × {exercise.durationMin < 1 
+                      ? `${Math.round(exercise.durationMin * 60)} sec` 
+                      : `${exercise.durationMin} min`}
                   </span>
                 </div>
               ) : exercise.durationMin && !exercise.sets ? (
                 <div className="flex items-center gap-4 text-muted-foreground">
                   <span className="text-4xl font-bold text-foreground">
-                    {exercise.durationMin} min
+                    {exercise.durationMin < 1 
+                      ? `${Math.round(exercise.durationMin * 60)} sec` 
+                      : `${exercise.durationMin} min`}
                   </span>
                 </div>
               ) : (
@@ -230,7 +246,11 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
               )}
               {exercise.durationMin && (
                 <span className="text-lg">
-                  Target: <span className="font-semibold text-secondary">{exercise.durationMin} min</span>
+                  Target: <span className="font-semibold text-secondary">
+                    {exercise.durationMin < 1 
+                      ? `${Math.round(exercise.durationMin * 60)} sec` 
+                      : `${exercise.durationMin} min`}
+                  </span>
                 </span>
               )}
               {/* Show message if no data */}
@@ -259,14 +279,17 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                 <span className="text-4xl font-bold text-foreground">
                   {exercise.totalRounds || 3} rounds
                 </span>
+                <span className="text-sm text-muted-foreground">
+                  • {exercise.exercises?.length || 0} exercises per round
+                </span>
               </div>
               {exercise.exercises && exercise.exercises.length > 0 && (
                 <div className="text-lg space-y-2 mt-3">
                   {exercise.exercises.map((ex: any, idx: number) => {
                     let displayName = ex.name;
                     
-                    // Add distance to name in brackets
-                    if (ex.targetDistanceKm) {
+                    // Add distance to name in brackets (only if explicitly set and reasonable: 0.01km to 100km)
+                    if (ex.targetDistanceKm && ex.targetDistanceKm >= 0.01 && ex.targetDistanceKm <= 100) {
                       const meters = Math.round(ex.targetDistanceKm * 1000);
                       displayName = `${ex.name} [${meters}m]`;
                     }
@@ -275,15 +298,23 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                       <div key={idx} className="flex items-center gap-2 flex-wrap">
                         <span className="text-foreground text-xl">→</span>
                         <span className="text-foreground">{displayName}</span>
-                        <span className="font-semibold text-foreground/70">
-                          (
-                          {ex.reps && <span>{ex.reps} reps</span>}
-                          {ex.reps && ex.suggestedKg && <span> • </span>}
-                          {ex.suggestedKg && <span style={{ color: "#FFB74D" }}>{ex.suggestedKg}kg</span>}
-                          {(ex.reps || ex.suggestedKg) && ex.durationMin && <span> • </span>}
-                          {ex.durationMin && <span>{ex.durationMin} min</span>}
-                          )
-                        </span>
+                        {(ex.reps || ex.suggestedKg || ex.durationMin) && (
+                          <span className="font-semibold text-foreground/70">
+                            (
+                            {ex.reps && <span>{ex.reps} reps</span>}
+                            {ex.reps && ex.suggestedKg && <span> • </span>}
+                            {ex.suggestedKg && <span style={{ color: "#FFB74D" }}>{ex.suggestedKg}kg</span>}
+                            {(ex.reps || ex.suggestedKg) && ex.durationMin && <span> • </span>}
+                            {ex.durationMin && (
+                              <span>
+                                {ex.durationMin < 1 
+                                  ? `${Math.round(ex.durationMin * 60)} sec` 
+                                  : `${ex.durationMin} min`}
+                              </span>
+                            )}
+                            )
+                          </span>
+                        )}
                       </div>
                     );
                   })}
@@ -305,8 +336,8 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                   {exercise.exercises.map((ex: any, idx: number) => {
                     let displayName = ex.name;
                     
-                    // Add distance to name in brackets
-                    if (ex.targetDistanceKm) {
+                    // Add distance to name in brackets (only if explicitly set and reasonable: 0.01km to 100km)
+                    if (ex.targetDistanceKm && ex.targetDistanceKm >= 0.01 && ex.targetDistanceKm <= 100) {
                       const meters = Math.round(ex.targetDistanceKm * 1000);
                       displayName = `${ex.name} [${meters}m]`;
                     }
@@ -320,7 +351,13 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                             (
                             {ex.suggestedKg && <span style={{ color: "#00E676" }}>{ex.suggestedKg}kg</span>}
                             {ex.suggestedKg && ex.durationMin && <span> • </span>}
-                            {ex.durationMin && <span>{ex.durationMin} min</span>}
+                            {ex.durationMin && (
+                              <span>
+                                {ex.durationMin < 1 
+                                  ? `${Math.round(ex.durationMin * 60)} sec` 
+                                  : `${ex.durationMin} min`}
+                              </span>
+                            )}
                             )
                           </span>
                         )}

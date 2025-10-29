@@ -15,12 +15,18 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { ExerciseListSkeleton } from "@/components/ExerciseCardSkeleton";
 import { shareWorkout } from "@/utils/share";
 import { supabase } from "@/utils/supabaseClient";
+import { isExerciseComplete, getCompletionStats } from "@/services/workoutCache";
 
 const Today = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
   const { exercises, loading, error, refresh } = useData();
   const [syncing, setSyncing] = useState(false);
+  
+  // Debug: Log exercises whenever they change
+  useEffect(() => {
+    console.log(`📋 Today page: Received ${exercises.length} exercises from DataContext:`, exercises.map(e => `${e.name} (${e.type})`));
+  }, [exercises]);
   
   // Function to find the next incomplete training day
   const findNextIncompleteDay = () => {
@@ -89,27 +95,43 @@ const Today = () => {
     threshold: 150, // Much bigger pull required
   });
 
-  // Load completed exercises from today (user-specific)
+  // Load completed exercises from today (user-specific) using hybrid cache
   const loadCompletedExercises = () => {
     try {
       const userStr = localStorage.getItem("frank_rock_user");
       if (userStr) {
         const user = JSON.parse(userStr);
-        const storageKey = `workoutHistory_${user.username}`;
+        const username = user.username || "";
+        const trainingDay = parseInt(currentTrainingDay);
+        
+        // Check both the workout cache AND localStorage history
+        const completedIds = new Set<string>();
+        
+        // 1. Check workout cache (new hybrid system)
+        exercises.forEach((ex) => {
+          if (isExerciseComplete(username, trainingDay, ex.id)) {
+            completedIds.add(ex.name); // ExerciseCard expects exercise names
+          }
+        });
+        
+        // 2. Also check localStorage workoutHistory for backward compatibility
+        const storageKey = `workoutHistory_${username}`;
         const workoutHistory = localStorage.getItem(storageKey);
         
         if (workoutHistory) {
           const logs = JSON.parse(workoutHistory);
           const todayDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
           
-          const todayCompleted = new Set<string>(
-            logs
-              .filter((log: any) => log.timestamp && log.timestamp.startsWith(todayDate))
-              .map((log: any) => log.exerciseName as string)
-          );
-          
-          setCompletedExercises(todayCompleted);
+          logs
+            .filter((log: any) => log.timestamp && log.timestamp.startsWith(todayDate))
+            .forEach((log: any) => {
+              completedIds.add(log.exerciseName as string);
+            });
         }
+        
+        setCompletedExercises(completedIds);
+        
+        console.log("✅ Loaded completed exercises:", Array.from(completedIds));
       }
     } catch (e) {
       console.error("Error loading completed exercises:", e);
@@ -297,6 +319,13 @@ const Today = () => {
       });
 
       // Mark day as completed/skipped
+      console.log('💾 Marking day as', status, {
+        client_id: authUser.clientId,
+        plan_id: planId,
+        day_index: trainingDay,
+        total_exercises: todayLogs.length
+      });
+      
       const { error: dayError } = await supabase
         .from('completed_days')
         .upsert({
@@ -312,7 +341,12 @@ const Today = () => {
           onConflict: 'client_id,plan_id,day_index'
         });
 
-      if (dayError) throw dayError;
+      if (dayError) {
+        console.error('❌ Error marking day:', dayError);
+        throw dayError;
+      }
+      
+      console.log('✅ Day marked as', status);
 
       // Also update localStorage for Overview page compatibility
       const completedDaysKey = `completedDays_${user.username}`;

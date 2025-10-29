@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,14 @@ import { Timer } from "@/components/Timer";
 import { toast } from "sonner";
 import type { Exercise } from "@/types/workout";
 import { triggerSuccessHaptic } from "@/utils/haptics";
+import { 
+  markCircuitRound, 
+  getCircuitProgress,
+  markExerciseComplete,
+  syncCircuitToSupabase
+} from "@/services/workoutCache";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/utils/supabaseClient";
 
 interface CircuitWorkoutProps {
   exercise: Exercise;
@@ -15,20 +23,63 @@ interface CircuitWorkoutProps {
 
 export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const totalRounds = exercise.totalRounds || 3;
   const exercises = exercise.exercises || [];
+  
+  // Get user data for caching
+  const [username, setUsername] = useState<string>("");
+  const [trainingDay, setTrainingDay] = useState<number>(1);
+  const [planId, setPlanId] = useState<string | null>(null);
   
   // Track completed rounds per exercise: { exerciseId: [1, 2, 3] }
   const [completedRounds, setCompletedRounds] = useState<Record<string, number[]>>({});
   const [showTimer, setShowTimer] = useState(false);
   const [timerDuration, setTimerDuration] = useState(90);
   
-  const toggleNextRound = (exerciseId: string) => {
+  // Load user data and cached progress on mount
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userUsername = user.username || "";
+        setUsername(userUsername);
+        
+        // Get training day
+        const userKey = `currentTrainingDay_${userUsername}`;
+        const day = parseInt(localStorage.getItem(userKey) || "1");
+        setTrainingDay(day);
+        
+        // Load cached circuit progress
+        const cached = getCircuitProgress(userUsername, day, exercise.id);
+        setCompletedRounds(cached);
+        
+        console.log("🔄 Loaded circuit progress from cache:", cached);
+      }
+      
+      // Get plan ID if available
+      if (authUser?.clientId) {
+        // We'll fetch this when syncing, for now just store clientId
+      }
+    } catch (e) {
+      console.error("Error loading circuit data:", e);
+    }
+  }, [exercise.id, authUser]);
+  
+  const toggleNextRound = (exerciseId: string, exerciseName: string) => {
+    if (!username) return;
+    
     setCompletedRounds((prev) => {
       const exerciseRounds = prev[exerciseId] || [];
       
       // If all rounds are complete, clear all
       if (exerciseRounds.length === totalRounds) {
+        // Clear all rounds in cache
+        for (let i = 1; i <= totalRounds; i++) {
+          markCircuitRound(username, trainingDay, exercise.id, exerciseId, exerciseName, i);
+        }
+        
         return {
           ...prev,
           [exerciseId]: [],
@@ -37,9 +88,17 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
       
       // Otherwise, add the next round
       const nextRound = exerciseRounds.length + 1;
+      
+      // Save to cache immediately (hybrid: localStorage + will sync to Supabase)
+      markCircuitRound(username, trainingDay, exercise.id, exerciseId, exerciseName, nextRound);
+      
+      triggerSuccessHaptic();
+      
+      const newRounds = [...exerciseRounds, nextRound].sort((a, b) => a - b);
+      
       return {
         ...prev,
-        [exerciseId]: [...exerciseRounds, nextRound].sort((a, b) => a - b),
+        [exerciseId]: newRounds,
       };
     });
   };
@@ -54,11 +113,50 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
     );
   };
   
-  const handleComplete = () => {
+  const handleComplete = async () => {
+    if (!username) {
+      toast.error("User not found");
+      return;
+    }
+    
     triggerSuccessHaptic();
-    toast.success("✅ Circuit Complete!", {
-      description: `${totalRounds} rounds finished!`,
-    });
+    
+    // Mark this circuit as complete in the cache
+    markExerciseComplete(username, trainingDay, exercise.id, authUser?.clientId);
+    
+    // Sync to Supabase immediately (hybrid approach)
+    if (authUser?.clientId) {
+      const { data: plan } = await supabase
+        .from("plans")
+        .select("id")
+        .eq("client_id", authUser.clientId)
+        .eq("status", "active")
+        .single();
+        
+      const result = await syncCircuitToSupabase(
+        authUser.clientId,
+        plan?.id || null,
+        trainingDay,
+        exercise.name,
+        exercises,
+        completedRounds
+      );
+      
+      if (result.success) {
+        toast.success("✅ Circuit Complete!", {
+          description: `${totalRounds} rounds synced to cloud!`,
+        });
+      } else {
+        toast.success("✅ Circuit Complete!", {
+          description: "Saved locally, will sync when online",
+        });
+      }
+    } else {
+      toast.success("✅ Circuit Complete!", {
+        description: `${totalRounds} rounds finished!`,
+      });
+    }
+    
     onComplete();
   };
   
@@ -151,7 +249,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                   <Card
                     key={ex.id}
                     className="p-6 border-2 cursor-pointer hover:bg-muted/50 transition-all"
-                    onClick={() => toggleNextRound(ex.id)}
+                    onClick={() => toggleNextRound(ex.id, ex.name)}
                   >
                     <div className="flex items-center gap-4">
                       {/* Exercise Name and Details */}

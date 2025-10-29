@@ -6,7 +6,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ExternalLink, LogOut, Mail, User as UserIcon, ClipboardCheck, HeartPulse, Link2, Smartphone, Trophy, Calendar, Save, Loader2, Trash2 } from "lucide-react";
-import { getUserSheet } from "@/services/googleSheets";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
@@ -19,12 +18,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const { user: authUser, logout } = useAuth();
   const { installable, installed, promptInstall } = usePWAInstall();
-  const [userSheet, setUserSheet] = useState<{
-    user: string;
-    password: string;
-    sheetUrl: string;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [healthSupported, setHealthSupported] = useState<boolean>(false);
   const [healthConnected, setHealthConnected] = useState<boolean>(false);
   const [stravaConnected, setStravaConnected] = useState<boolean>(false);
@@ -39,22 +33,6 @@ const Profile = () => {
     name: authUser?.name || "Frank",
     avatarUrl: "",
   };
-
-  useEffect(() => {
-    const loadUserSheet = async () => {
-      try {
-        setLoading(true);
-        const sheet = await getUserSheet();
-        setUserSheet(sheet);
-      } catch (error) {
-        console.error("Error loading user sheet:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUserSheet();
-  }, []);
 
   // Detect native and health availability
   useEffect(() => {
@@ -118,9 +96,56 @@ const Profile = () => {
     navigate("/login");
   };
 
-  const handleOpenSheets = () => {
-    if (userSheet?.sheetUrl) {
-      window.open(userSheet.sheetUrl, "_blank");
+  // Password management
+  const [editingPassword, setEditingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [clientPassword, setClientPassword] = useState<string>("");
+
+  // Load client password
+  useEffect(() => {
+    const loadClientPassword = async () => {
+      if (!authUser?.clientId) return;
+      try {
+        const { data, error } = await supabase
+          .from("clients")
+          .select("password")
+          .eq("id", authUser.clientId)
+          .single();
+        
+        if (!error && data) {
+          setClientPassword(data.password || "");
+        }
+      } catch (e) {
+        console.error("Failed to load password:", e);
+      }
+    };
+    loadClientPassword();
+  }, [authUser?.clientId]);
+
+  const handleSavePassword = async () => {
+    if (!authUser?.clientId) return;
+    if (!newPassword.trim()) {
+      toast.error("Password cannot be empty");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from("clients")
+        .update({ password: newPassword })
+        .eq("id", authUser.clientId);
+      
+      if (error) throw error;
+      
+      setClientPassword(newPassword);
+      setEditingPassword(false);
+      setNewPassword("");
+      toast.success("Password updated successfully");
+    } catch (e: any) {
+      toast.error("Failed to update password", { description: e.message });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -489,42 +514,7 @@ const Profile = () => {
           </Card>
         )}
 
-        {/* Workout Sheet Info */}
-        <Card className="p-6 mb-4 shadow-lg">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-muted-foreground mb-1">
-                Workout Sheet
-              </h3>
-              {loading ? (
-                <p className="text-foreground">Loading...</p>
-              ) : userSheet ? (
-                <p className="text-foreground font-medium">{userSheet.user}'s Training Plan</p>
-              ) : (
-                <p className="text-muted-foreground text-sm">Not configured</p>
-              )}
-            </div>
-            {userSheet && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleOpenSheets}
-                className="ml-2"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Open
-              </Button>
-            )}
-          </div>
-          
-          {userSheet && (
-            <div className="text-xs text-muted-foreground font-mono bg-secondary/30 p-2 rounded truncate">
-              {userSheet.sheetUrl}
-            </div>
-          )}
-        </Card>
-
-        {/* Account Section */}
+        {/* Account Credentials Section */}
         <Card className="p-6 mb-4">
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">Login Credentials</h3>
           <div className="space-y-4">
@@ -533,7 +523,7 @@ const Profile = () => {
                 <UserIcon className="w-5 h-5 text-muted-foreground" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground">Username</p>
-                  <p className="text-xl font-bold text-foreground">{userSheet?.user || user.name}</p>
+                  <p className="text-xl font-bold text-foreground">{user.name}</p>
                 </div>
               </div>
             </div>
@@ -544,7 +534,48 @@ const Profile = () => {
                 </svg>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground">Password</p>
-                  <p className="text-xl font-bold text-foreground font-mono">{userSheet?.password || '••••••••'}</p>
+                  {editingPassword ? (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Input
+                        type="text"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        className="max-w-xs"
+                      />
+                      <Button
+                        onClick={handleSavePassword}
+                        disabled={loading}
+                        size="sm"
+                      >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setEditingPassword(false);
+                          setNewPassword("");
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <p className="text-xl font-bold text-foreground font-mono">{clientPassword || '••••••••'}</p>
+                      <Button
+                        onClick={() => {
+                          setEditingPassword(true);
+                          setNewPassword(clientPassword);
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

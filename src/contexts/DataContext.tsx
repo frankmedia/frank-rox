@@ -4,7 +4,7 @@ import { getTodayExercises } from "@/services/supabasePlans";
 import { Exercise } from "@/types/workout";
 
 // 🔄 FEATURE FLAG: Toggle between Supabase and Google Sheets
-const USE_SUPABASE = true; // Set to false to use Google Sheets
+const USE_SUPABASE = true; // Set to true to use Supabase (RECOMMENDED)
 
 interface DataContextType {
   exercises: Exercise[];
@@ -39,44 +39,11 @@ export const DataProvider = ({ children }: DataProviderProps) => {
   const [currentUser, setCurrentUser] = useState<string>("");
   const [currentTrainingDay, setCurrentTrainingDay] = useState<string>("");
 
-  // Flatten nested AMRAP/Circuit/HIIT exercises to individual cards (like old Google Sheets format)
+  // Keep exercises as-is with their child exercises intact
+  // The ExerciseCard component already handles displaying grouped circuits/AMRAP/HIIT
   const flattenExercises = (exercises: Exercise[]): Exercise[] => {
-    const flattened: Exercise[] = [];
-    
-    exercises.forEach((exercise, index) => {
-      // Check if this is a grouped exercise (AMRAP/Circuit/HIIT with child exercises)
-      const hasChildren = (exercise.type === "amrap" || exercise.type === "circuit" || exercise.type === "hiit") 
-        && exercise.exercises && exercise.exercises.length > 0;
-      
-      if (hasChildren) {
-        // Add the parent header (without the child exercises array to avoid ExerciseCard grouping)
-        const parentHeader: Exercise = {
-          ...exercise,
-          isGroupHeader: true,
-          exercises: undefined, // Remove children so ExerciseCard doesn't group them
-        };
-        flattened.push(parentHeader);
-        
-        // Add each child exercise as individual card
-        exercise.exercises!.forEach((child: any, childIndex) => {
-          const childType = `${exercise.type}_exercise` as any; // e.g., "amrap_exercise", "circuit_exercise"
-          
-          // Copy all properties from child, but override type and add marker
-          // DON'T change the ID - child already has the correct session_block_items.id!
-          const childExercise: Exercise = {
-            ...child, // Preserve all existing data (sets, reps, ID, etc.)
-            type: childType, // Override with child type (amrap_exercise, circuit_exercise, etc.)
-            _isChildExercise: true,
-          };
-          flattened.push(childExercise);
-        });
-      } else {
-        // Regular standalone exercise
-        flattened.push(exercise);
-      }
-    });
-    
-    return flattened;
+    // No longer flattening - ExerciseCard handles grouped display properly
+    return exercises;
   };
 
   const loadData = async () => {
@@ -89,19 +56,25 @@ export const DataProvider = ({ children }: DataProviderProps) => {
       const user = userStr ? JSON.parse(userStr) : null;
       const clientId = user?.clientId;
 
+      console.log(`🔄 DataContext loading data for user: ${currentUser}, training day: ${currentTrainingDay}, clientId: ${clientId}, USE_SUPABASE: ${USE_SUPABASE}`);
+
       // Decide which data source to use
       if (USE_SUPABASE && clientId) {
         // 🆕 SUPABASE PATH
+        console.log("📊 Loading from SUPABASE...");
         const exerciseData = await getTodayExercises(clientId);
         
-        // Flatten nested AMRAP/Circuit/HIIT to individual cards (like old Google Sheets)
-        const flattenedData = flattenExercises(exerciseData);
+        console.log(`✅ Loaded ${exerciseData.length} exercises from Supabase:`, exerciseData.map(e => e.name));
         
-        setExercises(flattenedData);
-        setAllExercises(flattenedData);
+        // Keep exercises grouped (circuits/AMRAP/HIIT with their child exercises)
+        const processedData = flattenExercises(exerciseData);
+        
+        setExercises(processedData);
+        setAllExercises(processedData);
         setUserSheet({ user: currentUser, source: "supabase" }); // Mock sheet object for compatibility
       } else {
         // 📄 GOOGLE SHEETS PATH (fallback)
+        console.log("📄 Loading from GOOGLE SHEETS...");
         const sheet = await getUserSheet();
         setUserSheet(sheet);
 
@@ -110,6 +83,8 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         }
 
         const exerciseData = await fetchTodayExercises(currentUser, sheet);
+        console.log(`✅ Loaded ${exerciseData.length} exercises from Google Sheets:`, exerciseData.map(e => e.name));
+        
         setExercises(exerciseData);
         setAllExercises(exerciseData);
       }

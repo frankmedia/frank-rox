@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/utils/supabaseClient";
-import { Pause, Check, Dumbbell, Activity, Gauge, Timer, Repeat, AlarmClock, Package, Move, Lightbulb, CircleDot, Trash2, StretchHorizontal, Loader2, RefreshCcw, Save, Send, Footprints } from "lucide-react";
+import { Pause, Check, Dumbbell, Activity, Gauge, Timer, Repeat, AlarmClock, Package, Move, Lightbulb, CircleDot, Trash2, StretchHorizontal, Loader2, RefreshCcw, Save, Send, Footprints, Upload } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { DndContext, useDraggable, useDroppable, DragEndEvent } from "@dnd-kit/core";
 import { useSortable, SortableContext, arrayMove } from "@dnd-kit/sortable";
@@ -13,7 +13,21 @@ interface PlanDay { id: string; day_index: number; label?: string; is_rest?: boo
 interface Exercise { id: string; name: string; modality?: string; primary_area?: string; pattern?: string; tags?: string | null; equipment?: string[] | null }
 interface RenderedItem { id: string; name: string; modality?: string; item_order?: number }
 interface GroupItem { id: string; name: string; modality?: string }
-interface Group { blockId: string; sessionId: string; title: string; blockType: string; collapsed?: boolean; parameters?: any; items: GroupItem[] }
+interface Group { 
+  blockId: string; 
+  sessionId: string; 
+  title: string; 
+  blockType: string; 
+  collapsed?: boolean; 
+  parameters?: any; 
+  items: GroupItem[];
+  rounds?: number | null;
+  rest_between_rounds_s?: number | null;
+  time_cap_sec?: number | null;
+  work_sec?: number | null;
+  rest_sec?: number | null;
+  intensity?: string | null;
+}
 
 // Helper function to get default extra values based on exercise modality
 function getDefaultExtraForModality(modality?: string): any {
@@ -26,7 +40,7 @@ function getDefaultExtraForModality(modality?: string): any {
   } else if (mod === 'cardio' || mod === 'running') {
     return { duration: 10, distance: 1 };
   } else if (mod === 'mobility') {
-    return { duration: 5 };
+    return { sets: 0, reps: 0, duration: 0 };
   } else if (mod === 'rehab') {
     return { sets: 3, reps: 10, weight: 0, duration: 5, rest: 60 };
   } else if (mod === 'erg') {
@@ -62,6 +76,73 @@ const PlanDetail = () => {
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
   const [savingPlanName, setSavingPlanName] = useState<boolean>(false);
   const [planNameSaved, setPlanNameSaved] = useState<boolean>(false);
+  const [importing, setImporting] = useState<boolean>(false);
+  const [showCSVModal, setShowCSVModal] = useState<boolean>(false);
+  const [importProgress, setImportProgress] = useState<{
+    show: boolean;
+    logs: string[];
+    currentRow: number;
+    totalRows: number;
+    pausedForMapping: boolean;
+    unmappedExercise: string | null;
+    suggestions: any[];
+    showCreateNew: boolean;
+    newExerciseModality: string;
+  }>({
+    show: false,
+    logs: [],
+    currentRow: 0,
+    totalRows: 0,
+    pausedForMapping: false,
+    unmappedExercise: null,
+    suggestions: [],
+    showCreateNew: false,
+    newExerciseModality: 'strength'
+  });
+
+  // Helper to add log to import progress
+  const addImportLog = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : '📝';
+    setImportProgress(prev => ({
+      ...prev,
+      logs: [...prev.logs, `${icon} ${message}`]
+    }));
+  };
+
+  // Resolver to continue import after user maps/creates/skips an exercise
+  const mappingResolverRef = useRef<null | ((result: { selectedExercise: { id: string; name: string; modality: string } | null }) => void)>(null);
+
+  // Await mapping from user for a CSV exercise name; returns selected exercise id or null (skip)
+  const waitForMapping = useCallback(async (
+    csvName: string,
+    dbExercises: Array<{ id: string; name: string; modality: string }>,
+    levenshteinFn: (a: string, b: string) => number
+  ): Promise<{ id: string; name: string; modality: string } | null> => {
+    // Build suggestions (top 5 by Levenshtein <= 5)
+    const searchName = csvName.toLowerCase().trim();
+    const suggestions = dbExercises
+      .map((e) => ({ exercise: e, distance: levenshteinFn(searchName, e.name.toLowerCase().trim()) }))
+      .filter((m) => m.distance <= 5)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 5)
+      .map((m) => m.exercise);
+
+    // Show modal and return a promise that resolves when user picks
+    return new Promise((resolve) => {
+      mappingResolverRef.current = (result) => {
+        mappingResolverRef.current = null;
+        resolve(result.selectedExercise);
+      };
+      setImportProgress((prev) => ({
+        ...prev,
+        pausedForMapping: true,
+        unmappedExercise: csvName,
+        suggestions,
+        showCreateNew: false,
+      }));
+      addImportLog(`Mapping required for "${csvName}"`, "warning");
+    });
+  }, [addImportLog]);
 
   // Open/close editor and prefill values from DB 'extra' when available
   async function toggleEditorWithData(itemId: string, dayId: string, modality?: string) {
@@ -578,14 +659,13 @@ const PlanDetail = () => {
   };
 
   const CompactItemRow = React.memo(({ sid, it, dayId, chip, Icon, editing, toggleEditorWithData, removeItem, EditorStrength, EditorEndurance, EditorIntervals, EditorAccessory, EditorRehab }: any) => {
-    console.log('🔄 CompactItemRow RENDER:', it.name, { id: it.id, modality: it.modality });
-    
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: sid });
     const style = { transform: CSS.Transform.toString(transform), transition } as React.CSSProperties;
     const [sets, setSets] = useState<number>(3);
     const [reps, setReps] = useState<number>(10);
     const [weight, setWeight] = useState<number>(0);
     const [duration, setDuration] = useState<number>(10);
+    const [durationInput, setDurationInput] = useState<string>('10'); // String for input display
     const [distance, setDistance] = useState<number>(1000);
     const [intensity, setIntensity] = useState<string>('Z2');
     const [loading, setLoading] = useState(false);
@@ -616,7 +696,9 @@ const PlanDetail = () => {
             setSets(extra.sets ?? 3);
             setReps(extra.reps ?? 10);
             setWeight(extra.weight ?? 0);
-            setDuration(extra.duration ?? 10);
+            const loadedDuration = extra.duration ?? 10;
+            setDuration(loadedDuration);
+            setDurationInput(loadedDuration === 0 ? '' : String(loadedDuration));
             setDistance(extra.distance ?? 1);
             setIntensity(extra.intensity ?? 'Z2');
           }
@@ -648,16 +730,26 @@ const PlanDetail = () => {
               intensity: newIntensity ?? intensity 
             };
           }
-          // For mobility/core/skill/carry/circuit, only save sets and reps
+          // For mobility/core/skill/carry/circuit, save sets, reps, and duration
           else if (['mobility', 'core', 'skill', 'carry', 'circuit'].includes(it.modality)) {
-            extra = { sets: newSets, reps: newReps };
+            extra = { 
+              sets: newSets, 
+              reps: newReps, 
+              duration: newDuration ?? duration 
+            };
           }
           // For strength exercises
           else {
             extra = { sets: newSets, reps: newReps, weight: newWeight };
           }
           
-          await supabase.from('session_block_items').update({ extra }).eq('id', it.id);
+          console.log('💾 Saving to DB:', it.name, { itemId: it.id, extra });
+          const result = await supabase.from('session_block_items').update({ extra }).eq('id', it.id);
+          if (result.error) {
+            console.error('❌ Save failed:', result.error);
+          } else {
+            console.log('✅ Saved successfully:', it.name);
+          }
         } catch (e) {
           console.error('Failed to save:', e);
         }
@@ -793,8 +885,78 @@ const PlanDetail = () => {
           </div>
         )}
         
-        {/* Second line: Inline inputs for mobility/core/skill/carry/circuit (sets, reps only) */}
-        {['mobility', 'core', 'skill', 'carry', 'circuit'].includes(it.modality) && !loading && (
+        {/* Second line: Inline inputs for mobility (sets, reps, OR duration) */}
+        {it.modality === 'mobility' && !loading && (
+          <div className="flex items-center justify-end gap-3 mt-2 pr-3">
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">Sets</label>
+              <input 
+                type="number" 
+                value={sets === 0 ? '' : sets}
+                onChange={(e) => handleSetsChange(Number(e.target.value) || 0)}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                min="1"
+                placeholder="0"
+              />
+            </div>
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">Reps</label>
+              <input 
+                type="number" 
+                value={reps === 0 ? '' : reps}
+                onChange={(e) => handleRepsChange(Number(e.target.value) || 0)}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                min="1"
+                placeholder="0"
+              />
+            </div>
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">min</label>
+              <input 
+                type="text"
+                inputMode="decimal"
+                value={durationInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  // Allow empty, numbers, and one decimal point while typing
+                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                    setDurationInput(val);
+                    // Only update duration state if it's a complete valid number
+                    const num = parseFloat(val);
+                    if (!isNaN(num)) {
+                      handleDurationChange(num);
+                    } else if (val === '') {
+                      handleDurationChange(0);
+                    }
+                  }
+                }}
+                onBlur={(e) => {
+                  // Clean up on blur - ensure valid number
+                  const val = e.target.value;
+                  const num = parseFloat(val);
+                  if (!isNaN(num) && num >= 0) {
+                    setDurationInput(num === 0 ? '' : String(num));
+                    handleDurationChange(num);
+                  } else {
+                    setDurationInput('');
+                    handleDurationChange(0);
+                  }
+                }}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                placeholder="0"
+              />
+            </div>
+          </div>
+        )}
+        
+        {/* Second line: Inline inputs for core/skill/carry/circuit (sets, reps only) */}
+        {['core', 'skill', 'carry', 'circuit'].includes(it.modality) && !loading && (
           <div className="flex items-center justify-end gap-3 mt-2 pr-3">
             <div className="inline-flex items-center gap-1.5">
               <label className="text-xs text-zinc-400 font-medium">Sets</label>
@@ -831,13 +993,35 @@ const PlanDetail = () => {
             <div className="inline-flex items-center gap-1.5">
               <label className="text-xs text-zinc-400 font-medium">min</label>
               <input 
-                type="number" 
-                value={duration === 0 ? '' : duration}
-                onChange={(e) => handleDurationChange(Number(e.target.value) || 0)}
+                type="text"
+                inputMode="decimal"
+                value={durationInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                    setDurationInput(val);
+                    const num = parseFloat(val);
+                    if (!isNaN(num)) {
+                      handleDurationChange(num);
+                    } else if (val === '') {
+                      handleDurationChange(0);
+                    }
+                  }
+                }}
+                onBlur={(e) => {
+                  const val = e.target.value;
+                  const num = parseFloat(val);
+                  if (!isNaN(num) && num >= 0) {
+                    setDurationInput(num === 0 ? '' : String(num));
+                    handleDurationChange(num);
+                  } else {
+                    setDurationInput('');
+                    handleDurationChange(0);
+                  }
+                }}
                 onFocus={(e) => e.target.select()}
                 onKeyDown={handleKeyDown}
                 className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
-                min="1"
                 placeholder="0"
               />
             </div>
@@ -865,13 +1049,35 @@ const PlanDetail = () => {
             <div className="inline-flex items-center gap-1.5">
               <label className="text-xs text-zinc-400 font-medium">min</label>
               <input 
-                type="number" 
-                value={duration === 0 ? '' : duration}
-                onChange={(e) => handleDurationChange(Number(e.target.value) || 0)}
+                type="text"
+                inputMode="decimal"
+                value={durationInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                    setDurationInput(val);
+                    const num = parseFloat(val);
+                    if (!isNaN(num)) {
+                      handleDurationChange(num);
+                    } else if (val === '') {
+                      handleDurationChange(0);
+                    }
+                  }
+                }}
+                onBlur={(e) => {
+                  const val = e.target.value;
+                  const num = parseFloat(val);
+                  if (!isNaN(num) && num >= 0) {
+                    setDurationInput(num === 0 ? '' : String(num));
+                    handleDurationChange(num);
+                  } else {
+                    setDurationInput('');
+                    handleDurationChange(0);
+                  }
+                }}
                 onFocus={(e) => e.target.select()}
                 onKeyDown={handleKeyDown}
                 className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
-                min="1"
                 placeholder="0"
               />
             </div>
@@ -1326,8 +1532,9 @@ const PlanDetail = () => {
   }
 
   function GroupEditor({ g, dayId }: { g: Group; dayId: string }) {
-    // derive format
-    const fmt = (g.parameters?.format as string) || g.title.split(' ')[0].toLowerCase();
+    // derive format (normalize trailing colon and common variants)
+    const rawFmt = ((g.parameters?.format as string) || g.title.split(' ')[0].toLowerCase());
+    const fmt = rawFmt.replace(/:$/,'');
     const isTabata = fmt === 'tabata' || g.parameters?.tabata_fixed === true;
     const [work, setWork] = useState<number | ''>('');
     const [rest, setRest] = useState<number | ''>('');
@@ -1375,7 +1582,16 @@ const PlanDetail = () => {
       if (slotsPerMin !== '') params.slots_per_min = Number(slotsPerMin);
       if (exercisesPerRound !== '') params.exercises_per_round = Number(exercisesPerRound);
       payload.parameters = params;
-      await supabase.from('session_blocks').update(payload).eq('id', g.blockId);
+      
+      console.log('💾 Saving circuit block:', g.blockId, payload);
+      const result = await supabase.from('session_blocks').update(payload).eq('id', g.blockId);
+      if (result.error) {
+        console.error('❌ Circuit save failed:', result.error);
+        toast({ description: 'Failed to save circuit', variant: 'destructive' as any });
+        return;
+      }
+      console.log('✅ Circuit saved successfully');
+      
       await loadDayGroups(dayId);
       setEditingGroup(null);
       toast({ description: 'Group updated' });
@@ -1526,18 +1742,26 @@ const PlanDetail = () => {
       if (!ex.error && ex.data) ex.data.forEach((e:any)=> exMap[String(e.id)] = { name: e.name, modality: e.modality });
     }
 
-    const groups: Group[] = blocks.filter((b:any)=> !!(b.parameters && (b.parameters.format_group === true || b.parameters.format))).map((b:any)=> ({
+    // Treat any block with block_type === 'circuit' as a group wrapper
+    const groups: Group[] = blocks.filter((b:any)=> b.blockType === 'circuit').map((b:any)=> ({
       sessionId: b.sessionId,
       blockId: b.blockId,
       title: b.title,
       blockType: b.blockType,
       collapsed: b.collapsed,
       parameters: b.parameters,
+      rounds: b.rounds ?? 0,
+      rest_between_rounds_s: b.rest_between_rounds_s ?? 0,
+      time_cap_sec: b.time_cap_sec ?? null,
+      work_sec: b.work_sec ?? 0,
+      rest_sec: b.rest_sec ?? 0,
+      intensity: b.intensity,
       items: (b.itemRows||[]).sort((a:any,b:any)=>(a.item_order??0)-(b.item_order??0)).map((r:any)=> ({ id: String(r.id), name: exMap[String(r.exercise_id)]?.name || 'Exercise', modality: exMap[String(r.exercise_id)]?.modality }))
     }));
 
     setGroupsByDay(prev=> ({ ...prev, [dayId]: groups }));
-    const nonGroupRows = blocks.filter((b:any)=> !(b.parameters && (b.parameters.format_group === true || b.parameters.format))).flatMap((b:any)=> (b.itemRows||[]));
+    // Standalones are items from non-circuit blocks only
+    const nonGroupRows = blocks.filter((b:any)=> b.blockType !== 'circuit').flatMap((b:any)=> (b.itemRows||[]));
     const allRows = blocks.flatMap((b:any)=> (b.itemRows||[]));
     // Sort standalone items by item_order before mapping
     const flatItems: RenderedItem[] = nonGroupRows
@@ -1566,7 +1790,6 @@ const PlanDetail = () => {
 
   // Memoize the entire days grid to prevent re-renders when search changes
   const DaysGrid = useMemo(() => {
-    console.log('🏗️ DaysGrid RENDERING - something in dependencies changed');
     return (
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 lg:col-span-2 relative">
         <div className="flex items-center justify-between mb-3">
@@ -1576,6 +1799,14 @@ const PlanDetail = () => {
             <button onClick={() => setWeek("w2")} className={`px-2 py-1 rounded ${week === "w2" ? "bg-yellow-500 text-black" : "bg-black border border-zinc-800"}`}>Week 2</button>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCSVModal(true)}
+              className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm flex items-center gap-1"
+              title="Import CSV"
+            >
+              <Upload className="w-4 h-4" />
+              CSV
+            </button>
             <span className="text-sm">Hyrox</span>
             {[3,4,5,6].map((n) => (
               <button
@@ -1645,7 +1876,7 @@ const PlanDetail = () => {
                     <button disabled={savingDayId===d.id} title={d.is_rest ? 'Rest' : 'Mark Rest'} onClick={() => toggleRest(d)} className={`inline-flex items-center justify-center text-xs w-9 h-9 rounded border ${d.is_rest ? "border-zinc-700 text-zinc-300 bg-transparent" : "border-yellow-500 text-yellow-400 bg-transparent hover:bg-yellow-500/10"} ${savingDayId===d.id? 'opacity-60 cursor-not-allowed':''}`}>
                       <Pause className="w-5 h-5" />
                     </button>
-                    <button onClick={() => markDayReady(d)} disabled={savingDayId===d.id || (!d.is_rest && !(itemsByDay[d.id]?.length > 0))} className={`inline-flex items-center justify-center text-xs w-9 h-9 rounded border ${(!d.is_rest && !(itemsByDay[d.id]?.length > 0)) ? 'opacity-40 cursor-not-allowed border-zinc-700' : 'border-zinc-600 hover:bg-zinc-800'} ${savingDayId===d.id? 'opacity-60 cursor-wait':''}`} title="Ready">
+                    <button onClick={() => markDayReady(d)} disabled={savingDayId===d.id || (!d.is_rest && !((itemsByDay[d.id]?.length > 0) || (groupsByDay[d.id]?.length > 0)))} className={`inline-flex items-center justify-center text-xs w-9 h-9 rounded border ${(!d.is_rest && !((itemsByDay[d.id]?.length > 0) || (groupsByDay[d.id]?.length > 0))) ? 'opacity-40 cursor-not-allowed border-zinc-700' : 'border-zinc-600 hover:bg-zinc-800'} ${savingDayId===d.id? 'opacity-60 cursor-wait':''}`} title="Ready">
                       <Check className="w-5 h-5" />
                     </button>
                   </div>
@@ -1974,10 +2205,878 @@ const PlanDetail = () => {
         {DaysGrid}
       </div>
       </DndContext>
+      
+      {/* CSV Import Modal */}
+      {showCSVModal && plan && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">Import CSV to {plan.name}</h2>
+              <button
+                onClick={() => setShowCSVModal(false)}
+                className="text-zinc-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Upload CSV File</label>
+                <p className="text-xs text-zinc-400 mb-2">
+                  Tab-separated format with columns: day, Exercise, Type, Sets/Rounds, Rest between rounds (s), Work (seconds), Reps, Kg, Duration (min), Distance (KM)
+                </p>
+                <input
+                  type="file"
+                  accept=".csv,.txt,.tsv"
+                  disabled={importing}
+                    onChange={async (e) => {
+                      try {
+                        console.log('🚀 FILE UPLOAD TRIGGERED');
+                        const file = e.target.files?.[0];
+                        console.log('📁 File selected:', file?.name, 'Size:', file?.size, 'bytes');
+                        
+                        if (!file) {
+                          console.error('❌ No file selected');
+                          toast({ description: "No file selected", variant: "destructive" as any });
+                          return;
+                        }
+                        
+                        if (!plan) {
+                          console.error('❌ No plan loaded');
+                          toast({ description: "No plan loaded", variant: "destructive" as any });
+                          return;
+                        }
+                        
+                        console.log('✅ Starting import for plan:', plan.name, 'Plan ID:', plan.id);
+                        
+                        setImporting(true);
+                        console.log('📖 Reading file...');
+                        const text = await file.text();
+                        console.log('✅ File read successfully, length:', text.length, 'characters');
+                        console.log('📄 First 200 chars:', text.substring(0, 200));
+                        
+                        // Parse CSV - detect delimiter (comma or tab)
+                        const lines = text.trim().split("\n");
+                      console.log('📄 Total lines in file:', lines.length);
+                      console.log('📄 First line (raw):', lines[0]);
+                      
+                      // Auto-detect delimiter: comma or tab
+                      const delimiter = lines[0].includes('\t') ? '\t' : ',';
+                      console.log('🔍 Detected delimiter:', delimiter === '\t' ? 'TAB' : 'COMMA');
+                      
+                      const headers = lines[0].split(delimiter);
+                      console.log('📄 CSV Headers:', headers);
+                      console.log('📄 Number of headers:', headers.length);
+                      
+                      const rows: any[] = [];
+                      
+                      for (let i = 1; i < lines.length; i++) {
+                        const line = lines[i];
+                        if (!line.trim()) continue; // Skip empty lines
+                        
+                        console.log(`\n🔍 Line ${i} (raw):`, line);
+                        
+                        const values = line.split(delimiter);
+                        console.log(`  Split into ${values.length} values:`, values);
+                        
+                        if (values.length < headers.length) {
+                          console.log(`⚠️ Skipping line ${i}: has ${values.length} columns but expected ${headers.length}`);
+                          continue;
+                        }
+                        
+                        const row: any = {};
+                        headers.forEach((header, idx) => {
+                          const val = values[idx]?.trim();
+                          if (header === "day" || header.includes("Rounds") || header.includes("seconds") || 
+                              header.includes("min") || header.includes("KM") || header.includes("Kg")) {
+                            row[header] = val && val !== "" ? parseFloat(val) : null;
+                          } else {
+                            row[header] = val || "";
+                          }
+                        });
+                        
+                        console.log(`  Parsed row:`, row);
+                        console.log(`  Has day? ${!!row.day}, Has Exercise? ${!!row.Exercise}`);
+                        
+                        if (row.day && row.Exercise) {
+                          rows.push(row);
+                          console.log(`✅ Added row ${i} to import list`);
+                        } else {
+                          console.log(`⚠️ Skipping line ${i}: missing day (${row.day}) or Exercise (${row.Exercise})`);
+                        }
+                      }
+                      
+                      console.log(`📊 Total parsed rows: ${rows.length}`);
+                      toast({ description: `Parsed ${rows.length} rows` });
+                      
+                      // Simple Levenshtein distance for fuzzy matching
+                      const levenshtein = (a: string, b: string): number => {
+                        const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
+                        for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+                        for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+                        for (let j = 1; j <= b.length; j++) {
+                          for (let i = 1; i <= a.length; i++) {
+                            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                            matrix[j][i] = Math.min(
+                              matrix[j][i - 1] + 1,
+                              matrix[j - 1][i] + 1,
+                              matrix[j - 1][i - 1] + cost
+                            );
+                          }
+                        }
+                        return matrix[b.length][a.length];
+                      };
+                      
+                      // Fetch all exercises for matching
+                      const { data: dbExercises, error: exercisesError } = await supabase
+                        .from("exercises")
+                        .select("id, name, modality");
+                      
+                      if (exercisesError || !dbExercises) {
+                        console.error('❌ Failed to fetch exercises:', exercisesError);
+                        toast({ description: "Failed to fetch exercises", variant: "destructive" as any });
+                        return;
+                      }
+                      
+                      console.log(`💪 Loaded ${dbExercises.length} exercises from database`);
+                      
+                      // Group by day
+                      const dayGroups = new Map<number, any[]>();
+                      rows.forEach((row) => {
+                        if (!dayGroups.has(row.day)) dayGroups.set(row.day, []);
+                        dayGroups.get(row.day)!.push(row);
+                      });
+                      
+                      console.log(`📅 Day groups:`, Array.from(dayGroups.entries()).map(([day, rows]) => ({ day, count: rows.length })));
+                      
+                      // Show live progress modal
+                      setImportProgress({
+                        show: true,
+                        logs: ['🚀 Starting import...', `📊 Total rows to process: ${rows.length}`],
+                        currentRow: 0,
+                        totalRows: rows.length,
+                        pausedForMapping: false,
+                        unmappedExercise: null,
+                        suggestions: [],
+                        showCreateNew: false,
+                        newExerciseModality: 'strength'
+                      });
+                      setShowCSVModal(false);
+                      
+                      // Wait for modal to render, then start import
+                      await new Promise(resolve => setTimeout(resolve, 100));
+                      
+                      // Exercise mapping cache (user selections during import)
+                      const exerciseCache = new Map<string, any>();
+                      
+                      // Import each day
+                      for (const [dayNum, dayRows] of dayGroups.entries()) {
+                        console.log(`\n🏃 Processing Day ${dayNum} with ${dayRows.length} rows`);
+                        addImportLog(`Processing Day ${dayNum} (${dayRows.length} rows)...`);
+                        
+                        // Get or create plan_day
+                        let { data: planDay, error: planDayError } = await supabase
+                          .from("plan_days")
+                          .select("id")
+                          .eq("plan_id", plan.id)
+                          .eq("day_index", dayNum - 1)
+                          .single();
+                        
+                        if (!planDay) {
+                          console.log(`  ➕ Creating plan_day for day_index ${dayNum - 1}`);
+                          const { data: newDay, error: createError } = await supabase
+                            .from("plan_days")
+                            .insert({
+                              plan_id: plan.id,
+                              day_index: dayNum - 1,
+                              name: `Day ${dayNum}`,
+                              is_rest: false,
+                            })
+                            .select()
+                            .single();
+                          
+                          if (createError) {
+                            console.error(`  ❌ Failed to create plan_day:`, createError);
+                          } else {
+                            console.log(`  ✅ Created plan_day:`, newDay);
+                          }
+                          planDay = newDay;
+                        } else {
+                          console.log(`  ✅ Found existing plan_day:`, planDay.id);
+                        }
+                        
+                        if (!planDay) {
+                          console.error(`  ❌ No plan_day for day ${dayNum}, skipping`);
+                          continue;
+                        }
+                        
+                        // Get or create session
+                        let { data: session, error: sessionError } = await supabase
+                          .from("sessions")
+                          .select("id")
+                          .eq("plan_day_id", planDay.id)
+                          .single();
+                        
+                        if (!session) {
+                          console.log(`  ➕ Creating session for plan_day ${planDay.id}`);
+                          const { data: newSession, error: createSessionError } = await supabase
+                            .from("sessions")
+                            .insert({
+                              plan_day_id: planDay.id,
+                              name: `Day ${dayNum} Session`,
+                              order_index: 0,
+                            })
+                            .select()
+                            .single();
+                          
+                          if (createSessionError) {
+                            console.error(`  ❌ Failed to create session:`, createSessionError);
+                          } else {
+                            console.log(`  ✅ Created session:`, newSession);
+                          }
+                          session = newSession;
+                        } else {
+                          console.log(`  ✅ Found existing session:`, session.id);
+                        }
+                        
+                        if (!session) {
+                          console.error(`  ❌ No session for day ${dayNum}, skipping`);
+                          continue;
+                        }
+                        
+                        // Get max order_index
+                        const { data: existingBlocks } = await supabase
+                          .from("session_blocks")
+                          .select("order_index")
+                          .eq("session_id", session.id)
+                          .order("order_index", { ascending: false })
+                          .limit(1);
+                        
+                        let orderIndex = existingBlocks?.[0]?.order_index ?? -1;
+                        
+                        // PASS 0: Pre-create all circuit wrappers so they always exist
+                        try {
+                          const circuitHeaders = dayRows.filter((r: any) => String(r.Type || '').trim().toLowerCase() === 'circuit');
+                          console.log(`  🔧 Pre-pass: ensuring ${circuitHeaders.length} circuit wrappers exist...`);
+                          for (const hdr of circuitHeaders) {
+                            const { data: existing } = await supabase
+                              .from('session_blocks')
+                              .select('id')
+                              .eq('session_id', session.id)
+                              .eq('title', hdr.Exercise)
+                              .maybeSingle();
+                            if (!existing) {
+                              orderIndex++;
+                              const roundsVal = hdr['Sets/Rounds'] || 1;
+                              const ins = await supabase
+                                .from('session_blocks')
+                                .insert({
+                                  session_id: session.id,
+                                  block_type: 'circuit',
+                                  title: hdr.Exercise,
+                                  rounds: roundsVal,
+                                  work_sec: 0,
+                                  rest_sec: 0,
+                                  rest_between_rounds_s: 0,
+                                  order_index: orderIndex,
+                                })
+                                .select('id')
+                                .single();
+                              if (ins.error) console.error('  ❌ Pre-pass create failed:', hdr.Exercise, ins.error);
+                              else console.log('  ✅ Pre-pass created wrapper:', hdr.Exercise, ins.data?.id);
+                            } else {
+                              console.log('  ↩︎ Pre-pass found existing wrapper:', hdr.Exercise, existing.id);
+                            }
+                          }
+                        } catch (preErr) {
+                          console.error('  ❌ Pre-pass error:', preErr);
+                        }
+                        
+                        // Process rows
+                        let i = 0;
+                        while (i < dayRows.length) {
+                          const row = dayRows[i];
+                          const rowType = (row.Type || "").trim().toLowerCase();
+                          console.log(`\n  📍 Row ${i}: Type="${row.Type}" → trimmed: "${rowType}", Exercise="${row.Exercise}"`);
+                          
+                          // Update progress
+                          setImportProgress(prev => ({ ...prev, currentRow: prev.currentRow + 1 }));
+                          
+                          if (rowType === "circuit") {
+                            try {
+                              console.log(`    🔄 Circuit detected: ${row.Exercise}`, row);
+                              // Create/Reuse block up front so wrapper exists even if mapping pauses
+                              const beforeBlocks = await supabase
+                                .from('session_blocks')
+                                .select('id, block_type, title, rounds, work_sec, rest_sec, rest_between_rounds_s, order_index')
+                                .eq('session_id', session.id)
+                                .eq('title', row.Exercise);
+                              console.log('🟡 BEFORE circuit blocks for title:', row.Exercise, beforeBlocks.data || [], beforeBlocks.error || null);
+                              orderIndex++;
+                              const roundsVal = row["Sets/Rounds"] || 1;
+                              // Reuse by title
+                              let { data: preBlock } = await supabase
+                                .from('session_blocks')
+                                .select('id')
+                                .eq('session_id', session.id)
+                                .eq('title', row.Exercise)
+                                .maybeSingle();
+                              if (!preBlock) {
+                                const inserted = await supabase
+                                  .from('session_blocks')
+                                  .insert({
+                                    session_id: session.id,
+                                    block_type: 'circuit',
+                                    title: row.Exercise,
+                                    rounds: roundsVal,
+                                    work_sec: 0,
+                                    rest_sec: 0,
+                                    rest_between_rounds_s: 0,
+                                    order_index: orderIndex,
+                                  })
+                                  .select()
+                                  .single();
+                                preBlock = inserted.data as any;
+                                if (inserted.error) console.error('    ❌ Failed to pre-create circuit block:', inserted.error);
+                                else console.log(`    ✅ Pre-created circuit block: ${preBlock?.id}`);
+                              } else {
+                                console.log(`    ↩︎ Using existing circuit block: ${preBlock.id}`);
+                              }
+
+                              const circuitBlockId = preBlock?.id;
+                              // Now collect exercises to add as items
+                              const circuitExercises: any[] = [];
+                              let restBetweenRounds = null;
+                              i++;
+                              console.log(`      Starting to collect circuit exercises from row ${i}...`);
+                              
+                              while (i < dayRows.length) {
+                              try {
+                                const nextRow = dayRows[i];
+                                if (!nextRow || !nextRow.Type) {
+                                  console.warn(`      ⚠️  Row ${i} is invalid, breaking`);
+                                  break;
+                                }
+                                
+                                const nextType = String(nextRow.Type).trim().toLowerCase();
+                                console.log(`      [${i}] Type="${nextRow.Type}" → "${nextType}", Ex="${nextRow.Exercise}"`);
+                                
+                                const isCircuitEx = (nextType === "circuit_exercise");
+                                const isRest = (nextType === "circuit_exercise_rest");
+                                const isOther = !isCircuitEx && !isRest;
+                                
+                                console.log(`      → circuit_ex?${isCircuitEx}, rest?${isRest}, other?${isOther}`);
+                                
+                                if (isCircuitEx) {
+                                  circuitExercises.push(nextRow);
+                                  console.log(`      ✅ ADDED: ${nextRow.Exercise}`);
+                                  i++;
+                                  continue;
+                                }
+                                
+                                if (isRest) {
+                                  restBetweenRounds = nextRow["Work (seconds)"] || null;
+                                  console.log(`      ⏸️  REST: ${restBetweenRounds}s`);
+                                  i++;
+                                  break;
+                                }
+                                
+                                // Other type - stop collecting
+                                console.log(`      ⏹️  STOP (found ${nextType})`);
+                                break;
+                              } catch (loopErr: any) {
+                                console.error(`❌ Loop error at row ${i}:`, loopErr);
+                                break;
+                              }
+                            }
+                            
+                            console.log(`    🎯 Circuit "${row.Exercise}" has ${circuitExercises.length} exercises`);
+                            
+                            if (circuitExercises.length === 0) {
+                              console.log(`    ⚠️ Circuit has no exercises yet — creating an EMPTY circuit block (will be safe to re-run importer to add items).`);
+                            }
+                            
+                            orderIndex++;
+                            const workSecRaw = circuitExercises[0]?.["Work (seconds)"] ?? null;
+                            const restSecRaw = circuitExercises[0]?.["Rest between rounds (s)"] ?? null;
+                            const workSec = typeof workSecRaw === 'string' ? parseFloat(workSecRaw) : workSecRaw;
+                            const restSec = typeof restSecRaw === 'string' ? parseFloat(restSecRaw) : (restSecRaw ?? 0);
+                            const restBetween = typeof restBetweenRounds === 'string' ? parseFloat(restBetweenRounds) : (restBetweenRounds ?? 0);
+                            console.log(`    📦 Creating/Updating circuit block:`, {
+                              title: row.Exercise,
+                              work_sec: workSec ?? 0,
+                              rest_sec: restSec ?? 0,
+                              rounds: roundsVal,
+                              rest_between_rounds_s: restBetween,
+                              first_exercise: circuitExercises[0] || null
+                            });
+                            // Ensure timings/rounds are updated on the pre-created block
+                            let block = { id: circuitBlockId } as any;
+                            const upd = await supabase
+                              .from('session_blocks')
+                              .update({
+                                work_sec: workSec ?? 0,
+                                rest_sec: restSec ?? 0,
+                                rest_between_rounds_s: restBetween ?? 0,
+                                rounds: roundsVal,
+                              })
+                              .eq('id', circuitBlockId!)
+                              .select('id')
+                              .single();
+                            if (upd.error) console.error('    ❌ Failed to update circuit timings:', upd.error);
+                            else block = upd.data as any;
+
+                            // Debug AFTER state
+                            const afterBlock = await supabase
+                              .from('session_blocks')
+                              .select('id, block_type, title, rounds, work_sec, rest_sec, rest_between_rounds_s, order_index')
+                              .eq('id', block.id)
+                              .single();
+                            const afterItems = await supabase
+                              .from('session_block_items')
+                              .select('id, exercise_id, item_order')
+                              .eq('block_id', block.id);
+                            console.log('🟢 AFTER circuit block:', afterBlock.data || null, afterBlock.error || null);
+                            console.log('🧩 AFTER items for block:', (afterItems.data || []).length, afterItems.data || [], afterItems.error || null);
+                            
+                            if (!block) {
+                              console.error(`    ❌ No block returned`);
+                              continue;
+                            }
+                            
+                            console.log(`    ✅ Created block ID: ${block.id}`);
+
+                            // Prepare existing items and compute append base order
+                            const { data: existingItemsRaw } = await supabase
+                              .from('session_block_items')
+                              .select('id, exercise_id, item_order')
+                              .eq('block_id', block.id);
+                            const existingItems = existingItemsRaw || [];
+                            let nextOrder = (existingItems.reduce((m: number, it: any) => Math.max(m, it.item_order ?? -1), -1) + 1);
+                            const existingExerciseIds = new Set((existingItems as any[]).map(it => String(it.exercise_id)));
+
+                            // Add circuit exercises (append-only)
+                            for (let j = 0; j < circuitExercises.length; j++) {
+                              const ex = circuitExercises[j];
+                              let matchedEx = dbExercises.find(
+                                (e) => e.name.toLowerCase().trim() === ex.Exercise.toLowerCase().trim()
+                              );
+                              
+                              if (!matchedEx) {
+                                // Ask the user to map/create/skip
+                                const selected = await waitForMapping(ex.Exercise, dbExercises, levenshtein);
+                                if (!selected) {
+                                  console.warn(`      ⏭️ Skipping exercise: ${ex.Exercise}`);
+                                  continue;
+                                }
+                                matchedEx = selected;
+                                if (!dbExercises.find((e) => e.id === matchedEx.id)) {
+                                  dbExercises.push(matchedEx);
+                                }
+                              }
+                              
+                              if (!matchedEx || !matchedEx.id) {
+                                addImportLog(`❌ Mapping failed for "${ex.Exercise}" (no selection)`, 'error');
+                                console.warn(`      ❌ Mapping returned invalid value for: ${ex.Exercise}`, matchedEx);
+                                continue;
+                              }
+                              console.log(`      ✅ Matched: "${ex.Exercise}" → ${matchedEx.name} (${matchedEx.id})`);
+                              
+                              // Skip if exercise already exists in this block
+                              if (existingExerciseIds.has(String(matchedEx.id))) {
+                                console.log(`      ↩︎ Exercise already present in block: ${matchedEx.name}`);
+                                continue;
+                              }
+
+                              const { data: item, error: itemError } = await supabase.from("session_block_items").insert({
+                                block_id: block.id,
+                                exercise_id: matchedEx.id,
+                                item_order: nextOrder,
+                                extra: {
+                                  duration: ex["Duration (min)"],
+                                  sets: ex["Sets/Rounds"],
+                                  reps: ex.Reps,
+                                  weight: ex.Kg,
+                                  distance: ex["Distance (KM)"],
+                                },
+                              }).select().single();
+                              
+                              if (itemError) {
+                                console.error(`      ❌ Failed to insert item:`, itemError);
+                              } else {
+                                console.log(`      ✅ Inserted item: ${item.id}`);
+                                existingExerciseIds.add(String(matchedEx.id));
+                                nextOrder++;
+                              }
+                            }
+                            } catch (circuitErr: any) {
+                              console.error(`❌❌❌ CIRCUIT PROCESSING ERROR:`, circuitErr);
+                              console.error(`Circuit: ${row.Exercise}`, circuitErr.message, circuitErr.stack);
+                              alert(`Circuit error: ${circuitErr.message}`);
+                              // Skip this circuit and continue
+                              i++;
+                            }
+                          } else if (rowType !== "circuit_exercise" && rowType !== "circuit_exercise_rest") {
+                            console.log(`    💪 Standalone exercise: ${row.Exercise} (${rowType})`, row);
+                            // Standalone exercise
+                            let matchedEx = dbExercises.find(
+                              (e) => e.name.toLowerCase().trim() === row.Exercise.toLowerCase().trim()
+                            );
+                            
+                            if (!matchedEx) {
+                              const selected = await waitForMapping(row.Exercise, dbExercises, levenshtein);
+                              if (!selected) {
+                                console.warn(`    ⏭️ Skipping exercise: ${row.Exercise}`);
+                                i++;
+                                continue;
+                              }
+                              matchedEx = selected;
+                              if (!dbExercises.find((e) => e.id === matchedEx.id)) {
+                                dbExercises.push(matchedEx);
+                              }
+                            }
+                            
+                            if (!matchedEx || !matchedEx.id) {
+                              addImportLog(`❌ Mapping failed for "${row.Exercise}" (no selection)`, 'error');
+                              console.warn(`    ❌ Mapping returned invalid value for: ${row.Exercise}`, matchedEx);
+                              i++;
+                              continue;
+                            }
+                            console.log(`    ✅ Matched: "${row.Exercise}" → ${matchedEx.name} (${matchedEx.id})`);
+                            
+                            // Map CSV type to block_type
+                            let blockType = "cardio"; // default
+                            if (rowType === "running") blockType = "cardio";
+                            else if (rowType === "strength" || rowType === "weights") blockType = "strength";
+                            else if (rowType === "mobility") blockType = "mobility";
+                            else if (rowType === "intervals") blockType = "intervals";
+                            else if (rowType === "amrap") blockType = "amrap";
+                            else if (rowType === "emom") blockType = "emom";
+                            
+                            console.log(`    🗂️  Using block_type: ${blockType} for CSV type: ${rowType}`);
+                            
+                            orderIndex++;
+                            const { data: block, error: blockError } = await supabase
+                              .from("session_blocks")
+                              .insert({
+                                session_id: session.id,
+                                block_type: blockType,
+                                title: row.Exercise,
+                                order_index: orderIndex,
+                              })
+                              .select()
+                              .single();
+                            
+                            if (blockError) {
+                              console.error(`    ❌ Failed to create standalone block:`, blockError);
+                              i++;
+                              continue;
+                            }
+                            
+                            if (!block) {
+                              console.error(`    ❌ No block returned for standalone`);
+                              i++;
+                              continue;
+                            }
+                            
+                            console.log(`    ✅ Created standalone block ID: ${block.id}`);
+                            
+                            const { data: item, error: itemError } = await supabase.from("session_block_items").insert({
+                              block_id: block.id,
+                              exercise_id: matchedEx.id,
+                              item_order: 0,
+                              extra: {
+                                duration: row["Duration (min)"],
+                                sets: row["Sets/Rounds"],
+                                reps: row.Reps,
+                                weight: row.Kg,
+                                distance: row["Distance (KM)"],
+                              },
+                            }).select().single();
+                            
+                            if (itemError) {
+                              console.error(`    ❌ Failed to insert standalone item:`, itemError);
+                            } else {
+                              console.log(`    ✅ Inserted standalone item: ${item.id}`);
+                            }
+                            
+                            i++;
+                          } else {
+                            console.log(`    ⏭️  Skipping row type: ${row.Type}`);
+                            i++;
+                          }
+                        }
+                      }
+                      
+                      console.log(`\n🎉 Import complete! Processed ${rows.length} rows`);
+                      toast({ description: `✅ Imported ${rows.length} rows. Logs retained.`, duration: 6000 as any });
+                      
+                      // Keep the progress modal OPEN so logs are visible until user closes it
+                      setImportProgress(prev => ({ ...prev, pausedForMapping: false }));
+                      } catch (err: any) {
+                        console.error("❌❌❌ IMPORT ERROR:", err);
+                        console.error("Error name:", err?.name);
+                        console.error("Error message:", err?.message);
+                        console.error("Error stack:", err?.stack);
+                        alert(`Import failed: ${err?.message || err}`); // Alert so it doesn't disappear
+                        toast({ 
+                          description: `Import failed: ${err?.message || err}`, 
+                          variant: "destructive" as any,
+                          duration: 10000 // 10 seconds
+                        });
+                      } finally {
+                        setImporting(false);
+                      }
+                  }}
+                  className="file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                />
+              </div>
+              
+              {importing && (
+                <div className="flex items-center gap-2 text-blue-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Importing...</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Live Import Progress Modal */}
+      {importProgress.show && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">
+                {importProgress.pausedForMapping ? '⏸️ Import Paused - Exercise Mapping Required' : '🔄 Importing CSV...'}
+              </h2>
+              {!importProgress.pausedForMapping && !importing && (
+                <button
+                  onClick={() => {
+                    setImportProgress({ 
+                      show: false, 
+                      logs: [], 
+                      currentRow: 0, 
+                      totalRows: 0, 
+                      pausedForMapping: false, 
+                      unmappedExercise: null, 
+                      suggestions: [],
+                      showCreateNew: false,
+                      newExerciseModality: 'strength'
+                    });
+                  }}
+                  className="text-zinc-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span>Row {importProgress.currentRow} / {importProgress.totalRows}</span>
+                <span>{Math.round((importProgress.currentRow / importProgress.totalRows) * 100)}%</span>
+              </div>
+              <div className="w-full bg-zinc-800 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(importProgress.currentRow / importProgress.totalRows) * 100}%` }}
+                />
+              </div>
+            </div>
+            
+            {/* Logs */}
+            <div className="flex-1 bg-black rounded-lg p-4 overflow-y-auto font-mono text-xs mb-4" style={{ maxHeight: '300px' }}>
+              {importProgress.logs.map((log, idx) => (
+                <div key={idx} className="mb-1">{log}</div>
+              ))}
+            </div>
+            
+            {/* Exercise Mapping UI (shown when paused) */}
+            {importProgress.pausedForMapping && importProgress.unmappedExercise && (
+              <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 mb-4">
+                <div className="font-semibold mb-2 text-yellow-400">
+                  Exercise not found: "{importProgress.unmappedExercise}"
+                </div>
+                
+                {!importProgress.showCreateNew ? (
+                  <div className="space-y-2">
+                    {importProgress.suggestions.length > 0 && (
+                      <>
+                        <div className="text-xs text-zinc-400 mb-2">Select a matching exercise:</div>
+                        {importProgress.suggestions.map((suggestion, idx) => (
+                      <button
+                            key={idx}
+                            onClick={() => {
+                          // User selected a mapping - resolve and resume import
+                          addImportLog(`Mapped "${importProgress.unmappedExercise}" → ${suggestion.name}`, 'success');
+                          if (mappingResolverRef.current) {
+                            mappingResolverRef.current({ selectedExercise: suggestion });
+                          }
+                          setImportProgress(prev => ({
+                            ...prev,
+                            pausedForMapping: false,
+                            unmappedExercise: null,
+                            suggestions: [],
+                            showCreateNew: false
+                          }));
+                            }}
+                            className="w-full flex items-center gap-2 p-2 rounded bg-zinc-800 hover:bg-zinc-700 text-left"
+                          >
+                            <span>{suggestion.name}</span>
+                            <span className="text-xs text-zinc-500">({suggestion.modality})</span>
+                          </button>
+                        ))}
+                        <div className="border-t border-zinc-700 my-2"></div>
+                      </>
+                    )}
+                    
+                    <button
+                      onClick={() => {
+                        setImportProgress(prev => ({ ...prev, showCreateNew: true }));
+                      }}
+                      className="w-full p-2 rounded bg-green-900/30 hover:bg-green-900/50 text-green-400"
+                    >
+                      ➕ Create New Exercise "{importProgress.unmappedExercise}"
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        // Skip this exercise
+                        addImportLog(`Skipped "${importProgress.unmappedExercise}"`, 'warning');
+                        if (mappingResolverRef.current) {
+                          mappingResolverRef.current({ selectedExercise: null });
+                        }
+                        setImportProgress(prev => ({
+                          ...prev,
+                          pausedForMapping: false,
+                          unmappedExercise: null,
+                          suggestions: [],
+                          showCreateNew: false
+                        }));
+                      }}
+                      className="w-full p-2 rounded bg-red-900/30 hover:bg-red-900/50 text-red-400"
+                    >
+                      Skip this exercise
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="text-sm font-semibold text-green-400 mb-2">Create new exercise:</div>
+                    
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1">Exercise Name:</label>
+                      <input
+                        type="text"
+                        value={importProgress.unmappedExercise || ''}
+                        disabled
+                        className="w-full px-3 py-2 rounded bg-zinc-800 border border-zinc-700 opacity-60"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1">Modality (Type):</label>
+                      <select
+                        value={importProgress.newExerciseModality}
+                        onChange={(e) => setImportProgress(prev => ({ ...prev, newExerciseModality: e.target.value }))}
+                        className="w-full px-3 py-2 rounded bg-zinc-800 border border-zinc-700"
+                      >
+                        <option value="strength">Strength</option>
+                        <option value="cardio">Cardio</option>
+                        <option value="mobility">Mobility</option>
+                        <option value="bodyweight">Bodyweight</option>
+                        <option value="running">Running</option>
+                        <option value="erg">Erg (Rowing/Ski/Bike)</option>
+                        <option value="core">Core</option>
+                        <option value="skill">Skill</option>
+                        <option value="carry">Carry</option>
+                        <option value="rehab">Rehab</option>
+                      </select>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setImportProgress(prev => ({ ...prev, showCreateNew: false }));
+                        }}
+                        className="flex-1 px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700"
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={async () => {
+                          // Create the exercise in Supabase
+                          const exerciseName = importProgress.unmappedExercise;
+                          const modality = importProgress.newExerciseModality;
+                          
+                          addImportLog(`Creating new exercise: ${exerciseName} (${modality})...`, 'info');
+                          
+                          try {
+                            const { data: newExercise, error } = await supabase
+                              .from('exercises')
+                              .insert({
+                                name: exerciseName,
+                                modality: modality,
+                                notes: `Auto-created during CSV import`
+                              })
+                              .select()
+                              .single();
+                            
+                            if (error) throw error;
+                            
+                            addImportLog(`✅ Created new exercise: ${newExercise.name} (ID: ${newExercise.id})`, 'success');
+                            
+                            // Resume import with this new exercise
+                            if (mappingResolverRef.current) {
+                              mappingResolverRef.current({ selectedExercise: newExercise });
+                            }
+                            setImportProgress(prev => ({
+                              ...prev,
+                              pausedForMapping: false,
+                              unmappedExercise: null,
+                              suggestions: [],
+                              showCreateNew: false,
+                              newExerciseModality: 'strength'
+                            }));
+                          } catch (err: any) {
+                            addImportLog(`❌ Failed to create exercise: ${err.message}`, 'error');
+                            toast({ description: `Failed to create exercise: ${err.message}`, variant: 'destructive' as any });
+                          }
+                        }}
+                        className="flex-1 px-3 py-2 rounded bg-green-600 hover:bg-green-700 font-semibold"
+                      >
+                        Create & Continue
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Status */}
+            {importing && !importProgress.pausedForMapping && (
+              <div className="flex items-center gap-2 text-blue-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Processing...</span>
+              </div>
+            )}
+            
+            {!importing && !importProgress.pausedForMapping && importProgress.currentRow === importProgress.totalRows && (
+              <div className="text-green-400 font-semibold">
+                ✅ Import complete!
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 };
 
 export default PlanDetail;
+
 
 

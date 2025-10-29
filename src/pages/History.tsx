@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Medal, TrendingUp, Loader2, Calendar, Dumbbell, Clock, BookOpen, Trophy, Activity } from "lucide-react";
+import { ArrowLeft, Medal, TrendingUp, Loader2, Calendar, Dumbbell, Clock, BookOpen, Trophy, Activity, Trash2 } from "lucide-react";
 import { fetchWorkoutHistory, fetchUserStats } from "@/services/googleSheets";
 import { WorkoutLog, UserStats } from "@/types/workout";
 import { toast } from "sonner";
@@ -120,16 +120,64 @@ const History = () => {
   const [personalBests, setPersonalBests] = useState<PersonalBest[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        
-        if (!authUser?.clientId) {
-          setLoading(false);
-          return;
+  const handleDeleteLog = async (logId: string, logExercise: string) => {
+    if (!confirm(`Delete "${logExercise}" from history?`)) {
+      return;
+    }
+    
+    try {
+      setDeleting(logId);
+      
+      // Check if this is a local log or Supabase log
+      if (logId.startsWith('local-')) {
+        // Delete from localStorage
+        const userStr = localStorage.getItem("frank_rock_user");
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          const storageKey = `workoutHistory_${user.username}`;
+          const workoutHistory = localStorage.getItem(storageKey);
+          
+          if (workoutHistory) {
+            const logs = JSON.parse(workoutHistory);
+            const index = parseInt(logId.replace('local-', ''));
+            logs.splice(index, 1);
+            localStorage.setItem(storageKey, JSON.stringify(logs));
+          }
         }
+        
+        toast.success("Workout deleted from local history");
+      } else {
+        // Delete from Supabase
+        const { error } = await supabase
+          .from('workout_logs')
+          .delete()
+          .eq('id', parseInt(logId));
+        
+        if (error) throw error;
+        
+        toast.success("Workout deleted from cloud history");
+      }
+      
+      // Reload data
+      await loadData();
+    } catch (error) {
+      console.error("Error deleting workout:", error);
+      toast.error("Failed to delete workout");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      if (!authUser?.clientId) {
+        setLoading(false);
+        return;
+      }
         
         // Fetch workout logs from Supabase
         const { data: logs, error } = await supabase
@@ -201,11 +249,28 @@ const History = () => {
           }
         }
         
-        // Merge both sources (localStorage first for today, then Supabase for history)
-        const historyData = [...localHistory, ...supabaseHistory];
+        // Merge both sources and DEDUPLICATE
+        // If same exercise + similar timestamp exists in both, prefer Supabase version
+        const historyMap = new Map<string, WorkoutLog>();
         
-        console.log('✅ Total history (merged):', historyData.length);
-        console.log('✅ clientId used:', authUser?.clientId);
+        // First add Supabase logs (they're the source of truth)
+        supabaseHistory.forEach(log => {
+          const key = `${log.exercise}-${log.date}`;
+          historyMap.set(key, log);
+        });
+        
+        // Then add localStorage logs ONLY if they don't exist in Supabase
+        localHistory.forEach(log => {
+          const key = `${log.exercise}-${log.date}`;
+          if (!historyMap.has(key)) {
+            historyMap.set(key, log);
+          }
+        });
+        
+        const historyData = Array.from(historyMap.values());
+        
+        console.log('✅ Total history (deduplicated):', historyData.length);
+        console.log('✅ Supabase logs:', supabaseHistory.length, 'Local logs:', localHistory.length, 'After dedup:', historyData.length);
         
         setHistory(historyData);
         
@@ -314,10 +379,11 @@ const History = () => {
           description: error instanceof Error ? error.message : "Could not load workout history",
         });
       } finally {
-        setLoading(false);
-      }
-    };
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, [authUser?.clientId]);
 
@@ -437,8 +503,23 @@ const History = () => {
                       <AccordionContent className="px-4 pb-4 pt-2">
                         <div className="space-y-3">
                           {day.exercises.map((entry) => (
-                            <Card key={entry.id} className="p-3 bg-secondary/5">
-                              <div className="flex items-start justify-between">
+                            <Card key={entry.id} className="p-3 bg-secondary/5 relative">
+                              {/* Delete button */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute top-2 right-2 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteLog(entry.id, entry.exercise)}
+                                disabled={deleting === entry.id}
+                              >
+                                {deleting === entry.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                              </Button>
+                              
+                              <div className="flex items-start justify-between pr-10">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
                                     {entry.exercise.startsWith("Strava:") ? (

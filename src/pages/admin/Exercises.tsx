@@ -14,6 +14,14 @@ const Exercises = () => {
   const [sortKey, setSortKey] = useState<keyof ExerciseRow>("name");
   const [sortDir, setSortDir] = useState<"asc"|"desc">("asc");
 
+  // Core movement patterns for templates
+  const validPatterns = ['squat', 'hinge', 'push', 'pull', 'carry', 'thrust', 'abduction', 'rotation', 'isolation'];
+  
+  const isValidPattern = (pattern: string | null | undefined) => {
+    if (!pattern) return false;
+    return validPatterns.includes(pattern.toLowerCase());
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -195,6 +203,26 @@ const Exercises = () => {
 
       {error && <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-md px-3 py-2 mb-3 text-sm">{error}</div>}
 
+      {/* Valid Patterns Guide */}
+      <div className="bg-zinc-900 border border-yellow-500/30 rounded-lg px-4 py-4 mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm font-semibold text-yellow-400">Valid Movement Patterns:</span>
+        </div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {validPatterns.map(pattern => (
+            <span key={pattern} className="px-3 py-1 bg-zinc-800 text-zinc-200 rounded-md text-sm font-mono border border-zinc-700">
+              {pattern}
+            </span>
+          ))}
+        </div>
+        <div className="text-xs text-zinc-400">
+          <span className="inline-flex items-center gap-2">
+            <span className="px-2 py-0.5 bg-red-900/30 text-red-400 rounded font-mono">invalid</span>
+            <span>← Invalid patterns will appear with a red background</span>
+          </span>
+        </div>
+      </div>
+
       <div className="overflow-auto border border-zinc-800 rounded-md">
         <div className="min-w-[900px]">
           <div className="grid grid-cols-[220px_140px_160px_140px_200px_220px_220px_1fr_200px] text-xs bg-zinc-900 border-b border-zinc-800">
@@ -209,23 +237,37 @@ const Exercises = () => {
             <div className="px-2 py-2 text-center">Actions</div>
           </div>
           {loading && <div className="p-3 text-sm text-zinc-400">Loading…</div>}
-          {!loading && filtered.map(r => (
-            <div key={r.id} className="grid grid-cols-[220px_140px_160px_140px_200px_220px_220px_1fr_200px] items-center text-sm border-b border-zinc-800">
-              <input className="bg-black border-none px-2 py-2 outline-none sticky left-0 z-10 border-r border-zinc-800" value={r.name} onChange={e=>onEdit(r.id,'name',e.target.value)} />
-              <input className="bg-black border-none px-2 py-2 outline-none" value={r.modality || ''} onChange={e=>onEdit(r.id,'modality',e.target.value)} />
-              <input className="bg-black border-none px-2 py-2 outline-none" value={r.primary_area || ''} onChange={e=>onEdit(r.id,'primary_area',e.target.value)} />
-              <input className="bg-black border-none px-2 py-2 outline-none" value={r.pattern || ''} onChange={e=>onEdit(r.id,'pattern',e.target.value)} />
-              <input className="bg-black border-none px-2 py-2 outline-none" value={r.tags || ''} onChange={e=>onEdit(r.id,'tags',e.target.value)} />
-              <input className="bg-black border-none px-2 py-2 outline-none" value={(r.equipment||[]).join(',')} onChange={e=>onEdit(r.id,'equipment',e.target.value.split(',').map(s=>s.trim()).filter(Boolean) as any)} />
-              <input className="bg-black border-none px-2 py-2 outline-none" value={r.youtube || ''} onChange={e=>onEdit(r.id,'youtube',e.target.value)} placeholder="https://youtu.be/..." />
-              <input className="bg-black border-none px-2 py-2 outline-none" value={r.notes || ''} onChange={e=>onEdit(r.id,'notes',e.target.value)} />
-              <div className="px-2 py-2 text-right flex items-center justify-end gap-2">
-                <button onClick={()=>deleteRow(r.id)} className="px-2 py-1 rounded border border-red-500 text-red-400">Delete</button>
-                <button onClick={()=>copyRow(r)} className="px-2 py-1 rounded border border-zinc-700">Copy</button>
-                <button onClick={()=>saveRow(r.id)} className={`px-2 py-1 rounded border ${dirty[r.id] ? 'border-yellow-500 text-yellow-400' : 'border-zinc-700 text-zinc-400'}`}>Update</button>
+          {!loading && filtered.map(r => {
+            const invalidPattern = !isValidPattern(r.pattern);
+            return (
+              <div 
+                key={r.id} 
+                className="grid grid-cols-[220px_140px_160px_140px_200px_220px_220px_1fr_200px] items-center text-sm border-b border-zinc-800"
+              >
+                <input className="bg-black border-none px-2 py-2 outline-none sticky left-0 z-10 border-r border-zinc-800" value={r.name} onChange={e=>onEdit(r.id,'name',e.target.value)} />
+                <input className="bg-black border-none px-2 py-2 outline-none" value={r.modality || ''} onChange={e=>onEdit(r.id,'modality',e.target.value)} />
+                <input className="bg-black border-none px-2 py-2 outline-none" value={r.primary_area || ''} onChange={e=>onEdit(r.id,'primary_area',e.target.value)} />
+                <input 
+                  className={`border-none px-2 py-2 outline-none ${
+                    invalidPattern ? 'bg-red-900/30 text-red-400 font-bold placeholder:text-red-600' : 'bg-black'
+                  }`}
+                  value={r.pattern || ''} 
+                  onChange={e=>onEdit(r.id,'pattern',e.target.value)}
+                  placeholder="squat, hinge, push, pull..."
+                  title={invalidPattern ? `Invalid pattern. Use: ${validPatterns.join(', ')}` : ''}
+                />
+                <input className="bg-black border-none px-2 py-2 outline-none" value={r.tags || ''} onChange={e=>onEdit(r.id,'tags',e.target.value)} />
+                <input className="bg-black border-none px-2 py-2 outline-none" value={(r.equipment||[]).join(',')} onChange={e=>onEdit(r.id,'equipment',e.target.value.split(',').map(s=>s.trim()).filter(Boolean) as any)} />
+                <input className="bg-black border-none px-2 py-2 outline-none" value={r.youtube || ''} onChange={e=>onEdit(r.id,'youtube',e.target.value)} placeholder="https://youtu.be/..." />
+                <input className="bg-black border-none px-2 py-2 outline-none" value={r.notes || ''} onChange={e=>onEdit(r.id,'notes',e.target.value)} />
+                <div className="px-2 py-2 text-right flex items-center justify-end gap-2">
+                  <button onClick={()=>deleteRow(r.id)} className="px-2 py-1 rounded border border-red-500 text-red-400">Delete</button>
+                  <button onClick={()=>copyRow(r)} className="px-2 py-1 rounded border border-zinc-700">Copy</button>
+                  <button onClick={()=>saveRow(r.id)} className={`px-2 py-1 rounded border ${dirty[r.id] ? 'border-yellow-500 text-yellow-400' : 'border-zinc-700 text-zinc-400'}`}>Update</button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </>

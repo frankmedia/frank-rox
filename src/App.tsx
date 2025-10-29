@@ -31,6 +31,9 @@ import Settings from "./pages/admin/Settings";
 import PlanDetail from "./pages/admin/PlanDetail";
 import Exercises from "./pages/admin/Exercises";
 import ClientFeedback from "./pages/admin/ClientFeedback";
+import Templates from "./pages/admin/Templates";
+import TemplateEditorV2 from "./pages/admin/TemplateEditorV2";
+import TemplateCloner from "./pages/admin/TemplateCloner";
 
 const queryClient = new QueryClient();
 
@@ -170,6 +173,10 @@ const App = () => (
               <Route path="clients/:clientId/feedback" element={<ClientFeedback />} />
               <Route path="workouts" element={<Workouts />} />
               <Route path="exercises" element={<Exercises />} />
+              <Route path="templates" element={<Templates />} />
+              <Route path="templates/new" element={<TemplateEditorV2 />} />
+              <Route path="templates/:id" element={<TemplateEditorV2 />} />
+              <Route path="templates/:id/clone" element={<TemplateCloner />} />
               <Route path="notes" element={<Notes />} />
               <Route path="settings" element={<Settings />} />
               <Route path="plans/:id" element={<PlanDetail />} />

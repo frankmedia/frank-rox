@@ -6,15 +6,16 @@ import type { Exercise } from "@/types/workout";
  */
 export async function getActivePlan(clientId: string) {
   try {
-    const { data: plan, error } = await supabase
+    const { data: plans, error } = await supabase
       .from("plans")
       .select("id, name, start_date, cycle_days, current_day")
       .eq("client_id", clientId)
       .eq("status", "active")
-      .single();
+      .order("start_date", { ascending: false })
+      .limit(1);
 
     if (error) throw error;
-    return plan;
+    return plans && plans.length > 0 ? plans[0] : null;
   } catch (err) {
     console.error("Error fetching active plan:", err);
     return null;
@@ -58,6 +59,13 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
           block_type,
           title,
           parameters,
+          rounds,
+          time_cap_sec,
+          work_sec,
+          rest_sec,
+          rest_between_rounds_s,
+          intensity,
+          order_index,
           session_block_items (
             id,
             exercise_id,
@@ -94,7 +102,8 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
           
           // Check if this is a format group (Circuit, AMRAP - NOT HIIT)
           // HIIT is a standalone exercise type, not a group
-          const isFormatGroup = blockParams.format_group === true || !!blockParams.format;
+          // Also recognize by block_type directly (for blocks created without parameters.format)
+          const isFormatGroup = blockParams.format_group === true || !!blockParams.format || (blockType === 'circuit' || blockType === 'amrap');
           const format = blockParams.format?.toLowerCase() || blockType;
           
           if (isFormatGroup && (format === 'circuit' || format === 'amrap')) {
@@ -134,7 +143,10 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
               // Add workout parameters based on type
               if (childType === "cardio") {
                 if (extra.duration) childExercise.durationMin = extra.duration;
-                if (extra.distance) childExercise.targetDistanceKm = extra.distance;
+                // Only set distance if reasonable (0.01km to 100km)
+                if (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) {
+                  childExercise.targetDistanceKm = extra.distance;
+                }
               } else if (childType === "mobility") {
                 if (extra.duration) childExercise.durationMin = extra.duration;
               } else {
@@ -145,24 +157,47 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                   childExercise.suggestedKg = extra.weight;
                 }
                 if (extra.duration) childExercise.durationMin = extra.duration;
-                if (extra.distance) childExercise.targetDistanceKm = extra.distance;
+                // Only set distance if reasonable (0.01km to 100km)
+                if (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) {
+                  childExercise.targetDistanceKm = extra.distance;
+                }
               }
               
               childExercises.push(childExercise);
             }
             
             // Create the parent/header exercise
-            exercises.push({
+            // Use ?? to allow 0 values, and default null to 0 for rest
+            const workSec = block.work_sec ?? blockParams.work ?? 30;
+            const restSec = block.rest_sec ?? blockParams.rest ?? 0; // null becomes 0
+            const restBetweenRounds = block.rest_between_rounds_s ?? blockParams.rest_between_rounds ?? 0;
+            
+            const parentExercise = {
               id: String(block.id),
               name: block.title || `${format.toUpperCase()}: Workout`,
               type: format as any, // "circuit", "amrap", or "hiit"
               isGroupHeader: true,
               exercises: childExercises,
-              totalRounds: blockParams.rounds || 3,
-              timeCap: blockParams.time_cap || undefined,
-              workRestRatio: blockParams.work && blockParams.rest ? `${blockParams.work}s/${blockParams.rest}s` : undefined,
+              totalRounds: block.rounds || blockParams.rounds || 3,
+              timeCap: block.time_cap_sec || blockParams.time_cap || undefined,
+              workRestRatio: workSec && restSec ? `${workSec}s/${restSec}s` : undefined,
+              work_sec: workSec,
+              rest_sec: restSec,
+              rest_between_rounds_s: restBetweenRounds,
               notes: blockParams.notes || block.title || undefined,
+            };
+            
+            console.log(`📦 Created ${format} block:`, {
+              name: parentExercise.name,
+              exercises: childExercises.length,
+              work_sec: workSec,
+              rest_sec: restSec,
+              rounds: parentExercise.totalRounds,
+              rest_between_rounds: restBetweenRounds,
+              children: childExercises.map(c => ({ name: c.name, distance: c.targetDistanceKm }))
             });
+            
+            exercises.push(parentExercise);
             
           } else if (isFormatGroup && format === 'hiit') {
             // HIIT is a standalone exercise (not a group), but uses block parameters
@@ -231,7 +266,8 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                 reps: extra.reps || undefined,
                 suggestedKg: extra.weight || undefined,
                 durationMin: extra.duration || undefined,
-                targetDistanceKm: extra.distance || undefined,
+                // Only set distance if it's reasonable (0.01km to 100km)
+                targetDistanceKm: (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) ? extra.distance : undefined,
                 
                 // Format-specific parameters (for HIIT/Circuit/AMRAP)
                 workRestRatio: extra.workRestRatio || blockParams.workRestRatio || undefined,

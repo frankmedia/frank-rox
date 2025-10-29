@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Video, CheckCircle2, Calendar } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { supabase } from "@/utils/supabaseClient";
 
 interface CheckInFormData {
   // Training & Activity
@@ -71,7 +72,7 @@ const PTCheckIn = () => {
     }
   }, [user]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate required fields
@@ -111,6 +112,33 @@ const PTCheckIn = () => {
     });
     
     localStorage.setItem(checkInHistoryKey, JSON.stringify(history));
+
+    // Save check-in to Supabase (client-specific)
+    try {
+      const clientId = user?.clientId;
+      if (clientId) {
+        const { error: insertErr } = await supabase.from('pt_checkins').insert({
+          client_id: clientId,
+          timestamp: now.toISOString(),
+          sessions_completed: formData.sessionsCompleted,
+          consistency: formData.consistency,
+          push_level: formData.pushLevel,
+          extra_training: formData.extraTraining,
+          nutrition_rating: formData.nutritionRating,
+          recovery_issues: formData.recoveryIssues,
+          motivation: formData.motivation,
+          proud: formData.proud,
+          improve: formData.improve,
+          pt_feedback: formData.ptFeedback,
+        });
+        if (insertErr) {
+          console.error('❌ PT check-in Supabase insert failed:', insertErr);
+          // Continue silently; local copy is still stored and will be visible to the user
+        }
+      }
+    } catch (dbErr) {
+      console.error('❌ PT check-in Supabase error:', dbErr);
+    }
     
     // Reset progress
     setDaysSinceLastCheckIn(0);

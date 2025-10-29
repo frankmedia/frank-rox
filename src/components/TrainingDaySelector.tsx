@@ -8,13 +8,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar, RotateCw } from "lucide-react";
-import { getMaxTrainingDay } from "@/services/googleSheets";
+import { supabase } from "@/utils/supabaseClient";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface TrainingDaySelectorProps {
   onDayChange?: (day: string) => void;
 }
 
 export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
+  const { user: authUser } = useAuth();
   const [currentDay, setCurrentDay] = useState<string>(() => {
     try {
       const userStr = localStorage.getItem("frank_rock_user");
@@ -29,19 +31,53 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
     return "1";
   });
   
-  const [maxDay, setMaxDay] = useState<number>(99); // Default to 99, will be updated from sheet
+  const [maxDay, setMaxDay] = useState<number>(99); // Default to 99, will be updated from Supabase
   const [loading, setLoading] = useState(true);
 
-  // Fetch the max training day from the user's sheet to determine cycle length
+  // Fetch the max training day from Supabase plan to determine cycle length
   useEffect(() => {
     const loadMaxDay = async () => {
-      const max = await getMaxTrainingDay();
-      setMaxDay(max);
-      setLoading(false);
-      console.log(`🔄 Training cycle: ${max} days (Day ${currentDay} / ${max})`);
+      try {
+        if (!authUser?.clientId) {
+          setLoading(false);
+          return;
+        }
+
+        // Get active plan
+        const { data: plan } = await supabase
+          .from('plans')
+          .select('id')
+          .eq('client_id', authUser.clientId)
+          .eq('status', 'active')
+          .single();
+
+        if (!plan) {
+          setLoading(false);
+          return;
+        }
+
+        // Get max day from plan_days
+        const { data: planDays } = await supabase
+          .from('plan_days')
+          .select('day_index')
+          .eq('plan_id', plan.id)
+          .order('day_index', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (planDays) {
+          const max = planDays.day_index + 1; // day_index is 0-based
+          setMaxDay(max);
+          console.log(`🔄 Training cycle: ${max} days (Day ${currentDay} / ${max})`);
+        }
+      } catch (error) {
+        console.error("Error loading max day:", error);
+      } finally {
+        setLoading(false);
+      }
     };
     loadMaxDay();
-  }, []);
+  }, [authUser?.clientId]);
 
   // Generate training days based on max day from sheet
   const trainingDays = Array.from({ length: maxDay }, (_, i) => {

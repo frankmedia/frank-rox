@@ -6,6 +6,12 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import type { Exercise } from "@/types/workout";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useAuth } from "@/contexts/AuthContext";
+import { 
+  markExerciseComplete,
+  syncWorkoutLogToSupabase 
+} from "@/services/workoutCache";
+import { supabase } from "@/utils/supabaseClient";
 
 interface HIITWorkoutProps {
   exercise: Exercise;
@@ -14,6 +20,7 @@ interface HIITWorkoutProps {
 
 export function HIITWorkout({ exercise, onComplete }: HIITWorkoutProps) {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [isRunning, setIsRunning] = useState(false);
   const [currentInterval, setCurrentInterval] = useState(0);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
@@ -106,8 +113,53 @@ export function HIITWorkout({ exercise, onComplete }: HIITWorkoutProps) {
     setTimeRemaining(workSeconds);
   };
   
-  const handleComplete = () => {
-    toast.success("✅ HIIT Workout Logged!");
+  const handleComplete = async () => {
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const username = user.username || "";
+        
+        // Get training day
+        const userKey = `currentTrainingDay_${username}`;
+        const trainingDay = parseInt(localStorage.getItem(userKey) || "1");
+        
+        // Mark as complete in cache
+        markExerciseComplete(username, trainingDay, exercise.id, authUser?.clientId);
+        
+        // Sync to Supabase if logged in
+        if (authUser?.clientId) {
+          const { data: plan } = await supabase
+            .from("plans")
+            .select("id")
+            .eq("client_id", authUser.clientId)
+            .eq("status", "active")
+            .single();
+            
+          await syncWorkoutLogToSupabase(
+            authUser.clientId,
+            plan?.id || null,
+            trainingDay,
+            {
+              exerciseName: exercise.name,
+              sets: totalIntervals,
+              duration: Math.round((totalIntervals * (workSeconds + restSeconds)) / 60),
+              notes: `${workSeconds}s work / ${restSeconds}s rest`,
+            }
+          );
+          
+          toast.success("✅ HIIT Workout Logged!", {
+            description: "Synced to cloud!"
+          });
+        } else {
+          toast.success("✅ HIIT Workout Logged!");
+        }
+      }
+    } catch (e) {
+      console.error("Error logging HIIT workout:", e);
+      toast.success("✅ HIIT Workout Logged!");
+    }
+    
     onComplete();
   };
   

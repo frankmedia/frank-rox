@@ -8,20 +8,28 @@ import { RestTimer } from "@/components/RestTimer";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, Loader2, List } from "lucide-react";
 import { toast } from "sonner";
-import { fetchTodayExercises, logExercise } from "@/services/googleSheets";
 import { Exercise } from "@/types/workout";
 import { ExerciseMedia } from "@/components/ExerciseMedia";
 import { HIITWorkout } from "./HIITWorkout";
 import { CircuitWorkout } from "./CircuitWorkout";
+import { CircuitWorkoutTimer } from "./CircuitWorkoutTimer";
 import { AMRAPWorkout } from "./AMRAPWorkout";
 import { triggerSuccessHaptic } from "@/utils/haptics";
 import { FlameRating } from "@/components/FlameRating";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { 
+  markExerciseComplete,
+  syncWorkoutLogToSupabase,
+  checkPersonalBest 
+} from "@/services/workoutCache";
+import { supabase } from "@/utils/supabaseClient";
 
 const ExerciseDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { exercises: contextExercises } = useData(); // Get exercises from DataContext
+  const { user: authUser } = useAuth();
   
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -82,11 +90,19 @@ const ExerciseDetail = () => {
     const loadExercises = async () => {
       try {
         setLoading(true);
-        // Use exercises from DataContext (which uses Supabase)
-        const data = contextExercises.length > 0 ? contextExercises : await fetchTodayExercises();
+        
+        // Wait for contextExercises to be loaded
+        if (contextExercises.length === 0) {
+          console.log('⏳ Waiting for exercises from DataContext...');
+          setLoading(false);
+          return;
+        }
+        
+        // ONLY use exercises from DataContext (Supabase)
+        const data = contextExercises;
         setExercises(data);
         
-        console.log('📋 Loaded exercises:', data.map(ex => ({ id: ex.id, name: ex.name })));
+        console.log('📋 Loaded exercises from DataContext:', data.map(ex => ({ id: ex.id, name: ex.name })));
         console.log('🔍 Looking for exercise ID:', id);
         
         // Find exercise by ID
@@ -234,7 +250,7 @@ const ExerciseDetail = () => {
     };
 
     loadExercises();
-  }, [id]); // Only reload when ID changes, not when contextExercises updates
+  }, [id, contextExercises]); // Reload when ID changes or when exercises are loaded from DataContext
 
   const handleMarkAsDone = async (customRating?: number) => {
     if (!exercise) return;
@@ -336,20 +352,110 @@ const ExerciseDetail = () => {
       }
     }
 
-    // Otherwise, log as new exercise and check for PB
-    const result = await logExercise(exercise.name, data);
+    // 🆕 HYBRID CACHING ONLY: Save to localStorage + Supabase (no Google Sheets)
+    let isPB = false;
+    let oldPB: number | undefined;
+    let newPB: number | undefined;
     
-    if (!result.success) {
-      toast.error("❌ Failed to log exercise", {
-        description: result.message || "Please try again",
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (!userStr) {
+        toast.error("User not found");
+        return;
+      }
+      
+      const user = JSON.parse(userStr);
+      const username = user.username || "";
+      const userKey = `currentTrainingDay_${username}`;
+      const trainingDay = parseInt(localStorage.getItem(userKey) || "1");
+      
+      // Save to localStorage immediately (hybrid cache layer)
+      const storageKey = `workoutHistory_${username}`;
+      const existingLogs = localStorage.getItem(storageKey);
+      const logs = existingLogs ? JSON.parse(existingLogs) : [];
+      
+      const timestamp = new Date().toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
+      
+      // Mark exercise as complete in cache
+      markExerciseComplete(username, trainingDay, exercise.id, authUser?.clientId);
+      
+      // Check for Personal Best and sync to Supabase if logged in
+      if (authUser?.clientId) {
+        const pbResult = await checkPersonalBest(
+          authUser.clientId,
+          exercise.name,
+          {
+            weight: data.weight,
+            weights: data.weights,
+            duration: data.duration,
+            distance: data.distance,
+          }
+        );
+        
+        isPB = pbResult.isPB;
+        oldPB = pbResult.oldPB;
+        newPB = pbResult.newPB;
+        
+        const { data: plan } = await supabase
+          .from("plans")
+          .select("id")
+          .eq("client_id", authUser.clientId)
+          .eq("status", "active")
+          .single();
+          
+        await syncWorkoutLogToSupabase(
+          authUser.clientId,
+          plan?.id || null,
+          trainingDay,
+          {
+            exerciseName: exercise.name,
+            weight: data.weight,
+            weights: data.weights,
+            sets: data.sets,
+            reps: data.reps,
+            duration: data.duration,
+            distance: data.distance,
+            rating: data.rating,
+            isPB,
+          }
+        );
+        
+        console.log("✅ Exercise synced to Supabase with PB check");
+      }
+      
+      // Save to localStorage
+      logs.unshift({
+        id: Date.now().toString(),
+        username,
+        exerciseName: exercise.name,
+        timestamp,
+        ...data,
+        isPB,
+      });
+      
+      if (logs.length > 100) logs.splice(100);
+      localStorage.setItem(storageKey, JSON.stringify(logs));
+      
+    } catch (error) {
+      console.error("Error saving exercise:", error);
+      toast.error("Failed to save exercise");
       return;
     }
     
     // Show PB celebration if applicable
-    if (result.isPB) {
+    if (isPB) {
+      const message = oldPB && newPB
+        ? `${oldPB}kg → ${newPB}kg! You crushed it!`
+        : `${newPB}kg - First time! 🎉`;
+      
       toast.success("🏆 NEW PERSONAL BEST!", {
-        description: result.message || `You beat your previous best!`,
+        description: message,
         duration: 3000,
       });
     }
@@ -357,14 +463,14 @@ const ExerciseDetail = () => {
     // Navigate to next exercise or back to home
     if (currentIndex < exercises.length - 1) {
       const nextExercise = exercises[currentIndex + 1];
-      if (!result.isPB) {
+      if (!isPB) {
         toast.success("✅ Exercise completed!", {
           description: `Moving to: ${nextExercise.name}`,
         });
       }
       setTimeout(() => {
         navigate(`/exercise/${nextExercise.id}`);
-      }, result.isPB ? 2000 : 500); // Longer delay for PB celebration
+      }, isPB ? 2000 : 500); // Longer delay for PB celebration
     } else {
       // Mark the training day as complete
       const userStr = localStorage.getItem("frank_rock_user");
@@ -381,7 +487,7 @@ const ExerciseDetail = () => {
         }
       }
       
-      if (!result.isPB) {
+      if (!isPB) {
         toast.success("🎉 All exercises complete!", {
           description: "Great workout! Returning to overview...",
         });
@@ -392,7 +498,7 @@ const ExerciseDetail = () => {
       }
       setTimeout(() => {
         navigate("/");
-      }, result.isPB ? 2500 : 1000);
+      }, isPB ? 2500 : 1000);
     }
   };
 
@@ -503,6 +609,30 @@ const ExerciseDetail = () => {
   }
 
   if (exercise.type === "circuit") {
+    // Use timer-based circuit if work/rest times are defined
+    // Check if timings exist (accept 0, null, or any number)
+    const workSec = (exercise as any).work_sec;
+    const restSec = (exercise as any).rest_sec;
+    const hasTimings = exercise.workRestRatio || (
+      workSec != null && restSec != null // != null checks for both null and undefined
+    );
+    
+    console.log('🏋️ Circuit workout routing:', {
+      CIRCUIT_ID: exercise.id,
+      hasTimings,
+      workRestRatio: exercise.workRestRatio,
+      work_sec: (exercise as any).work_sec,
+      rest_sec: (exercise as any).rest_sec,
+      totalRounds: exercise.totalRounds,
+      exercise_count: exercise.exercises?.length,
+      exerciseData: exercise
+    });
+    
+    if (hasTimings) {
+      console.log('✅ Using TIMER-BASED circuit');
+      return <CircuitWorkoutTimer exercise={exercise} onComplete={handleGroupedWorkoutComplete} />;
+    }
+    console.log('⚠️ Using MANUAL circuit (no timings found)');
     return <CircuitWorkout exercise={exercise} onComplete={handleGroupedWorkoutComplete} />;
   }
 
@@ -800,10 +930,26 @@ const ExerciseDetail = () => {
                   </Button>
                   <Input
                     id="mobility-duration"
-                    type="number"
-                    step="0.1"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*\.?[0-9]*"
                     value={todaysDuration || exercise.durationMin?.toString() || ""}
-                    onChange={(e) => setTodaysDuration(e.target.value)}
+                    onChange={(e) => {
+                      // Allow only numbers and one decimal point
+                      const value = e.target.value;
+                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                        setTodaysDuration(value);
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Clean up on blur - ensure it's a valid number
+                      const num = parseFloat(e.target.value);
+                      if (!isNaN(num) && num >= 0) {
+                        setTodaysDuration(num.toFixed(1));
+                      } else {
+                        setTodaysDuration(exercise.durationMin?.toString() || "0.5");
+                      }
+                    }}
                     className="text-center text-6xl h-32 border-2 font-bold flex-1"
                     placeholder={exercise.durationMin?.toString() || "8"}
                   />
