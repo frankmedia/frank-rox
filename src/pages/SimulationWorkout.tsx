@@ -419,7 +419,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                   
                   {/* Timer Display */}
                   <div className="text-right">
-                    <div className={`text-2xl font-mono font-bold ${
+                    <div className={`text-8xl font-mono font-bold leading-none ${
                       stationTime.isRunning ? "text-white" : "text-white/80"
                     }`}>
                       {formatTime(stationTime.elapsed)}
