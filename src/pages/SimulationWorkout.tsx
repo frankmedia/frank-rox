@@ -102,14 +102,16 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       prev.map((station) => {
         if (station.isRunning && station.startTime) {
           // Current segment time + accumulated time from previous pause/resume cycles
-          return { ...station, elapsed: station.accumulatedTime + (now - station.startTime) };
+          const accumulated = station.accumulatedTime || 0;
+          const currentSegment = now - station.startTime;
+          return { ...station, elapsed: accumulated + currentSegment };
         }
         return station;
       })
     );
     
     // Update total elapsed
-    const total = stationTimes.reduce((sum, s) => sum + s.elapsed, 0);
+    const total = stationTimes.reduce((sum, s) => sum + (s.elapsed || 0), 0);
     setTotalElapsed(total);
   }, [now]);
   
@@ -173,16 +175,24 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
     const currentTime = Date.now();
     
     setStationTimes((prev) =>
-      prev.map((station, i) =>
-        i === index
-          ? {
-              ...station,
-              endTime: currentTime,
-              isRunning: false,
-              isComplete: true,
-            }
-          : station
-      )
+      prev.map((station, i) => {
+        if (i === index) {
+          // Calculate final time: accumulated + current segment
+          const accumulated = station.accumulatedTime || 0;
+          const currentSegment = station.startTime ? currentTime - station.startTime : 0;
+          const finalElapsed = accumulated + currentSegment;
+          
+          return {
+            ...station,
+            endTime: currentTime,
+            elapsed: finalElapsed,
+            accumulatedTime: finalElapsed,
+            isRunning: false,
+            isComplete: true,
+          };
+        }
+        return station;
+      })
     );
     
     // Confetti on station complete
@@ -260,6 +270,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
   };
   
   const formatTime = (ms: number) => {
+    if (!ms || isNaN(ms)) return "0:00";
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
@@ -300,6 +311,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       startTime: null,
       endTime: null,
       elapsed: 0,
+      accumulatedTime: 0,
       isRunning: false,
       isComplete: false,
     }));
