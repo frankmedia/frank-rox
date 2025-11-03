@@ -779,8 +779,8 @@ const PlanDetail = () => {
             console.log('✅ Loaded data:', it.name, extra);
             setSets(extra.sets ?? 3);
             setReps(extra.reps ?? 10);
-            // For carry modality, weight is a string (e.g. "102kg"), otherwise it's a number
-            if (it.modality === 'carry') {
+            // For carry and bodyweight, weight is a string (e.g. "102kg", "6kg")
+            if (it.modality === 'carry' || it.modality === 'bodyweight') {
               setWeight(extra.weight ?? '');
               setDistance((extra.distance ?? 0) * 1000); // convert km to meters for display
             } else {
@@ -972,6 +972,89 @@ const PlanDetail = () => {
                   placeholder="0"
                 />
               </div>
+          </div>
+        )}
+        
+        {/* Second line: Inline inputs for bodyweight (sets, reps, distance, weight text) */}
+        {it.modality === 'bodyweight' && !loading && (
+          <div className="flex items-center justify-end gap-3 mt-2 pr-3 flex-wrap">
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">Sets</label>
+              <input 
+                type="number" 
+                value={sets === 0 ? '' : sets}
+                onChange={(e) => handleSetsChange(Number(e.target.value) || 0)}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                min="1"
+                placeholder="0"
+              />
+            </div>
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">Reps</label>
+              <input 
+                type="number" 
+                value={reps === 0 ? '' : reps}
+                onChange={(e) => handleRepsChange(Number(e.target.value) || 0)}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-14 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                min="1"
+                placeholder="0"
+              />
+            </div>
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">Distance (m)</label>
+              <input 
+                type="number"
+                step="1"
+                value={distance || ''}
+                onChange={(e) => {
+                  const meters = Number(e.target.value) || 0;
+                  setDistance(meters);
+                  if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+                  saveTimeoutRef.current = setTimeout(async () => {
+                    try {
+                      await supabase.from('session_block_items').update({ 
+                        extra: { sets, reps, distance: meters / 1000, weight } 
+                      }).eq('id', it.id);
+                    } catch (e) {
+                      console.error('Failed to save bodyweight data:', e);
+                    }
+                  }, 500);
+                }}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-20 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                min="0"
+                placeholder="m"
+              />
+            </div>
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">Weight</label>
+              <input 
+                type="text"
+                value={weight || ''}
+                onChange={(e) => setWeight(e.target.value as any)}
+                onBlur={() => {
+                  if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+                  saveTimeoutRef.current = setTimeout(async () => {
+                    try {
+                      await supabase.from('session_block_items').update({ 
+                        extra: { sets, reps, distance: distance / 1000, weight } 
+                      }).eq('id', it.id);
+                    } catch (e) {
+                      console.error('Failed to save bodyweight data:', e);
+                    }
+                  }, 500);
+                }}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-24 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                placeholder="e.g. 6kg"
+              />
+            </div>
           </div>
         )}
         
@@ -1767,6 +1850,7 @@ const PlanDetail = () => {
           // Reps-based stations (wall balls only)
           if (station.reps !== undefined) {
             extra.reps = station.reps;
+            extra.sets = 1; // Hyrox is always 1 set
           }
           
           // Add weight if specified

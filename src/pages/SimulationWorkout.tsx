@@ -8,7 +8,6 @@ import type { Exercise } from "@/types/workout";
 import { triggerSuccessHaptic } from "@/utils/haptics";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/utils/supabaseClient";
-import { ExerciseMedia } from "@/components/ExerciseMedia";
 
 interface SimulationWorkoutProps {
   exercise: Exercise;
@@ -312,16 +311,16 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
         </div>
       </header>
       
-      {/* Large Timer on Top */}
-      <div className="bg-gradient-to-br from-zinc-900 to-black border-b border-border py-8 px-4">
+      {/* Large Timer on Top - BLACK & WHITE */}
+      <div className="bg-black border-b border-white/20 py-8 px-4">
         <div className="text-center space-y-2">
-          <div className="text-sm text-muted-foreground uppercase tracking-wide">
+          <div className="text-sm text-white/60 uppercase tracking-wide">
             Total Elapsed Time
           </div>
-          <div className="text-6xl font-mono font-bold text-yellow-500">
+          <div className="text-6xl font-mono font-bold text-white">
             {formatTime(totalElapsed)}
           </div>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-white/60">
             Station {currentStation + 1} of {stations.length}
           </div>
         </div>
@@ -340,12 +339,12 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
           return (
             <Card
               key={station.id}
-              className={`p-4 transition-all ${
+              className={`p-4 transition-all bg-black ${
                 isCurrent
-                  ? "border-yellow-500 border-2 shadow-lg"
+                  ? "border-white border-2 shadow-lg"
                   : stationTime.isComplete
-                  ? "border-green-500 bg-green-500/5"
-                  : "opacity-50"
+                  ? "border-white/40 bg-white/5"
+                  : "opacity-50 border-white/20"
               }`}
             >
               <div className="space-y-3">
@@ -353,17 +352,17 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-muted-foreground">
+                      <span className="font-semibold text-sm text-white/60">
                         #{index + 1}
                       </span>
-                      <h3 className="font-bold text-lg">{station.name}</h3>
+                      <h3 className="font-bold text-lg text-white">{station.name}</h3>
                       {stationTime.isComplete && (
-                        <Check className="w-5 h-5 text-green-500" />
+                        <Check className="w-5 h-5 text-white" />
                       )}
                     </div>
                     
                     {/* Station Details */}
-                    <div className="text-sm text-muted-foreground mt-1 space-y-1">
+                    <div className="text-sm text-white/60 mt-1 space-y-1">
                       {station.distance && station.distance > 0 && (
                         <div>Distance: {station.distance * 1000}m</div>
                       )}
@@ -377,19 +376,12 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                   {/* Timer Display */}
                   <div className="text-right">
                     <div className={`text-2xl font-mono font-bold ${
-                      stationTime.isRunning ? "text-yellow-500" : ""
+                      stationTime.isRunning ? "text-white" : "text-white/80"
                     }`}>
                       {formatTime(stationTime.elapsed)}
                     </div>
                   </div>
                 </div>
-                
-                {/* Media */}
-                {station.mediaUrl && (
-                  <div className="mt-2">
-                    <ExerciseMedia url={station.mediaUrl} alt={station.name} />
-                  </div>
-                )}
                 
                 {/* Controls */}
                 {isCurrent && !stationTime.isComplete && (
@@ -397,7 +389,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                     {!stationTime.isRunning ? (
                       <Button
                         onClick={() => startStation(index)}
-                        className="flex-1 bg-yellow-500 hover:bg-yellow-600"
+                        className="flex-1 bg-white text-black hover:bg-white/90"
                       >
                         <Play className="w-4 h-4 mr-2" />
                         {stationTime.startTime ? "Resume" : "Start"}
@@ -407,14 +399,14 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                         <Button
                           onClick={() => pauseStation(index)}
                           variant="outline"
-                          className="flex-1"
+                          className="flex-1 border-white text-white hover:bg-white/10"
                         >
                           <Pause className="w-4 h-4 mr-2" />
                           Pause
                         </Button>
                         <Button
                           onClick={() => completeStation(index)}
-                          className="flex-1 bg-green-500 hover:bg-green-600"
+                          className="flex-1 bg-white text-black hover:bg-white/90"
                         >
                           <Check className="w-4 h-4 mr-2" />
                           Complete
@@ -425,7 +417,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                 )}
                 
                 {stationTime.isComplete && (
-                  <div className="text-center text-sm text-green-500 font-semibold">
+                  <div className="text-center text-sm text-white/80 font-semibold">
                     ✓ Completed in {formatTime(stationTime.elapsed)}
                   </div>
                 )}
@@ -437,10 +429,10 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       
       {/* Complete Simulation Button */}
       {simulationComplete && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-black border-t border-white/20">
           <Button
             onClick={handleComplete}
-            className="w-full bg-green-500 hover:bg-green-600 text-white py-6 text-lg font-bold"
+            className="w-full bg-white text-black hover:bg-white/90 py-6 text-lg font-bold"
           >
             <Check className="w-6 h-6 mr-2" />
             Finish Simulation

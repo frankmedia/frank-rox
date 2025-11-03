@@ -108,6 +108,8 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
           const isFormatGroup = blockParams.format_group === true || !!blockParams.format || (blockType === 'circuit' || blockType === 'amrap' || blockType === 'simulation');
           const format = blockParams.format?.toLowerCase() || blockType;
           
+          console.log(`🔍 Block check:`, { blockType, format, isFormatGroup, title: block.title, items: items.length });
+          
           if (isFormatGroup && (format === 'circuit' || format === 'amrap' || format === 'simulation')) {
             // Create a grouped exercise (header + children)
             const childExercises: any[] = [];
@@ -150,6 +152,7 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                 // Only set distance if reasonable (0.01km to 100km)
                 if (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) {
                   childExercise.targetDistanceKm = extra.distance;
+                  childExercise.distance = extra.distance; // Also add for SimulationWorkout
                 }
               } else if (childType === "mobility") {
                 if (extra.duration) childExercise.durationMin = extra.duration;
@@ -157,13 +160,17 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                 // weights or bodyweight
                 if (extra.sets) childExercise.sets = extra.sets;
                 if (extra.reps) childExercise.reps = extra.reps;
-                if (childType === "weights" && extra.weight) {
-                  childExercise.suggestedKg = extra.weight;
+                if (extra.weight) {
+                  childExercise.weight = extra.weight; // For SimulationWorkout
+                  if (childType === "weights" && typeof extra.weight === 'number') {
+                    childExercise.suggestedKg = extra.weight;
+                  }
                 }
                 if (extra.duration) childExercise.durationMin = extra.duration;
                 // Only set distance if reasonable (0.01km to 100km)
                 if (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) {
                   childExercise.targetDistanceKm = extra.distance;
+                  childExercise.distance = extra.distance; // Also add for SimulationWorkout
                 }
               }
               
