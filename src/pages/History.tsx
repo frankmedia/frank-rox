@@ -195,6 +195,7 @@ const History = () => {
         const supabaseHistory: WorkoutLog[] = (logs || []).map((log: any) => ({
           id: String(log.id),
           exercise: log.exercise_name,
+          exerciseType: log.exercise_type,
           date: new Date(log.logged_at).toLocaleString("en-GB", {
             day: "2-digit",
             month: "2-digit",
@@ -211,6 +212,7 @@ const History = () => {
           distance: log.distance_km,
           notes: log.notes,
           rating: log.rating,
+          details: log.details,
         }));
         
         // Also load today's workouts from localStorage (not yet synced)
@@ -519,15 +521,22 @@ const History = () => {
                                 )}
                               </Button>
                               
-                              <div className="flex items-start justify-between pr-10">
+                                <div className="flex items-start justify-between pr-10">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
                                     {entry.exercise.startsWith("Strava:") ? (
                                       <Activity className="w-4 h-4 text-yellow-500" />
+                                    ) : (entry as any).exerciseType === "simulation" ? (
+                                      <Trophy className="w-4 h-4 text-yellow-500" />
                                     ) : (
                                       <Dumbbell className="w-4 h-4 text-primary" />
                                     )}
                                     <h4 className="font-semibold text-foreground">{entry.exercise}</h4>
+                                    {(entry as any).exerciseType === "simulation" && (
+                                      <Badge className="bg-yellow-500 text-black font-bold text-[10px] px-2 py-0.5">
+                                        SIM
+                                      </Badge>
+                                    )}
                                     {entry.exercise.startsWith("Strava:") && (
                                       <Badge className="bg-yellow-500 text-black font-bold text-[10px] px-2 py-0.5">
                                         Strava
@@ -566,9 +575,48 @@ const History = () => {
                                   {entry.notes && (
                                     <p className="ml-6 mt-1 text-xs text-muted-foreground">{entry.notes}</p>
                                   )}
+                                  
+                                  {/* Simulation splits breakdown */}
+                                  {(entry as any).exerciseType === "simulation" && (entry as any).details?.splits && (
+                                    <div className="ml-6 mt-3 pt-3 border-t border-border/50">
+                                      <p className="text-xs font-semibold text-muted-foreground mb-2">Split Times:</p>
+                                      <div className="space-y-1">
+                                        {(entry as any).details.splits.map((split: any, idx: number) => (
+                                          <div key={idx} className="flex justify-between items-center text-xs">
+                                            <span className="text-muted-foreground">
+                                              {idx + 1}. {split.station}
+                                            </span>
+                                            <span className="font-mono font-semibold text-foreground">
+                                              {(() => {
+                                                const mins = Math.floor(split.elapsed / 60000);
+                                                const secs = Math.floor((split.elapsed % 60000) / 1000);
+                                                return `${mins}:${secs.toString().padStart(2, '0')}`;
+                                              })()}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="text-right ml-4">
-                                  {entry.weights && entry.weights.length > 0 ? (
+                                  {/* Simulation workout display */}
+                                  {(entry as any).exerciseType === "simulation" && (entry as any).details ? (
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground mb-1">Total Time:</p>
+                                      <p className="text-xl font-bold text-yellow-500">
+                                        {(() => {
+                                          const totalMs = (entry as any).details.total_time;
+                                          const mins = Math.floor(totalMs / 60000);
+                                          const secs = Math.floor((totalMs % 60000) / 1000);
+                                          return `${mins}:${secs.toString().padStart(2, '0')}`;
+                                        })()}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {(entry as any).details.splits?.length || 0} stations
+                                      </p>
+                                    </div>
+                                  ) : entry.weights && entry.weights.length > 0 ? (
                                     <div>
                                       <p className="text-xs font-semibold text-muted-foreground mb-1">Sets:</p>
                                       <p className="text-base font-bold text-secondary">
@@ -587,7 +635,7 @@ const History = () => {
                                   ) : entry.sets && entry.reps ? (
                                     <p className="text-base font-bold text-secondary">{entry.sets} × {entry.reps}</p>
                                   ) : null}
-                                  {entry.distance && (
+                                  {entry.distance && !(entry as any).exerciseType && (
                                     <div>
                                       <p className="text-xl font-bold text-secondary">{entry.distance.toFixed(1)}km</p>
                                       {entry.duration && (
@@ -598,7 +646,7 @@ const History = () => {
                                       )}
                                     </div>
                                   )}
-                                  {!entry.weight && !entry.weights && !entry.distance && entry.duration && (
+                                  {!entry.weight && !entry.weights && !entry.distance && entry.duration && !(entry as any).exerciseType && (
                                     <div>
                                       <p className="text-xl font-bold text-secondary">{entry.duration} min</p>
                                     </div>
