@@ -366,17 +366,17 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
         }}
       >
         <div className="text-center space-y-4">
+          {stations[currentStation] && (
+            <div className="text-2xl font-bold text-white/90">
+              {stations[currentStation].name}
+            </div>
+          )}
           <div className="text-[132px] md:text-[176px] font-mono font-bold text-white leading-none">
             {formatTime(totalElapsed)}
           </div>
           <div className="text-lg text-white/70 mt-6">
             Station {currentStation + 1} of {stations.length}
           </div>
-          {stations[currentStation] && (
-            <div className="text-2xl font-bold text-white/90 mt-2">
-              {stations[currentStation].name}
-            </div>
-          )}
         </div>
       </div>
       
