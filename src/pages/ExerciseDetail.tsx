@@ -14,6 +14,7 @@ import { HIITWorkout } from "./HIITWorkout";
 import { CircuitWorkout } from "./CircuitWorkout";
 import { CircuitWorkoutTimer } from "./CircuitWorkoutTimer";
 import { AMRAPWorkout } from "./AMRAPWorkout";
+import { SimulationWorkout } from "./SimulationWorkout";
 import { triggerSuccessHaptic } from "@/utils/haptics";
 import { FlameRating } from "@/components/FlameRating";
 import { useData } from "@/contexts/DataContext";
@@ -638,6 +639,15 @@ const ExerciseDetail = () => {
 
   if (exercise.type === "amrap") {
     return <AMRAPWorkout exercise={exercise} onComplete={handleGroupedWorkoutComplete} />;
+  }
+
+  if (exercise.type === "simulation") {
+    console.log('🏃 Simulation workout routing:', {
+      SIMULATION_ID: exercise.id,
+      name: exercise.name,
+      station_count: exercise.exercises?.length,
+    });
+    return <SimulationWorkout exercise={exercise} onComplete={handleGroupedWorkoutComplete} />;
   }
 
   return (

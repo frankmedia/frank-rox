@@ -102,13 +102,13 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
           const blockParams = block.parameters || {};
           const blockType = block.block_type?.toLowerCase();
           
-          // Check if this is a format group (Circuit, AMRAP - NOT HIIT)
+          // Check if this is a format group (Circuit, AMRAP, Simulation - NOT HIIT)
           // HIIT is a standalone exercise type, not a group
           // Also recognize by block_type directly (for blocks created without parameters.format)
-          const isFormatGroup = blockParams.format_group === true || !!blockParams.format || (blockType === 'circuit' || blockType === 'amrap');
+          const isFormatGroup = blockParams.format_group === true || !!blockParams.format || (blockType === 'circuit' || blockType === 'amrap' || blockType === 'simulation');
           const format = blockParams.format?.toLowerCase() || blockType;
           
-          if (isFormatGroup && (format === 'circuit' || format === 'amrap')) {
+          if (isFormatGroup && (format === 'circuit' || format === 'amrap' || format === 'simulation')) {
             // Create a grouped exercise (header + children)
             const childExercises: any[] = [];
             
@@ -179,10 +179,10 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
             const parentExercise = {
               id: String(block.id),
               name: block.title || `${format.toUpperCase()}: Workout`,
-              type: format as any, // "circuit", "amrap", or "hiit"
+              type: format as any, // "circuit", "amrap", "simulation", or "hiit"
               isGroupHeader: true,
               exercises: childExercises,
-              totalRounds: block.rounds || blockParams.rounds || 3,
+              totalRounds: block.rounds || blockParams.rounds || (format === 'simulation' ? 1 : 3),
               timeCap: block.time_cap_sec || blockParams.time_cap || undefined,
               workRestRatio: (workSec != null && restSec != null) ? `${workSec}s/${restSec}s` : undefined,
               work_sec: workSec,
@@ -241,7 +241,7 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
               const extra = item.extra || {};
 
               // Map modality to ExerciseType
-              let exerciseType: "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap" | "rehab" | "intro" = "weights";
+              let exerciseType: "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap" | "rehab" | "intro" | "simulation" = "weights";
               const modality = ex.modality?.toLowerCase();
               
               if (modality === "intro") {

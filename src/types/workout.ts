@@ -1,4 +1,4 @@
-export type ExerciseType = "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap" | "intro" | "rehab" | "amrap_exercise" | "circuit_exercise" | "hiit_exercise";
+export type ExerciseType = "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap" | "intro" | "rehab" | "simulation" | "amrap_exercise" | "circuit_exercise" | "hiit_exercise";
 
 export interface Exercise {
   id: string;

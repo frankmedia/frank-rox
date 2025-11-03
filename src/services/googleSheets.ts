@@ -357,7 +357,7 @@ export async function fetchTodayExercises(username: string = getCurrentUser(), p
           if (exerciseType === "circuit") {
             exercise.totalRounds = sets ? parseInt(sets) : 3; // Sets = rounds for circuits
           } else if (exerciseType === "amrap") {
-            exercise.timeCap = durationMin ? parseInt(durationMin) : 10; // Duration = time cap for AMRAP
+            exercise.timeCap = durationMin ? parseInt(durationMin) : 0; // Duration = time cap for AMRAP
           } else if (exerciseType === "hiit") {
             exercise.totalRounds = sets ? parseInt(sets) : 8; // Sets = intervals for HIIT
             exercise.workRestRatio = notes || "20s/10s"; // Notes = work/rest ratio

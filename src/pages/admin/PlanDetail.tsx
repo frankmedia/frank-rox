@@ -38,13 +38,13 @@ function getDefaultExtraForModality(modality?: string): any {
   } else if (mod === 'bodyweight') {
     return { sets: 3, reps: 10, rest: 60 };
   } else if (mod === 'cardio' || mod === 'running') {
-    return { duration: 10, distance: 1 };
+    return { distance: 1 };
   } else if (mod === 'mobility' || mod === 'core') {
     return { sets: 0, reps: 0, duration: 0 };
   } else if (mod === 'rehab') {
-    return { sets: 3, reps: 10, weight: 0, duration: 5, rest: 60 };
+    return { sets: 3, reps: 10, weight: 0, rest: 60 };
   } else if (mod === 'erg') {
-    return { duration: 10, distance: 1 };
+    return { distance: 1 };
   } else {
     // Default for unknown types
     return { sets: 3, reps: 10, rest: 60 };
@@ -200,7 +200,17 @@ const PlanDetail = () => {
         });
         return;
       }
-      if (mod === 'mobility' || mod === 'skill' || mod === 'carry' || mod === 'circuit') {
+      if (mod === 'carry') {
+        // Carry shows weight (as a string like "102kg") and distance
+        setEditing({
+          id: itemId,
+          dayId,
+          sets: typeof extra.weight === 'string' ? extra.weight : (typeof extra.weight === 'number' ? String(extra.weight) : undefined), // weight as string or number
+          weight: typeof extra.distance === 'number' ? extra.distance : undefined, // distance in km
+        });
+        return;
+      }
+      if (mod === 'mobility' || mod === 'skill' || mod === 'circuit') {
         setEditing({
           id: itemId,
           dayId,
@@ -366,6 +376,36 @@ const PlanDetail = () => {
               toast({ description: e?.message || 'Save failed', variant: 'destructive' as any });
             }
           }} className="px-3 py-1 rounded border border-yellow-500 text-yellow-400">Save</button>
+        </div>
+      </div>
+    );
+  }
+
+  function EditorCarry(itId: string) {
+    return (
+      <div className="space-y-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2"><span>Weight</span>
+            <input type="text" className="w-24 h-8 bg-black border border-zinc-700 rounded px-2" placeholder="e.g. 102kg" value={editing?.sets ?? ''} onChange={(e)=>setEditing({ ...editing!, sets: e.target.value as any })} />
+          </div>
+          <div className="flex items-center gap-2"><span>Distance (km)</span>
+            <input type="number" step="0.001" className="w-20 h-8 bg-black border border-zinc-700 rounded px-2" value={editing?.weight ?? ''} onChange={(e)=>setEditing({ ...editing!, weight: Number(e.target.value) })} />
+          </div>
+          <div className="ml-auto">
+            <button
+              onClick={async ()=>{
+                try {
+                  const extra:any = { weight: editing?.sets, distance: editing?.weight }; // weight as string, distance as number
+                  const { error } = await supabase.from('session_block_items').update({ extra }).eq('id', itId);
+                  if (error) throw error;
+                  setEditing(null); toast({ description: 'Saved' });
+                } catch(e:any) {
+                  toast({ description: e?.message || 'Save failed', variant: 'destructive' as any });
+                }
+              }}
+              className="px-3 py-1 rounded border border-yellow-500 text-yellow-400"
+            >Save</button>
+          </div>
         </div>
       </div>
     );
@@ -702,14 +742,14 @@ const PlanDetail = () => {
     );
   };
 
-  const CompactItemRow = React.memo(({ sid, it, dayId, chip, Icon, editing, toggleEditorWithData, removeItem, EditorStrength, EditorEndurance, EditorIntervals, EditorAccessory, EditorRehab }: any) => {
+  const CompactItemRow = React.memo(({ sid, it, dayId, chip, Icon, editing, toggleEditorWithData, removeItem, EditorStrength, EditorEndurance, EditorIntervals, EditorAccessory, EditorRehab, EditorCarry }: any) => {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: sid });
     const style = { transform: CSS.Transform.toString(transform), transition } as React.CSSProperties;
     const [sets, setSets] = useState<number>(3);
     const [reps, setReps] = useState<number>(10);
     const [weight, setWeight] = useState<number>(0);
-    const [duration, setDuration] = useState<number>(10);
-    const [durationInput, setDurationInput] = useState<string>('10'); // String for input display
+    const [duration, setDuration] = useState<number>(0);
+    const [durationInput, setDurationInput] = useState<string>(''); // String for input display
     const [distance, setDistance] = useState<number>(1000);
     const [intensity, setIntensity] = useState<string>('Z2');
     const [loading, setLoading] = useState(false);
@@ -739,11 +779,17 @@ const PlanDetail = () => {
             console.log('✅ Loaded data:', it.name, extra);
             setSets(extra.sets ?? 3);
             setReps(extra.reps ?? 10);
-            setWeight(extra.weight ?? 0);
-            const loadedDuration = extra.duration ?? 10;
+            // For carry modality, weight is a string (e.g. "102kg"), otherwise it's a number
+            if (it.modality === 'carry') {
+              setWeight(extra.weight ?? '');
+              setDistance((extra.distance ?? 0) * 1000); // convert km to meters for display
+            } else {
+              setWeight(extra.weight ?? 0);
+              setDistance(extra.distance ?? 1);
+            }
+            const loadedDuration = extra.duration ?? 0;
             setDuration(loadedDuration);
             setDurationInput(loadedDuration === 0 ? '' : String(loadedDuration));
-            setDistance(extra.distance ?? 1);
             setIntensity(extra.intensity ?? 'Z2');
           }
           hasLoadedRef.current = it.id;
@@ -999,8 +1045,8 @@ const PlanDetail = () => {
           </div>
         )}
         
-        {/* Second line: Inline inputs for skill/carry/circuit (sets, reps only) */}
-        {['skill', 'carry', 'circuit'].includes(it.modality) && !loading && (
+        {/* Second line: Inline inputs for skill/circuit (sets, reps only) */}
+        {['skill', 'circuit'].includes(it.modality) && !loading && (
           <div className="flex items-center justify-end gap-3 mt-2 pr-3">
             <div className="inline-flex items-center gap-1.5">
               <label className="text-xs text-zinc-400 font-medium">Sets</label>
@@ -1087,6 +1133,63 @@ const PlanDetail = () => {
           </div>
         )}
         
+        {/* Second line: Inline inputs for carry (weight, distance) */}
+        {it.modality === 'carry' && !loading && (
+          <div className="flex items-center justify-end gap-3 mt-2 pr-3 flex-wrap">
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">Weight</label>
+              <input 
+                type="text"
+                value={weight || ''}
+                onChange={(e) => setWeight(e.target.value as any)}
+                onBlur={() => {
+                  if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+                  saveTimeoutRef.current = setTimeout(async () => {
+                    try {
+                      await supabase.from('session_block_items').update({ 
+                        extra: { weight, distance } 
+                      }).eq('id', it.id);
+                    } catch (e) {
+                      console.error('Failed to save carry data:', e);
+                    }
+                  }, 500);
+                }}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-24 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                placeholder="e.g. 102kg"
+              />
+            </div>
+            <div className="inline-flex items-center gap-1.5">
+              <label className="text-xs text-zinc-400 font-medium">Distance (m)</label>
+              <input 
+                type="number"
+                step="1"
+                value={distance || ''}
+                onChange={(e) => {
+                  const meters = Number(e.target.value) || 0;
+                  setDistance(meters);
+                  if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+                  saveTimeoutRef.current = setTimeout(async () => {
+                    try {
+                      await supabase.from('session_block_items').update({ 
+                        extra: { weight, distance: meters / 1000 } // store as km
+                      }).eq('id', it.id);
+                    } catch (e) {
+                      console.error('Failed to save carry data:', e);
+                    }
+                  }, 500);
+                }}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={handleKeyDown}
+                className="w-20 h-9 bg-black border border-zinc-700 rounded px-2 text-center text-sm focus:border-yellow-500 focus:outline-none"
+                min="0"
+                placeholder="m"
+              />
+            </div>
+          </div>
+        )}
+        
         {/* Second line: Inline inputs for running/erg (duration, distance, zone buttons) */}
         {['running', 'erg'].includes(it.modality) && !loading && (
           <div className="flex items-center justify-end gap-3 mt-2 pr-3 flex-wrap">
@@ -1164,7 +1267,8 @@ const PlanDetail = () => {
             {it.modality === 'running' || it.modality === 'cardio' || it.modality === 'erg' ? EditorEndurance(it.id, dayId) : null}
             {it.modality === 'intervals' || it.modality === 'hiit' || it.modality === 'emom' ? EditorIntervals(it.id) : null}
             {it.modality === 'core' ? EditorCore(it.id) : null}
-            {it.modality === 'mobility' || it.modality === 'skill' || it.modality === 'carry' || it.modality === 'circuit' ? EditorAccessory(it.id) : null}
+            {it.modality === 'carry' ? EditorCarry(it.id) : null}
+            {it.modality === 'mobility' || it.modality === 'skill' || it.modality === 'circuit' ? EditorAccessory(it.id) : null}
           </div>
         )}
       </div>
@@ -1491,6 +1595,12 @@ const PlanDetail = () => {
       await createFormatGroupInDay(format, dayId);
       return;
     }
+    // Hyrox Sim → drop zone
+    if (activeId === 'hyrox:sim' && overId.startsWith('drop:')) {
+      const [, dayId] = overId.split(':');
+      await createHyroxSimInDay(dayId);
+      return;
+    }
   }
 
   async function toggleRest(day: PlanDay) {
@@ -1522,6 +1632,191 @@ const PlanDetail = () => {
       setSavingDayId(null);
     }
   }
+
+  async function createHyroxSimInDay(explicitDayId?: string) {
+    try {
+      const target = explicitDayId || selectedDayId || filteredDays[0]?.id;
+      if (!target) { 
+        toast({ description: 'Select a day first', variant: 'default' as any }); 
+        return; 
+      }
+
+      // Hyrox stations in order with Open Men weights
+      const hyroxStations = [
+        { name: 'SkiErg', searchTerms: ['SkiErg', 'ski'], distance: 1000, unit: 'm', tags: 'hyrox' },
+        { name: 'Sled Push', searchTerms: ['Sled Push'], distance: 50, unit: 'm', weight: '102kg', tags: 'hyrox' },
+        { name: 'Sled Pull', searchTerms: ['Sled Pull'], distance: 50, unit: 'm', weight: '102kg', tags: 'hyrox' },
+        { name: 'Burpee Broad Jump', searchTerms: ['Burpee Broad Jump', 'Broad Jump', 'Burpees'], distance: 80, unit: 'm', tags: 'hyrox' },
+        { name: 'RowErg', searchTerms: ['RowErg', 'row'], distance: 1000, unit: 'm', tags: 'hyrox' },
+        { name: 'Farmer Carry', searchTerms: ['Farmer Carry'], distance: 200, unit: 'm', weight: '2x32kg', tags: 'hyrox' },
+        { name: 'Sandbag Lunges', searchTerms: ['Lunges', 'lunge'], distance: 100, unit: 'm', weight: '30kg', tags: 'hyrox' },
+        { name: 'Wall Balls', searchTerms: ['Wall Balls', 'wall ball'], reps: 100, weight: '9kg', tags: 'hyrox' }
+      ];
+
+      // Create session
+      const sessionName = 'Hyrox Simulation (Open Men)';
+      const sIns = await supabase.from('sessions').insert({ plan_day_id: target, name: sessionName }).select('id').single();
+      if (sIns.error) throw sIns.error;
+      const sessionId = String((sIns.data as any).id);
+
+      // Create simulation block
+      const blockTitle = 'Hyrox Sim - 8 Stations + Runs';
+      const bIns = await supabase.from('session_blocks').insert({ 
+        session_id: sessionId, 
+        block_type: 'simulation', 
+        title: blockTitle,
+        rounds: 1,
+        parameters: { 
+          format: 'hyrox-sim', 
+          sequential: true, 
+          track_splits: true,
+          race_type: 'hyrox'
+        }
+      }).select('id').single();
+      if (bIns.error) throw bIns.error;
+      const blockId = String((bIns.data as any).id);
+
+      // Get 1km run exercise - try multiple search patterns
+      let runExerciseId = null;
+      
+      // Try to find a 1km run - exact match first, then fallbacks
+      const runSearchTerms = ['1km Run Hyrox Pace', '1km', '400m Run', '600m Run'];
+      for (const term of runSearchTerms) {
+        const query = await supabase
+          .from('exercises')
+          .select('id,name')
+          .ilike('name', `%${term}%`)
+          .limit(1);
+        
+        if (query.data && query.data.length > 0) {
+          runExerciseId = query.data[0].id;
+          break;
+        }
+      }
+      
+      // Fallback: any running exercise
+      if (!runExerciseId) {
+        const fallbackQuery = await supabase
+          .from('exercises')
+          .select('id')
+          .eq('modality', 'running')
+          .limit(1);
+        
+        if (fallbackQuery.data && fallbackQuery.data.length > 0) {
+          runExerciseId = fallbackQuery.data[0].id;
+        }
+      }
+      
+      if (!runExerciseId) {
+        console.warn('⚠️ No running exercise found in database');
+        toast({ description: 'Warning: No running exercise found - simulation may be incomplete', variant: 'default' as any });
+      }
+
+      let itemOrder = 0;
+      let createdCount = 0;
+      const failedStations: string[] = [];
+
+      // Add each station with runs before them
+      for (let i = 0; i < hyroxStations.length; i++) {
+        const station = hyroxStations[i];
+        
+        // Add 1km run before station
+        if (runExerciseId) {
+          const extra: any = { distance: 1 }; // 1km
+          const runInsert = await supabase.from('session_block_items').insert({ 
+            block_id: blockId, 
+            exercise_id: runExerciseId, 
+            status: 'draft', 
+            item_order: itemOrder++,
+            extra
+          });
+          if (runInsert.error) {
+            console.error(`❌ Failed to insert run #${i + 1}:`, runInsert.error);
+            throw runInsert.error;
+          }
+          createdCount++;
+          console.log(`✅ Added run #${i + 1} (order: ${itemOrder - 1})`);
+        }
+
+        // Find station exercise - try multiple search terms
+        let stationExercise = null;
+        for (const term of station.searchTerms) {
+          const query = await supabase
+            .from('exercises')
+            .select('id,name,modality')
+            .ilike('name', `%${term}%`)
+            .limit(1);
+          
+          if (query.data && query.data.length > 0) {
+            stationExercise = query.data[0];
+            console.log(`✅ Found ${station.name} via search term "${term}":`, stationExercise.name);
+            break;
+          }
+        }
+
+        if (stationExercise?.id) {
+          // Build extra data based on station
+          const extra: any = {};
+          
+          // Distance-based stations (sleds, carries, ergs, etc)
+          if (station.distance !== undefined) {
+            // Convert meters to km for database storage
+            extra.distance = station.distance / 1000;
+          }
+          
+          // Reps-based stations (wall balls only)
+          if (station.reps !== undefined) {
+            extra.reps = station.reps;
+          }
+          
+          // Add weight if specified
+          if (station.weight) {
+            extra.weight = station.weight;
+          }
+
+          const stationInsert = await supabase.from('session_block_items').insert({ 
+            block_id: blockId, 
+            exercise_id: stationExercise.id, 
+            status: 'draft', 
+            item_order: itemOrder++,
+            extra
+          });
+          if (stationInsert.error) {
+            console.error(`❌ Failed to insert station ${station.name}:`, stationInsert.error);
+            throw stationInsert.error;
+          }
+          createdCount++;
+          console.log(`✅ Added station #${i + 1}: ${station.name} (order: ${itemOrder - 1})`);
+        } else {
+          console.error(`❌ Could not find exercise for station: ${station.name}`, station.searchTerms);
+          failedStations.push(station.name);
+          toast({ description: `Warning: Could not find "${station.name}" in exercise library`, variant: 'default' as any });
+        }
+      }
+
+      // NO FINAL RUN - Hyrox ends with Wall Balls
+      console.log(`📊 Summary: Created ${createdCount} items (should be 16: 8 runs + 8 stations)`);
+      if (failedStations.length > 0) {
+        console.error(`❌ Failed to find: ${failedStations.join(', ')}`);
+      }
+
+      // Update plan day description
+      await supabase.from('plan_days').update({ 
+        description: 'Hyrox Simulation: 8 stations with 1km runs between each (Open Men weights)' 
+      }).eq('id', target);
+
+      // Force reload
+      await loadDayGroups(target);
+      
+      // Verify the block was created
+      console.log('✅ Hyrox Sim created!', { sessionId, blockId, target });
+      
+      toast({ description: `Hyrox Sim created with ${hyroxStations.length} stations!` });
+    } catch (err: any) {
+      console.error('❌ Hyrox Sim creation failed:', err);
+      toast({ description: err?.message || 'Failed to create Hyrox Sim', variant: 'destructive' as any });
+    }
+  }
   const DraggableFormatChip = ({ name }: { name: string }) => {
     const { attributes, listeners, setNodeRef } = useDraggable({ id: `format:${name}`, data: { name } });
     return (
@@ -1534,6 +1829,21 @@ const PlanDetail = () => {
         role="button"
         aria-label={`${name} chip`}
       >{name}</button>
+    );
+  };
+
+  const DraggableHyroxSim = () => {
+    const { attributes, listeners, setNodeRef } = useDraggable({ id: 'hyrox:sim', data: { name: 'Hyrox Sim' } });
+    return (
+      <button
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        onClick={async ()=>{ await createHyroxSimInDay(); }}
+        className="text-xs px-3 py-1.5 rounded border border-zinc-700 bg-white text-black font-semibold hover:bg-zinc-100 transition-colors"
+        role="button"
+        aria-label="Hyrox Sim"
+      >Hyrox Sim</button>
     );
   };
 
@@ -1578,8 +1888,8 @@ const PlanDetail = () => {
 
   function GroupEditor({ g, dayId }: { g: Group; dayId: string }) {
     // derive format (normalize trailing colon and common variants)
-    // If blockType is circuit/amrap, use that; otherwise parse from title or parameters
-    const blockTypeFmt = (g.blockType === 'circuit' ? 'circuit' : g.blockType === 'amrap' ? 'amrap' : null);
+    // If blockType is circuit/amrap/simulation, use that; otherwise parse from title or parameters
+    const blockTypeFmt = (g.blockType === 'circuit' ? 'circuit' : g.blockType === 'amrap' ? 'amrap' : g.blockType === 'simulation' ? 'simulation' : null);
     const rawFmt = blockTypeFmt || (g.parameters?.format as string) || g.title.split(' ')[0].toLowerCase();
     const fmt = rawFmt.replace(/:$/,'');
     // Treat "superset" as circuit format
@@ -1766,6 +2076,9 @@ const PlanDetail = () => {
       .select('id,name,order_index,collapsed,session_blocks(id,block_type,title,parameters,rounds,rest_between_rounds_s,time_cap_sec,work_sec,rest_sec,intensity,session_block_items(id,exercise_id,item_order,status))')
       .eq('plan_day_id', dayId)
       .order('order_index', { ascending: true });
+    
+    console.log('📦 Raw session data from DB:', JSON.stringify(sess.data, null, 2));
+    
     if (sess.error) { setGroupsByDay(prev=>({ ...prev, [dayId]: [] })); return; }
 
     // Build blocks list preserving session and block order
@@ -1798,8 +2111,9 @@ const PlanDetail = () => {
       if (!ex.error && ex.data) ex.data.forEach((e:any)=> exMap[String(e.id)] = { name: e.name, modality: e.modality });
     }
 
-    // Treat 'circuit' and timed 'amrap' as group wrappers
-    const groups: Group[] = blocks.filter((b:any)=> (b.blockType === 'circuit' || b.blockType === 'amrap')).map((b:any)=> ({
+    // Treat 'circuit', 'amrap', and 'simulation' as group wrappers
+    console.log('🔍 Checking blocks for groups:', blocks.map((b:any) => ({ blockType: b.blockType, title: b.title })));
+    const groups: Group[] = blocks.filter((b:any)=> (b.blockType === 'circuit' || b.blockType === 'amrap' || b.blockType === 'simulation')).map((b:any)=> ({
       sessionId: b.sessionId,
       blockId: b.blockId,
       title: b.title,
@@ -1819,7 +2133,7 @@ const PlanDetail = () => {
     // Standalones are items from non-group blocks only (exclude circuit/amrap)
     // For standalone items, sort by parent block order_index first, then item_order
     const nonGroupEntries = blocks
-      .filter((b:any)=> b.blockType !== 'circuit' && b.blockType !== 'amrap')
+      .filter((b:any)=> b.blockType !== 'circuit' && b.blockType !== 'amrap' && b.blockType !== 'simulation')
       .map((b:any)=> ({ order_index: b.order_index ?? 0, items: (b.itemRows||[]) }));
 
     const allRows = blocks.flatMap((b:any)=> (b.itemRows||[]));
@@ -1835,7 +2149,7 @@ const PlanDetail = () => {
     groups.forEach((g:any)=> { groupsByBlockId[String(g.blockId)] = g; });
     const sequence: Array<{ kind: 'group', group: Group } | { kind: 'item', item: RenderedItem }> = [];
     for (const b of blocks) {
-      if (b.blockType === 'circuit' || b.blockType === 'amrap') {
+      if (b.blockType === 'circuit' || b.blockType === 'amrap' || b.blockType === 'simulation') {
         const g = groupsByBlockId[String(b.blockId)];
         if (g) sequence.push({ kind: 'group', group: g });
       } else {
@@ -1983,8 +2297,12 @@ const PlanDetail = () => {
                           const RowGroup = () => {
                             const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: sidG });
                             const style = { transform: CSS.Transform.toString(transform), transition } as React.CSSProperties;
+                            const isSimulation = g.blockType === 'simulation';
+                            const wrapperClasses = isSimulation 
+                              ? "rounded-md border-2 border-white/30 bg-white/10" 
+                              : "rounded-md border border-slate-600 bg-slate-800";
                             return (
-                              <div ref={setNodeRef} style={style} className="rounded-md border border-slate-600 bg-slate-800">
+                              <div ref={setNodeRef} style={style} className={wrapperClasses}>
                                 <div className="flex items-center justify-between px-3 py-2">
                                   <div className="inline-flex items-center gap-2">
                                     <span title="Drag group" {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-yellow-500"><Move className="w-5 h-5" /></span>
@@ -2031,7 +2349,7 @@ const PlanDetail = () => {
                                           {(g.items || []).map((it) => {
                                             const { chip, Icon } = modalityStyle(it.modality);
                                             const sid = `item:${it.id}:${d.id}`;
-                                            return <CompactItemRow key={sid} sid={sid} it={it} dayId={d.id} chip={chip} Icon={Icon} editing={editing} toggleEditorWithData={toggleEditorWithData} removeItem={removeItem} EditorStrength={EditorStrength} EditorEndurance={EditorEndurance} EditorIntervals={EditorIntervals} EditorAccessory={EditorAccessory} EditorRehab={EditorRehab} />;
+                                            return <CompactItemRow key={sid} sid={sid} it={it} dayId={d.id} chip={chip} Icon={Icon} editing={editing} toggleEditorWithData={toggleEditorWithData} removeItem={removeItem} EditorStrength={EditorStrength} EditorEndurance={EditorEndurance} EditorIntervals={EditorIntervals} EditorAccessory={EditorAccessory} EditorRehab={EditorRehab} EditorCarry={EditorCarry} />;
                                           })}
                                           {(g.items || []).length === 0 && (
                                             <div className="text-xs text-zinc-400">Drop exercises here</div>
@@ -2319,6 +2637,10 @@ const PlanDetail = () => {
                   {['HIIT','Tabata','Sprint Intervals'].map(n=> <DraggableFormatChip key={n} name={n} />)}
                 </>
               )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-zinc-800">
+              <span className="text-xs uppercase tracking-wide text-zinc-400 font-semibold">Simulations</span>
+              <DraggableHyroxSim />
             </div>
           </div>
           {/* Modality filter chips */}
