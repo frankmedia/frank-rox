@@ -192,28 +192,44 @@ const History = () => {
         console.log('📊 Total logs from Supabase:', logs?.length || 0);
         
         // Convert Supabase logs to WorkoutLog format
-        const supabaseHistory: WorkoutLog[] = (logs || []).map((log: any) => ({
-          id: String(log.id),
-          exercise: log.exercise_name,
-          exerciseType: log.exercise_type,
-          date: new Date(log.logged_at).toLocaleString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          sets: log.sets,
-          reps: log.reps,
-          weight: log.weight,
-          weights: log.weights,
-          isPB: log.is_pb || false,
-          duration: log.duration_min,
-          distance: log.distance_km,
-          notes: log.notes,
-          rating: log.rating,
-          details: log.details,
-        }));
+        const supabaseHistory: WorkoutLog[] = (logs || []).map((log: any) => {
+          // Parse notes if it's JSON (for simulations)
+          let parsedNotes = log.notes;
+          let simulationData = null;
+          try {
+            if (log.notes && log.notes.startsWith('{')) {
+              const parsed = JSON.parse(log.notes);
+              if (parsed.type === 'simulation') {
+                simulationData = parsed;
+                parsedNotes = null; // Don't show raw JSON as notes
+              }
+            }
+          } catch (e) {
+            // Keep as regular notes if not JSON
+          }
+          
+          return {
+            id: String(log.id),
+            exercise: log.exercise_name,
+            date: new Date(log.logged_at).toLocaleString("en-GB", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            sets: log.sets,
+            reps: log.reps,
+            weight: log.weight,
+            weights: log.weights,
+            isPB: log.is_pb || false,
+            duration: log.duration_min,
+            distance: log.distance_km,
+            notes: parsedNotes,
+            rating: log.rating,
+            simulationData,
+          };
+        });
         
         // Also load today's workouts from localStorage (not yet synced)
         const userStr = localStorage.getItem("frank_rock_user");
@@ -526,13 +542,13 @@ const History = () => {
                                   <div className="flex items-center gap-2 mb-1">
                                     {entry.exercise.startsWith("Strava:") ? (
                                       <Activity className="w-4 h-4 text-yellow-500" />
-                                    ) : (entry as any).exerciseType === "simulation" ? (
+                                    ) : entry.exercise.startsWith("Sim:") ? (
                                       <Trophy className="w-4 h-4 text-yellow-500" />
                                     ) : (
                                       <Dumbbell className="w-4 h-4 text-primary" />
                                     )}
                                     <h4 className="font-semibold text-foreground">{entry.exercise}</h4>
-                                    {(entry as any).exerciseType === "simulation" && (
+                                    {entry.exercise.startsWith("Sim:") && (
                                       <Badge className="bg-yellow-500 text-black font-bold text-[10px] px-2 py-0.5">
                                         SIM
                                       </Badge>
@@ -577,11 +593,11 @@ const History = () => {
                                   )}
                                   
                                   {/* Simulation splits breakdown */}
-                                  {(entry as any).exerciseType === "simulation" && (entry as any).details?.splits && (
+                                  {(entry as any).simulationData?.splits && (
                                     <div className="ml-6 mt-3 pt-3 border-t border-border/50">
                                       <p className="text-xs font-semibold text-muted-foreground mb-2">Split Times:</p>
                                       <div className="space-y-1">
-                                        {(entry as any).details.splits.map((split: any, idx: number) => (
+                                        {(entry as any).simulationData.splits.map((split: any, idx: number) => (
                                           <div key={idx} className="flex justify-between items-center text-xs">
                                             <span className="text-muted-foreground">
                                               {idx + 1}. {split.station}
@@ -601,19 +617,19 @@ const History = () => {
                                 </div>
                                 <div className="text-right ml-4">
                                   {/* Simulation workout display */}
-                                  {(entry as any).exerciseType === "simulation" && (entry as any).details ? (
+                                  {(entry as any).simulationData ? (
                                     <div>
                                       <p className="text-xs font-semibold text-muted-foreground mb-1">Total Time:</p>
                                       <p className="text-xl font-bold text-yellow-500">
                                         {(() => {
-                                          const totalMs = (entry as any).details.total_time;
+                                          const totalMs = (entry as any).simulationData.total_time;
                                           const mins = Math.floor(totalMs / 60000);
                                           const secs = Math.floor((totalMs % 60000) / 1000);
                                           return `${mins}:${secs.toString().padStart(2, '0')}`;
                                         })()}
                                       </p>
                                       <p className="text-xs text-muted-foreground mt-1">
-                                        {(entry as any).details.splits?.length || 0} stations
+                                        {(entry as any).simulationData.splits?.length || 0} stations
                                       </p>
                                     </div>
                                   ) : entry.weights && entry.weights.length > 0 ? (
@@ -635,7 +651,7 @@ const History = () => {
                                   ) : entry.sets && entry.reps ? (
                                     <p className="text-base font-bold text-secondary">{entry.sets} × {entry.reps}</p>
                                   ) : null}
-                                  {entry.distance && !(entry as any).exerciseType && (
+                                  {entry.distance && !(entry as any).simulationData && (
                                     <div>
                                       <p className="text-xl font-bold text-secondary">{entry.distance.toFixed(1)}km</p>
                                       {entry.duration && (
@@ -646,7 +662,7 @@ const History = () => {
                                       )}
                                     </div>
                                   )}
-                                  {!entry.weight && !entry.weights && !entry.distance && entry.duration && !(entry as any).exerciseType && (
+                                  {!entry.weight && !entry.weights && !entry.distance && entry.duration && !(entry as any).simulationData && (
                                     <div>
                                       <p className="text-xl font-bold text-secondary">{entry.duration} min</p>
                                     </div>

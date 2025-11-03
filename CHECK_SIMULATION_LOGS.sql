@@ -4,12 +4,12 @@ SELECT
   client_id,
   training_day,
   exercise_name,
-  exercise_type,
-  details,
+  duration_min,
+  notes,
   logged_at,
   created_at
 FROM workout_logs
-WHERE exercise_type = 'simulation'
+WHERE exercise_name LIKE 'Sim:%'
 ORDER BY created_at DESC
 LIMIT 10;
 

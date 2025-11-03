@@ -254,13 +254,14 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
         client_id: authUser.clientId,
         plan_id: planData.id,
         training_day: trainingDay,
-        exercise_name: exercise.name,
-        exercise_type: "simulation",
-        details: {
+        exercise_name: `Sim: ${exercise.name}`,
+        duration_min: Math.round(totalElapsed / 60000),
+        notes: JSON.stringify({
+          type: "simulation",
           total_time: totalElapsed,
           splits,
           completed_at: new Date().toISOString(),
-        },
+        }),
       });
       
       console.log("✅ Simulation synced to Supabase");
