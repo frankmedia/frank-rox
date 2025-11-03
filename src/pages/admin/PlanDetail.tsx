@@ -1641,15 +1641,15 @@ const PlanDetail = () => {
         return; 
       }
 
-      // Hyrox stations in order with Open Men weights
+      // Hyrox stations in order with updated weights
       const hyroxStations = [
         { name: 'SkiErg', searchTerms: ['SkiErg', 'ski'], distance: 1000, unit: 'm', tags: 'hyrox' },
-        { name: 'Sled Push', searchTerms: ['Sled Push'], distance: 50, unit: 'm', weight: '102kg', tags: 'hyrox' },
-        { name: 'Sled Pull', searchTerms: ['Sled Pull'], distance: 50, unit: 'm', weight: '102kg', tags: 'hyrox' },
+        { name: 'Sled Push', searchTerms: ['Sled Push'], distance: 50, unit: 'm', weight: '152kg', tags: 'hyrox' },
+        { name: 'Sled Pull', searchTerms: ['Sled Pull'], distance: 50, unit: 'm', weight: '103kg', tags: 'hyrox' },
         { name: 'Burpee Broad Jump', searchTerms: ['Burpee Broad Jump', 'Broad Jump', 'Burpees'], distance: 80, unit: 'm', tags: 'hyrox' },
         { name: 'RowErg', searchTerms: ['RowErg', 'row'], distance: 1000, unit: 'm', tags: 'hyrox' },
-        { name: 'Farmer Carry', searchTerms: ['Farmer Carry'], distance: 200, unit: 'm', weight: '2x32kg', tags: 'hyrox' },
-        { name: 'Sandbag Lunges', searchTerms: ['Lunges', 'lunge'], distance: 100, unit: 'm', weight: '30kg', tags: 'hyrox' },
+        { name: 'Farmer Carry', searchTerms: ['Farmer Carry'], distance: 200, unit: 'm', weight: '2x24kg', tags: 'hyrox' },
+        { name: 'Sandbag Lunges', searchTerms: ['Lunges', 'lunge'], distance: 80, unit: 'm', weight: '20kg', tags: 'hyrox' },
         { name: 'Wall Balls', searchTerms: ['Wall Balls', 'wall ball'], reps: 100, weight: '9kg', tags: 'hyrox' }
       ];
 
