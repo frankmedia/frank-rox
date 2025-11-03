@@ -8,6 +8,7 @@ import type { Exercise } from "@/types/workout";
 import { triggerSuccessHaptic } from "@/utils/haptics";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/utils/supabaseClient";
+import confetti from "canvas-confetti";
 
 interface SimulationWorkoutProps {
   exercise: Exercise;
@@ -175,12 +176,30 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       )
     );
     
+    // Confetti on station complete
+    confetti({
+      particleCount: 50,
+      spread: 60,
+      origin: { y: 0.6 },
+      colors: ['#ffffff', '#cccccc', '#999999']
+    });
+    
+    triggerSuccessHaptic();
+    
     // Move to next station
     if (index < stations.length - 1) {
       setCurrentStation(index + 1);
       toast.success(`Station ${index + 1} complete!`);
     } else {
-      // All stations complete
+      // All stations complete - BIG CONFETTI!
+      confetti({
+        particleCount: 200,
+        spread: 120,
+        origin: { y: 0.6 },
+        colors: ['#ffffff', '#cccccc', '#999999'],
+        ticks: 300
+      });
+      
       setSimulationComplete(true);
       toast.success("🎉 Simulation complete!");
       
@@ -312,15 +331,15 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       </header>
       
       {/* Large Timer on Top - BLACK & WHITE */}
-      <div className="bg-black border-b border-white/20 py-8 px-4">
-        <div className="text-center space-y-2">
-          <div className="text-sm text-white/60 uppercase tracking-wide">
+      <div className="bg-black border-b border-white/20 py-16 px-4">
+        <div className="text-center space-y-4">
+          <div className="text-xs text-white/50 uppercase tracking-widest">
             Total Elapsed Time
           </div>
-          <div className="text-6xl font-mono font-bold text-white">
+          <div className="text-[120px] md:text-[160px] font-mono font-bold text-white leading-none">
             {formatTime(totalElapsed)}
           </div>
-          <div className="text-sm text-white/60">
+          <div className="text-lg text-white/70 mt-6">
             Station {currentStation + 1} of {stations.length}
           </div>
         </div>
@@ -427,16 +446,53 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
         })}
       </div>
       
-      {/* Complete Simulation Button */}
+      {/* Performance Breakdown & Complete Button */}
       {simulationComplete && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-black border-t border-white/20">
-          <Button
-            onClick={handleComplete}
-            className="w-full bg-white text-black hover:bg-white/90 py-6 text-lg font-bold"
-          >
-            <Check className="w-6 h-6 mr-2" />
-            Finish Simulation
-          </Button>
+        <div className="fixed bottom-0 left-0 right-0 bg-black border-t-2 border-white/20 max-h-[70vh] overflow-y-auto">
+          <div className="p-6 space-y-6">
+            {/* Summary Stats */}
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-white">🎉 SIMULATION COMPLETE!</h2>
+              <div className="text-6xl font-mono font-bold text-white">
+                {formatTime(totalElapsed)}
+              </div>
+              <p className="text-white/60 text-sm">Total Time</p>
+            </div>
+            
+            {/* Split Times Breakdown */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-bold text-white border-b border-white/20 pb-2">
+                Split Times
+              </h3>
+              {stationTimes.map((station, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center justify-between py-2 px-3 bg-white/5 rounded border border-white/10"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-white/60 text-sm font-mono">
+                      #{index + 1}
+                    </span>
+                    <span className="text-white text-sm font-medium">
+                      {station.stationName}
+                    </span>
+                  </div>
+                  <span className="text-white font-mono font-bold">
+                    {formatTime(station.elapsed)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            
+            {/* Finish Button */}
+            <Button
+              onClick={handleComplete}
+              className="w-full bg-white text-black hover:bg-white/90 py-6 text-lg font-bold"
+            >
+              <Check className="w-6 h-6 mr-2" />
+              Finish & Save Result
+            </Button>
+          </div>
         </div>
       )}
     </div>
