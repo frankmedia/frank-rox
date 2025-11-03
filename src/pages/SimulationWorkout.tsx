@@ -478,12 +478,6 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                     )}
                   </div>
                 )}
-                
-                {stationTime.isComplete && (
-                  <div className="text-center text-sm text-white/80 font-semibold">
-                    ✓ Completed in {formatTime(stationTime.elapsed)}
-                  </div>
-                )}
               </div>
             </Card>
           );
