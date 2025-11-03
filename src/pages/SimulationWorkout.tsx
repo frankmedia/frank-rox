@@ -21,6 +21,7 @@ interface StationTime {
   startTime: number | null;
   endTime: number | null;
   elapsed: number;
+  accumulatedTime: number; // Track time from previous pause/resume cycles
   isRunning: boolean;
   isComplete: boolean;
 }
@@ -52,6 +53,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       startTime: null,
       endTime: null,
       elapsed: 0,
+      accumulatedTime: 0,
       isRunning: false,
       isComplete: false,
     }));
@@ -99,7 +101,8 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
     setStationTimes((prev) =>
       prev.map((station) => {
         if (station.isRunning && station.startTime) {
-          return { ...station, elapsed: now - station.startTime };
+          // Current segment time + accumulated time from previous pause/resume cycles
+          return { ...station, elapsed: station.accumulatedTime + (now - station.startTime) };
         }
         return station;
       })
@@ -147,16 +150,22 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
   };
   
   const pauseStation = (index: number) => {
+    const currentTime = Date.now();
     setStationTimes((prev) =>
-      prev.map((station, i) =>
-        i === index
-          ? {
-              ...station,
-              endTime: Date.now(),
-              isRunning: false,
-            }
-          : station
-      )
+      prev.map((station, i) => {
+        if (i === index && station.startTime) {
+          // Save the accumulated time when pausing
+          const segmentTime = currentTime - station.startTime;
+          return {
+            ...station,
+            endTime: currentTime,
+            accumulatedTime: station.accumulatedTime + segmentTime,
+            elapsed: station.accumulatedTime + segmentTime,
+            isRunning: false,
+          };
+        }
+        return station;
+      })
     );
   };
   
