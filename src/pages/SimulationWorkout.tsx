@@ -330,11 +330,23 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
         </div>
       </header>
       
-      {/* Large Timer on Top - BLACK & WHITE */}
-      <div className="bg-black border-b border-white/20 py-16 px-4">
+      {/* Large Timer on Top - BLACK & WHITE - CLICKABLE TO PAUSE */}
+      <div 
+        className="bg-black border-b border-white/20 py-16 px-4 cursor-pointer active:bg-white/5 transition-colors"
+        onClick={() => {
+          const currentStationTime = stationTimes[currentStation];
+          if (!currentStationTime) return;
+          
+          if (currentStationTime.isRunning) {
+            pauseStation(currentStation);
+          } else if (!currentStationTime.isComplete && currentStationTime.startTime) {
+            startStation(currentStation);
+          }
+        }}
+      >
         <div className="text-center space-y-4">
           <div className="text-xs text-white/50 uppercase tracking-widest">
-            Total Elapsed Time
+            Total Elapsed Time {stationTimes[currentStation]?.isRunning ? '(Tap to Pause)' : '(Tap to Resume)'}
           </div>
           <div className="text-[120px] md:text-[160px] font-mono font-bold text-white leading-none">
             {formatTime(totalElapsed)}
@@ -347,8 +359,21 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       
       {/* Stations List */}
       <div className="p-4 space-y-3">
-        {stations.map((station, index) => {
-          const stationTime = stationTimes[index];
+        {stations
+          .map((station, index) => ({ station, index, stationTime: stationTimes[index] }))
+          .sort((a, b) => {
+            // Current station always on top
+            if (a.index === currentStation) return -1;
+            if (b.index === currentStation) return 1;
+            
+            // Then incomplete stations (in order)
+            if (!a.stationTime?.isComplete && b.stationTime?.isComplete) return -1;
+            if (a.stationTime?.isComplete && !b.stationTime?.isComplete) return 1;
+            
+            // Within same group, maintain original order
+            return a.index - b.index;
+          })
+          .map(({ station, index, stationTime }) => {
           if (!stationTime) return null;
           
           const isCurrent = index === currentStation;
