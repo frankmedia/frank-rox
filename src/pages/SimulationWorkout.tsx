@@ -492,9 +492,20 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
         })}
       </div>
       
-      {/* Performance Breakdown & Complete Button */}
+      {/* Performance Breakdown & Complete Button - FULL SCREEN */}
       {simulationComplete && (
-        <div className="fixed bottom-0 left-0 right-0 bg-black border-t-2 border-white/20 max-h-[70vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black z-50 overflow-y-auto">
+          {/* Header */}
+          <header className="sticky top-0 z-10 bg-black border-b border-white/20">
+            <div className="flex items-center justify-between px-4 py-3">
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+                <ArrowLeft className="w-5 h-5 text-white" />
+              </Button>
+              <h1 className="font-bold text-lg text-white flex-1 text-center">Results</h1>
+              <div className="w-10"></div>
+            </div>
+          </header>
+          
           <div className="p-6 space-y-6">
             {/* Summary Stats */}
             <div className="text-center space-y-2">
