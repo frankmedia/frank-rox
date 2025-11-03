@@ -1650,7 +1650,7 @@ const PlanDetail = () => {
         { name: 'RowErg', searchTerms: ['RowErg', 'row'], distance: 1000, unit: 'm', tags: 'hyrox' },
         { name: 'Farmer Carry', searchTerms: ['Farmer Carry'], distance: 200, unit: 'm', weight: '2x24kg', tags: 'hyrox' },
         { name: 'Sandbag Lunges', searchTerms: ['Lunges', 'lunge'], distance: 80, unit: 'm', weight: '20kg', tags: 'hyrox' },
-        { name: 'Wall Balls', searchTerms: ['Wall Balls', 'wall ball'], reps: 100, weight: '9kg', tags: 'hyrox' }
+        { name: 'Wall Balls', searchTerms: ['Wall Balls', 'wall ball'], reps: 100, weight: '6kg', tags: 'hyrox' }
       ];
 
       // Create session
