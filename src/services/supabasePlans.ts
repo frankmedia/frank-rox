@@ -91,8 +91,10 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
     const exercises: Exercise[] = [];
     
     if (sessions) {
+      console.log(`🔧 Processing ${sessions.length} sessions`);
       for (const session of sessions) {
         const blocks = (session as any).session_blocks || [];
+        console.log(`📦 Session "${session.name}": ${blocks.length} blocks`);
         // Ensure blocks are processed in defined order
         blocks.sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0));
         
