@@ -15,6 +15,7 @@ import {
 } from "@/services/workoutCache";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/utils/supabaseClient";
+import { ExerciseMedia } from "@/components/ExerciseMedia";
 
 interface CircuitWorkoutProps {
   exercise: Exercise;
@@ -251,19 +252,29 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                     className="p-6 border-2 cursor-pointer hover:bg-muted/50 transition-all"
                     onClick={() => toggleNextRound(ex.id, ex.name)}
                   >
-                    <div className="flex items-center gap-4">
-                      {/* Exercise Name and Details */}
-                      <div className="flex-1">
-                        <h3 className="text-2xl font-bold mb-1 text-foreground">{title}</h3>
+                    <div className="flex flex-col gap-4">
+                      {/* Exercise Name */}
+                      <div className="w-full">
+                        <h3 className="text-2xl font-bold mb-2 text-foreground">{title}</h3>
                         {parts.length > 0 && (
-                          <p className="text-lg text-foreground/70">
+                          <p className="text-lg text-foreground/70 mb-3">
                             {parts.join(" • ")}
                           </p>
                         )}
                       </div>
-                
-                      {/* Round Circles - indicators only, not buttons */}
-                      <div className="flex items-center gap-2">
+                      
+                      {/* Exercise Media (YouTube/Video) */}
+                      {ex.mediaUrl && (
+                        <div className="w-full">
+                          <ExerciseMedia 
+                            url={ex.mediaUrl} 
+                            alt={ex.name}
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Round Circles - wrap to next line if needed */}
+                      <div className="flex flex-wrap gap-2 justify-center">
                         {Array.from({ length: totalRounds }, (_, idx) => {
                           const roundNumber = idx + 1;
                           const isComplete = isRoundComplete(ex.id, roundNumber);

@@ -4,15 +4,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 
 interface ExerciseMediaProps {
-  url: string;
-  alt: string;
+  url?: string;
+  alt?: string;
   className?: string;
 }
 
 /**
  * Detects if URL is a YouTube link and extracts video ID
  */
-function getYouTubeVideoId(url: string): string | null {
+function getYouTubeVideoId(url: string | undefined): string | null {
+  if (!url) return null;
+  
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
     /youtube\.com\/shorts\/([^&\n?#]+)/,
@@ -30,6 +32,10 @@ function getYouTubeVideoId(url: string): string | null {
 export function ExerciseMedia({ url, alt, className = "" }: ExerciseMediaProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  
+  // Return null if no URL provided
+  if (!url) return null;
+  
   const youtubeId = getYouTubeVideoId(url);
 
   if (youtubeId) {
@@ -55,10 +61,9 @@ export function ExerciseMedia({ url, alt, className = "" }: ExerciseMediaProps) 
           className="relative w-full aspect-video bg-black"
         >
           <iframe
-            src={`https://www.youtube.com/embed/${youtubeId}?controls=1&modestbranding=1&rel=0&showinfo=0`}
+            src={`https://www.youtube.com/embed/${youtubeId}?controls=0&modestbranding=1&rel=0&showinfo=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1`}
             title={alt}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
             className="absolute inset-0 w-full h-full"
             onLoad={() => setIsLoading(false)}
           />
