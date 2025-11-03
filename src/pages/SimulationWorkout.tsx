@@ -370,7 +370,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                       {station.reps && station.reps > 0 && (
                         <div>Reps: {station.reps}</div>
                       )}
-                      {station.weight && <div>Weight: {station.weight}kg</div>}
+                      {station.weight && <div>Weight: {station.weight}</div>}
                     </div>
                   </div>
                   
