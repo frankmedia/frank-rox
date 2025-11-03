@@ -334,7 +334,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex items-center justify-between px-4 py-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-5 h-5" />
@@ -490,7 +490,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       {simulationComplete && (
         <div className="fixed inset-0 bg-black z-50 overflow-y-auto">
           {/* Header */}
-          <header className="sticky top-0 z-10 bg-black border-b border-white/20">
+          <header className="sticky top-0 z-10 bg-black border-b border-white/20" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
             <div className="flex items-center justify-between px-4 py-3">
               <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
                 <ArrowLeft className="w-5 h-5 text-white" />
