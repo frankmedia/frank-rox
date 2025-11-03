@@ -366,9 +366,6 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
         }}
       >
         <div className="text-center space-y-4">
-          <div className="text-xs text-white/50 uppercase tracking-widest">
-            Total Elapsed Time {stationTimes[currentStation]?.isRunning ? '(Tap to Pause)' : '(Tap to Resume)'}
-          </div>
           <div className="text-[132px] md:text-[176px] font-mono font-bold text-white leading-none">
             {formatTime(totalElapsed)}
           </div>
