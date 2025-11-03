@@ -379,7 +379,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       </div>
       
       {/* Stations List */}
-      <div className="p-4 space-y-3">
+      <div className="p-4 space-y-3 pb-24">
         {stations
           .map((station, index) => ({ station, index, stationTime: stationTimes[index] }))
           .sort((a, b) => {
@@ -541,14 +541,28 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
               ))}
             </div>
             
-            {/* Finish Button */}
-            <Button
-              onClick={handleComplete}
-              className="w-full bg-white text-black hover:bg-white/90 py-6 text-lg font-bold"
-            >
-              <Check className="w-6 h-6 mr-2" />
-              Finish & Save Result
-            </Button>
+            {/* Action Buttons */}
+            <div className="space-y-3 pb-24">
+              <Button
+                onClick={handleComplete}
+                className="w-full bg-white text-black hover:bg-white/90 py-6 text-lg font-bold"
+              >
+                <Check className="w-6 h-6 mr-2" />
+                Finish & Save Result
+              </Button>
+              <Button
+                onClick={() => {
+                  if (window.confirm("Reset simulation and start again?")) {
+                    setSimulationComplete(false);
+                    resetSimulation();
+                  }
+                }}
+                variant="outline"
+                className="w-full border-white text-white hover:bg-white/10 py-4"
+              >
+                Reset & Start Again
+              </Button>
+            </div>
           </div>
         </div>
       )}
