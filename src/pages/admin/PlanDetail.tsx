@@ -1750,10 +1750,10 @@ const PlanDetail = () => {
         title: blockTitle,
         rounds: 1,
         parameters: { 
-          format: 'hyrox-sim', 
+          format: 'simulation',  // Must match the check in supabasePlans.ts
+          race_type: 'hyrox',
           sequential: true, 
-          track_splits: true,
-          race_type: 'hyrox'
+          track_splits: true
         }
       }).select('id').single();
       if (bIns.error) throw bIns.error;
