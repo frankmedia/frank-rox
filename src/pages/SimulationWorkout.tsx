@@ -375,6 +375,11 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
           <div className="text-lg text-white/70 mt-6">
             Station {currentStation + 1} of {stations.length}
           </div>
+          {stations[currentStation] && (
+            <div className="text-2xl font-bold text-white/90 mt-2">
+              {stations[currentStation].name}
+            </div>
+          )}
         </div>
       </div>
       
@@ -422,7 +427,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                       </span>
                       <h3 className="font-bold text-lg text-white">{station.name}</h3>
                       {stationTime.isComplete && (
-                        <Check className="w-5 h-5 text-white" />
+                        <Check className="w-6 h-6 text-white" />
                       )}
                     </div>
                     
@@ -465,13 +470,13 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                           onClick={() => pauseStation(index)}
                           className="flex-[1] bg-white/20 text-white border-2 border-white hover:bg-white/30"
                         >
-                          <Pause className="w-6 h-6" />
+                          <Pause className="w-8 h-8" />
                         </Button>
                         <Button
                           onClick={() => completeStation(index)}
                           className="flex-[3] bg-white text-black hover:bg-white/90"
                         >
-                          <Check className="w-4 h-4 mr-2" />
+                          <Check className="w-6 h-6 mr-2" />
                           Complete
                         </Button>
                       </>
