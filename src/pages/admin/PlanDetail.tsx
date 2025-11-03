@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/utils/supabaseClient";
-import { Pause, Check, Dumbbell, Activity, Gauge, Timer, Repeat, AlarmClock, Package, Move, Lightbulb, CircleDot, Trash2, StretchHorizontal, Loader2, RefreshCcw, Save, Send, Footprints, Upload } from "lucide-react";
+import { Pause, Check, Dumbbell, Activity, Gauge, Timer, Repeat, AlarmClock, Package, Move, Lightbulb, CircleDot, Trash2, StretchHorizontal, Loader2, RefreshCcw, Save, Send, Footprints, Upload, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { DndContext, useDraggable, useDroppable, DragEndEvent } from "@dnd-kit/core";
 import { useSortable, SortableContext, arrayMove } from "@dnd-kit/sortable";
@@ -39,7 +39,7 @@ function getDefaultExtraForModality(modality?: string): any {
     return { sets: 3, reps: 10, rest: 60 };
   } else if (mod === 'cardio' || mod === 'running') {
     return { duration: 10, distance: 1 };
-  } else if (mod === 'mobility') {
+  } else if (mod === 'mobility' || mod === 'core') {
     return { sets: 0, reps: 0, duration: 0 };
   } else if (mod === 'rehab') {
     return { sets: 3, reps: 10, weight: 0, duration: 5, rest: 60 };
@@ -73,6 +73,7 @@ const PlanDetail = () => {
   const [openMetcon, setOpenMetcon] = useState<boolean>(() => localStorage.getItem('ui.metconOpen') === '1');
   const [openIntervals, setOpenIntervals] = useState<boolean>(() => localStorage.getItem('ui.intervalsOpen') === '1');
   const [groupsByDay, setGroupsByDay] = useState<Record<string, Group[]>>({});
+  const [sequenceByDay, setSequenceByDay] = useState<Record<string, Array<{ kind: 'group', group: Group } | { kind: 'item', item: RenderedItem }>>>({});
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
   const [savingPlanName, setSavingPlanName] = useState<boolean>(false);
   const [planNameSaved, setPlanNameSaved] = useState<boolean>(false);
@@ -167,7 +168,7 @@ const PlanDetail = () => {
         });
         return;
       }
-      if (mod === 'rehab') {
+  if (mod === 'rehab') {
         setEditing({
           id: itemId,
           dayId,
@@ -189,7 +190,17 @@ const PlanDetail = () => {
         });
         return;
       }
-      if (mod === 'core' || mod === 'mobility' || mod === 'skill' || mod === 'carry' || mod === 'circuit') {
+  if (mod === 'core') {
+        setEditing({
+          id: itemId,
+          dayId,
+          sets: typeof extra.sets === 'number' ? extra.sets : undefined,
+          reps: typeof extra.reps === 'number' ? extra.reps : undefined,
+          rest: typeof extra.duration === 'number' ? extra.duration : undefined,
+        });
+        return;
+      }
+      if (mod === 'mobility' || mod === 'skill' || mod === 'carry' || mod === 'circuit') {
         setEditing({
           id: itemId,
           dayId,
@@ -375,6 +386,39 @@ const PlanDetail = () => {
               onClick={async ()=>{
                 try {
                   const extra:any = { sets: editing?.sets, reps: editing?.reps };
+                  const { error } = await supabase.from('session_block_items').update({ extra }).eq('id', itId);
+                  if (error) throw error;
+                  setEditing(null); toast({ description: 'Saved' });
+                } catch(e:any) {
+                  toast({ description: e?.message || 'Save failed', variant: 'destructive' as any });
+                }
+              }}
+              className="px-3 py-1 rounded border border-yellow-500 text-yellow-400"
+            >Save</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function EditorCore(itId: string) {
+    return (
+      <div className="space-y-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2"><span>Sets</span>
+            <input type="number" className="w-14 h-8 bg-black border border-zinc-700 rounded px-1" value={editing?.sets ?? ''} onChange={(e)=>setEditing({ ...editing!, sets: Number(e.target.value) })} />
+          </div>
+          <div className="flex items-center gap-2"><span>Reps</span>
+            <input type="number" className="w-14 h-8 bg-black border border-zinc-700 rounded px-1" value={editing?.reps ?? ''} onChange={(e)=>setEditing({ ...editing!, reps: Number(e.target.value) })} />
+          </div>
+          <div className="flex items-center gap-2"><span>Duration (min)</span>
+            <input type="number" className="w-14 h-8 bg-black border border-zinc-700 rounded px-1" value={editing?.rest ?? ''} onChange={(e)=>setEditing({ ...editing!, rest: Number(e.target.value) })} />
+          </div>
+          <div className="ml-auto">
+            <button
+              onClick={async ()=>{
+                try {
+                  const extra:any = { sets: editing?.sets, reps: editing?.reps, duration: editing?.rest };
                   const { error } = await supabase.from('session_block_items').update({ extra }).eq('id', itId);
                   if (error) throw error;
                   setEditing(null); toast({ description: 'Saved' });
@@ -885,8 +929,8 @@ const PlanDetail = () => {
           </div>
         )}
         
-        {/* Second line: Inline inputs for mobility (sets, reps, OR duration) */}
-        {it.modality === 'mobility' && !loading && (
+        {/* Second line: Inline inputs for mobility and core (sets, reps, duration) */}
+        {(it.modality === 'mobility' || it.modality === 'core') && !loading && (
           <div className="flex items-center justify-end gap-3 mt-2 pr-3">
             <div className="inline-flex items-center gap-1.5">
               <label className="text-xs text-zinc-400 font-medium">Sets</label>
@@ -955,8 +999,8 @@ const PlanDetail = () => {
           </div>
         )}
         
-        {/* Second line: Inline inputs for core/skill/carry/circuit (sets, reps only) */}
-        {['core', 'skill', 'carry', 'circuit'].includes(it.modality) && !loading && (
+        {/* Second line: Inline inputs for skill/carry/circuit (sets, reps only) */}
+        {['skill', 'carry', 'circuit'].includes(it.modality) && !loading && (
           <div className="flex items-center justify-end gap-3 mt-2 pr-3">
             <div className="inline-flex items-center gap-1.5">
               <label className="text-xs text-zinc-400 font-medium">Sets</label>
@@ -1119,7 +1163,8 @@ const PlanDetail = () => {
             {it.modality === 'rehab' ? EditorRehab(it.id, dayId) : null}
             {it.modality === 'running' || it.modality === 'cardio' || it.modality === 'erg' ? EditorEndurance(it.id, dayId) : null}
             {it.modality === 'intervals' || it.modality === 'hiit' || it.modality === 'emom' ? EditorIntervals(it.id) : null}
-            {it.modality === 'core' || it.modality === 'mobility' || it.modality === 'skill' || it.modality === 'carry' || it.modality === 'circuit' ? EditorAccessory(it.id) : null}
+            {it.modality === 'core' ? EditorCore(it.id) : null}
+            {it.modality === 'mobility' || it.modality === 'skill' || it.modality === 'carry' || it.modality === 'circuit' ? EditorAccessory(it.id) : null}
           </div>
         )}
       </div>
@@ -1533,9 +1578,13 @@ const PlanDetail = () => {
 
   function GroupEditor({ g, dayId }: { g: Group; dayId: string }) {
     // derive format (normalize trailing colon and common variants)
-    const rawFmt = ((g.parameters?.format as string) || g.title.split(' ')[0].toLowerCase());
+    // If blockType is circuit/amrap, use that; otherwise parse from title or parameters
+    const blockTypeFmt = (g.blockType === 'circuit' ? 'circuit' : g.blockType === 'amrap' ? 'amrap' : null);
+    const rawFmt = blockTypeFmt || (g.parameters?.format as string) || g.title.split(' ')[0].toLowerCase();
     const fmt = rawFmt.replace(/:$/,'');
-    const isTabata = fmt === 'tabata' || g.parameters?.tabata_fixed === true;
+    // Treat "superset" as circuit format
+    const normalizedFmt = (fmt === 'superset' || fmt === 'supersetb' || fmt === 'superseta') ? 'circuit' : fmt;
+    const isTabata = normalizedFmt === 'tabata' || g.parameters?.tabata_fixed === true;
     const [work, setWork] = useState<number | ''>('');
     const [rest, setRest] = useState<number | ''>('');
     const [rounds, setRounds] = useState<number | ''>('');
@@ -1550,14 +1599,18 @@ const PlanDetail = () => {
       setRest((g as any).rest_sec ?? '');
       setRounds((g as any).rounds ?? '');
       const cap = (g as any).time_cap_sec ?? null;
-      const fmtLocal = (g.parameters?.format as string) || fmt;
-      if (cap != null && (fmtLocal==='amrap' || fmtLocal==='emom')) setTimeCap(Math.round(Number(cap)/60));
+      // Recalculate normalizedFmt inside useEffect for consistency
+      const blockTypeFmt = (g.blockType === 'circuit' ? 'circuit' : g.blockType === 'amrap' ? 'amrap' : null);
+      const rawFmt = blockTypeFmt || (g.parameters?.format as string) || g.title.split(' ')[0].toLowerCase();
+      const fmt = rawFmt.replace(/:$/,'');
+      const fmtNormalized = (fmt === 'superset' || fmt === 'supersetb' || fmt === 'superseta') ? 'circuit' : fmt;
+      if (cap != null && (fmtNormalized==='amrap' || fmtNormalized==='emom')) setTimeCap(Math.round(Number(cap)/60));
       else setTimeCap(cap ?? '');
       setSlotsPerMin((g.parameters?.slots_per_min as number) ?? '');
       setRestBetween((g as any).rest_between_rounds_s ?? '');
       setIntensity((g as any).intensity ?? '');
       setExercisesPerRound((g.parameters?.exercises_per_round as number) ?? '');
-    }, [g.blockId]);
+    }, [g.blockId, g.blockType, g.parameters, g.title]);
 
     async function save() {
       const payload: any = {};
@@ -1571,13 +1624,12 @@ const PlanDetail = () => {
       }
       if (rounds !== '') payload.rounds = Number(rounds);
       if (timeCap !== '') {
-        const fmtLocal = (g.parameters?.format as string) || fmt;
-        payload.time_cap_sec = (fmtLocal==='amrap' || fmtLocal==='emom') ? Number(timeCap) * 60 : Number(timeCap);
+        payload.time_cap_sec = (normalizedFmt==='amrap' || normalizedFmt==='emom') ? Number(timeCap) * 60 : Number(timeCap);
       }
       if (restBetween !== '') payload.rest_between_rounds_s = Number(restBetween);
       if (intensity) payload.intensity = intensity;
       // parameters
-      const params: any = { ...(g.parameters || {}), format: fmt, format_group: true };
+      const params: any = { ...(g.parameters || {}), format: normalizedFmt, format_group: true };
       if (isTabata) params.tabata_fixed = true;
       if (slotsPerMin !== '') params.slots_per_min = Number(slotsPerMin);
       if (exercisesPerRound !== '') params.exercises_per_round = Number(exercisesPerRound);
@@ -1610,7 +1662,7 @@ const PlanDetail = () => {
             <div className="col-span-2 text-sm text-zinc-500">Note: 20s on + 10s rest</div>
           </div>
         )}
-        {!isTabata && (fmt==='hiit' || fmt==='sprint' || fmt==='intervals' || g.blockType==='intervals') && (
+        {!isTabata && (normalizedFmt==='hiit' || normalizedFmt==='sprint' || normalizedFmt==='intervals' || g.blockType==='intervals') && (
           <div className="grid grid-cols-2 gap-3">
             <div>{label('Work (seconds)')}{input(work,setWork,'30')}</div>
             <div>{label('Rest (seconds)')}{input(rest,setRest,'30')}</div>
@@ -1620,15 +1672,15 @@ const PlanDetail = () => {
             </div>
           </div>
         )}
-        {fmt==='emom' && (
+        {normalizedFmt==='emom' && (
           <div className="grid grid-cols-2 gap-3">
             <div>{label('Minutes')}{input(timeCap,setTimeCap,'10')}</div>
             <div>{label('Slots per minute')}{input(slotsPerMin,setSlotsPerMin,'1')}</div>
           </div>
         )}
-        {(fmt==='circuit' || fmt==='chipper') && (
+        {(normalizedFmt==='circuit' || normalizedFmt==='chipper') && (
           <div className="space-y-3">
-            {fmt==='circuit' && (
+            {normalizedFmt==='circuit' && (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>{label('Work (seconds)')}{input(work,setWork,'40')}</div>
@@ -1643,14 +1695,14 @@ const PlanDetail = () => {
                 </div>
               </>
             )}
-            {fmt==='chipper' && (
+            {normalizedFmt==='chipper' && (
               <div className="grid grid-cols-2 gap-3">
                 <div>{label('Time cap (minutes)')}{input(timeCap,setTimeCap,'20')}</div>
               </div>
             )}
           </div>
         )}
-        {fmt==='amrap' && (
+        {normalizedFmt==='amrap' && (
           <div className="grid grid-cols-2 gap-3">
             <div>{label('Time cap (minutes)')}{input(timeCap,setTimeCap,'10')}</div>
           </div>
@@ -1716,13 +1768,17 @@ const PlanDetail = () => {
       .order('order_index', { ascending: true });
     if (sess.error) { setGroupsByDay(prev=>({ ...prev, [dayId]: [] })); return; }
 
+    // Build blocks list preserving session and block order
     const blocks = (sess.data || []).flatMap((s:any)=> {
       const arr = Array.isArray(s.session_blocks) ? s.session_blocks : (s.session_blocks ? [s.session_blocks] : []);
+      // Sort blocks within a session by order_index to preserve import order
+      arr.sort((a:any,b:any)=> (a?.order_index ?? 0) - (b?.order_index ?? 0));
       return arr.map((b:any)=> ({
         sessionId: String(s.id),
         blockId: b?.id ? String(b.id) : `sess-${s.id}-blk-unknown`,
         title: (b?.title || s.name) as string,
         blockType: b?.block_type as string,
+        order_index: b?.order_index ?? 0,
         collapsed: s.collapsed,
         parameters: b?.parameters || null,
         rounds: b?.rounds ?? null,
@@ -1742,8 +1798,8 @@ const PlanDetail = () => {
       if (!ex.error && ex.data) ex.data.forEach((e:any)=> exMap[String(e.id)] = { name: e.name, modality: e.modality });
     }
 
-    // Treat any block with block_type === 'circuit' as a group wrapper
-    const groups: Group[] = blocks.filter((b:any)=> b.blockType === 'circuit').map((b:any)=> ({
+    // Treat 'circuit' and timed 'amrap' as group wrappers
+    const groups: Group[] = blocks.filter((b:any)=> (b.blockType === 'circuit' || b.blockType === 'amrap')).map((b:any)=> ({
       sessionId: b.sessionId,
       blockId: b.blockId,
       title: b.title,
@@ -1760,14 +1816,35 @@ const PlanDetail = () => {
     }));
 
     setGroupsByDay(prev=> ({ ...prev, [dayId]: groups }));
-    // Standalones are items from non-circuit blocks only
-    const nonGroupRows = blocks.filter((b:any)=> b.blockType !== 'circuit').flatMap((b:any)=> (b.itemRows||[]));
+    // Standalones are items from non-group blocks only (exclude circuit/amrap)
+    // For standalone items, sort by parent block order_index first, then item_order
+    const nonGroupEntries = blocks
+      .filter((b:any)=> b.blockType !== 'circuit' && b.blockType !== 'amrap')
+      .map((b:any)=> ({ order_index: b.order_index ?? 0, items: (b.itemRows||[]) }));
+
     const allRows = blocks.flatMap((b:any)=> (b.itemRows||[]));
-    // Sort standalone items by item_order before mapping
-    const flatItems: RenderedItem[] = nonGroupRows
-      .sort((a:any,b:any)=>(a.item_order??0)-(b.item_order??0))
-      .map((r:any)=> ({ id: String(r.id), name: exMap[String(r.exercise_id)]?.name || 'Exercise', modality: exMap[String(r.exercise_id)]?.modality, item_order: r.item_order }));
+
+    const flatItems: RenderedItem[] = nonGroupEntries
+      .flatMap((entry:any)=> (entry.items||[]).map((r:any)=> ({ r, parentOrder: entry.order_index })))
+      .sort((a:any,b:any)=> (a.parentOrder - b.parentOrder) || ((a.r.item_order??0) - (b.r.item_order??0)))
+      .map((x:any)=> ({ id: String(x.r.id), name: exMap[String(x.r.exercise_id)]?.name || 'Exercise', modality: exMap[String(x.r.exercise_id)]?.modality, item_order: x.r.item_order }));
     setItemsByDay(prev=> ({ ...prev, [dayId]: flatItems }));
+
+    // Build interleaved sequence list according to block order
+    const groupsByBlockId: Record<string, Group> = {};
+    groups.forEach((g:any)=> { groupsByBlockId[String(g.blockId)] = g; });
+    const sequence: Array<{ kind: 'group', group: Group } | { kind: 'item', item: RenderedItem }> = [];
+    for (const b of blocks) {
+      if (b.blockType === 'circuit' || b.blockType === 'amrap') {
+        const g = groupsByBlockId[String(b.blockId)];
+        if (g) sequence.push({ kind: 'group', group: g });
+      } else {
+        const rows = (b.itemRows||[]).sort((a:any,b:any)=>(a.item_order??0)-(b.item_order??0));
+        const r = rows[0];
+        if (r) sequence.push({ kind: 'item', item: { id: String(r.id), name: exMap[String(r.exercise_id)]?.name || 'Exercise', modality: exMap[String(r.exercise_id)]?.modality, item_order: r.item_order } });
+      }
+    }
+    setSequenceByDay(prev => ({ ...prev, [dayId]: sequence }));
     const allReady = allRows.length>0 && allRows.every((r:any)=> (r.status || 'draft') === 'ready');
     setReadyDays(prev=> ({ ...prev, [dayId]: allReady }));
   }
@@ -1897,102 +1974,117 @@ const PlanDetail = () => {
 
                 <div className="mt-3 space-y-2">
                   <div className="space-y-2">
-                    <SortableContext items={(groupsByDay[d.id] || []).map(g => `group:${g.sessionId}:${d.id}`)}>
+                    <SortableContext items={(sequenceByDay[d.id] || []).map(entry => entry.kind==='group' ? `group:${(entry as any).group.sessionId}:${d.id}` : `item:${(entry as any).item.id}:${d.id}`)}>
                       <InlineRootDrop id={`rootdrop:${d.id}:0`} />
-                      {(groupsByDay[d.id] || []).map((g, gi) => {
-                        const sidG = `group:${g.sessionId}:${d.id}`;
-                        const RowGroup = () => {
-                          const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: sidG });
-                          const style = { transform: CSS.Transform.toString(transform), transition } as React.CSSProperties;
-                          return (
-                            <div ref={setNodeRef} style={style} className="rounded-md border border-slate-600 bg-slate-800">
-                              <div className="flex items-center justify-between px-3 py-2">
-                                <div className="inline-flex items-center gap-2">
-                                  <span title="Drag group" {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-yellow-500"><Move className="w-5 h-5" /></span>
-                                  <Repeat className="w-4 h-4 text-yellow-400" />
-                                  <div className="font-medium text-sm">{g.title}</div>
+                      {(sequenceByDay[d.id] || []).map((entry, gi) => {
+                        if (entry.kind === 'group') {
+                          const g = (entry as any).group as Group;
+                          const sidG = `group:${g.sessionId}:${d.id}`;
+                          const RowGroup = () => {
+                            const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: sidG });
+                            const style = { transform: CSS.Transform.toString(transform), transition } as React.CSSProperties;
+                            return (
+                              <div ref={setNodeRef} style={style} className="rounded-md border border-slate-600 bg-slate-800">
+                                <div className="flex items-center justify-between px-3 py-2">
+                                  <div className="inline-flex items-center gap-2">
+                                    <span title="Drag group" {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-yellow-500"><Move className="w-5 h-5" /></span>
+                                    <Repeat className="w-4 h-4 text-yellow-400" />
+                                    <div className="font-medium text-sm">{g.title}</div>
+                                  </div>
+                                  <div className="inline-flex items-center gap-2">
+                                    <button 
+                                      className="text-xs underline opacity-80 hover:opacity-100" 
+                                      onClick={(e)=>{
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const blockIdStr = String(g.blockId);
+                                        console.log('🔧 Edit button clicked for circuit:', g.title, 'blockId:', blockIdStr, 'current editingGroup:', editingGroup);
+                                        setEditingGroup(blockIdStr);
+                                        console.log('🔧 Set editingGroup to:', blockIdStr);
+                                      }}
+                                    >Edit</button>
+                                    <button
+                                      className="text-xs opacity-80 hover:opacity-100"
+                                      onClick={async ()=>{
+                                        try {
+                                          setSavingDayId(d.id);
+                                          await supabase.from('session_block_items').delete().eq('block_id', g.blockId);
+                                          await supabase.from('session_blocks').delete().eq('id', g.blockId);
+                                          const remain = await supabase.from('session_blocks').select('id').eq('session_id', g.sessionId).limit(1);
+                                          if (!remain.error && (!remain.data || remain.data.length === 0)) {
+                                            await supabase.from('sessions').delete().eq('id', g.sessionId);
+                                          }
+                                          await loadDayGroups(d.id);
+                                          toast({ description: 'Group deleted' });
+                                        } catch(e:any) {
+                                          toast({ description: e?.message || 'Failed to delete group', variant: 'destructive' as any });
+                                        } finally { setSavingDayId(null); }
+                                      }}
+                                    >Delete</button>
+                                  </div>
                                 </div>
-                                <div className="inline-flex items-center gap-2">
-                                  <button className="text-xs underline opacity-80 hover:opacity-100" onClick={()=> setEditingGroup(g.blockId)}>Edit</button>
-                                  <button
-                                    className="text-xs opacity-80 hover:opacity-100"
-                                    onClick={async ()=>{
-                                      try {
-                                        setSavingDayId(d.id);
-                                        await supabase.from('session_block_items').delete().eq('block_id', g.blockId);
-                                        await supabase.from('session_blocks').delete().eq('id', g.blockId);
-                                        const remain = await supabase.from('session_blocks').select('id').eq('session_id', g.sessionId).limit(1);
-                                        if (!remain.error && (!remain.data || remain.data.length === 0)) {
-                                          await supabase.from('sessions').delete().eq('id', g.sessionId);
-                                        }
-                                        await loadDayGroups(d.id);
-                                        toast({ description: 'Group deleted' });
-                                      } catch(e:any) {
-                                        toast({ description: e?.message || 'Failed to delete group', variant: 'destructive' as any });
-                                      } finally { setSavingDayId(null); }
-                                    }}
-                                  >Delete</button>
-                                </div>
+                                {!g.collapsed && (
+                                  <div className="px-3 pb-2">
+                                    <GroupInnerDrop id={`groupdrop:${g.blockId}:${d.id}`}>
+                                      <SortableContext items={(g.items || []).map(i => `item:${i.id}:${d.id}`)}>
+                                        <div className="space-y-2">
+                                          {(g.items || []).map((it) => {
+                                            const { chip, Icon } = modalityStyle(it.modality);
+                                            const sid = `item:${it.id}:${d.id}`;
+                                            return <CompactItemRow key={sid} sid={sid} it={it} dayId={d.id} chip={chip} Icon={Icon} editing={editing} toggleEditorWithData={toggleEditorWithData} removeItem={removeItem} EditorStrength={EditorStrength} EditorEndurance={EditorEndurance} EditorIntervals={EditorIntervals} EditorAccessory={EditorAccessory} EditorRehab={EditorRehab} />;
+                                          })}
+                                          {(g.items || []).length === 0 && (
+                                            <div className="text-xs text-zinc-400">Drop exercises here</div>
+                                          )}
+                                        </div>
+                                      </SortableContext>
+                                    </GroupInnerDrop>
+                                  </div>
+                                )}
+                                {(() => {
+                                  const blockIdStr = String(g.blockId);
+                                  const isEditing = editingGroup === blockIdStr;
+                                  if (isEditing) {
+                                    console.log('✅ Rendering GroupEditor for:', g.title, 'blockId:', blockIdStr);
+                                  }
+                                  return isEditing ? <GroupEditor g={g} dayId={d.id} /> : null;
+                                })()}
                               </div>
-                              {!g.collapsed && (
-                                <div className="px-3 pb-2">
-                                  <GroupInnerDrop id={`groupdrop:${g.blockId}:${d.id}`}>
-                                    <SortableContext items={(g.items || []).map(i => `item:${i.id}:${d.id}`)}>
-                                      <div className="space-y-2">
-                                        {(g.items || []).map((it) => {
-                                          const { chip, Icon } = modalityStyle(it.modality);
-                                          const sid = `item:${it.id}:${d.id}`;
-                                          return <CompactItemRow key={sid} sid={sid} it={it} dayId={d.id} chip={chip} Icon={Icon} editing={editing} toggleEditorWithData={toggleEditorWithData} removeItem={removeItem} EditorStrength={EditorStrength} EditorEndurance={EditorEndurance} EditorIntervals={EditorIntervals} EditorAccessory={EditorAccessory} EditorRehab={EditorRehab} />;
-                                        })}
-                                        {(g.items || []).length === 0 && (
-                                          <div className="text-xs text-zinc-400">Drop exercises here</div>
-                                        )}
-                                      </div>
-                                    </SortableContext>
-                                  </GroupInnerDrop>
-                                </div>
-                              )}
-                              {editingGroup===g.blockId && (
-                                <GroupEditor g={g} dayId={d.id} />
-                              )}
+                            );
+                          };
+                          return (
+                            <div key={`grpwrap:${g.sessionId}:${g.blockId}`}>
+                              <RowGroup />
+                              <InlineRootDrop id={`rootdrop:${d.id}:${gi+1}`} />
                             </div>
                           );
-                        };
+                        }
+                        // Render standalone item entry
+                        const it = (entry as any).item as RenderedItem;
+                        const { chip, Icon } = modalityStyle(it.modality);
+                        const sid = `item:${it.id}:${d.id}`;
                         return (
-                          <div key={`grpwrap:${g.sessionId}:${g.blockId}`}>
-                            <RowGroup />
-                            <InlineRootDrop id={`rootdrop:${d.id}:${gi+1}`} />
+                          <div key={sid} className="space-y-1 mt-2">
+                            <CompactItemRow 
+                              sid={sid} 
+                              it={it} 
+                              dayId={d.id} 
+                              chip={chip} 
+                              Icon={Icon} 
+                              editing={editing} 
+                              toggleEditorWithData={toggleEditorWithData} 
+                              removeItem={removeItem} 
+                              EditorStrength={EditorStrength} 
+                              EditorEndurance={EditorEndurance} 
+                              EditorIntervals={EditorIntervals} 
+                              EditorAccessory={EditorAccessory}
+                              EditorRehab={EditorRehab}
+                            />
                           </div>
                         );
                       })}
                     </SortableContext>
                   </div>
-                  <SortableContext items={(itemsByDay[d.id] || []).map(i => `item:${i.id}:${d.id}`)}>
-                    <div className="space-y-1 mt-2">
-                      {(itemsByDay[d.id] || []).map((it) => {
-                        const { chip, Icon } = modalityStyle(it.modality);
-                        const sid = `item:${it.id}:${d.id}`;
-                        return (
-                          <CompactItemRow 
-                            key={sid} 
-                            sid={sid} 
-                            it={it} 
-                            dayId={d.id} 
-                            chip={chip} 
-                            Icon={Icon} 
-                            editing={editing} 
-                            toggleEditorWithData={toggleEditorWithData} 
-                            removeItem={removeItem} 
-                            EditorStrength={EditorStrength} 
-                            EditorEndurance={EditorEndurance} 
-                            EditorIntervals={EditorIntervals} 
-                            EditorAccessory={EditorAccessory}
-                            EditorRehab={EditorRehab}
-                          />
-                        );
-                      })}
-                    </div>
-                  </SortableContext>
                   <DroppableZone id={`drop:${d.id}`} label={savingDayId===d.id? 'Saving…' : 'Drop exercises here'} />
                 </div>
               </div>
@@ -2001,7 +2093,7 @@ const PlanDetail = () => {
         )}
       </div>
     );
-  }, [filteredDays, groupsByDay, itemsByDay, readyDays, editing, editingGroup, generating, loading, savingDayId, selectedDayId, trainingDaysSel, week, days, plan?.id]);
+  }, [filteredDays, groupsByDay, itemsByDay, sequenceByDay, readyDays, editing, editingGroup, generating, loading, savingDayId, selectedDayId, trainingDaysSel, week, days, plan?.id]);
 
   async function markDayReady(day: PlanDay) {
     try {
@@ -2025,6 +2117,54 @@ const PlanDetail = () => {
       toast({ description: e?.message || "No items to mark ready yet", variant: "default" as any });
     } finally {
       setSavingDayId(null);
+    }
+  }
+
+  async function markAllDaysReady() {
+    if (!plan?.id) return;
+    
+    try {
+      setLoading(true);
+      
+      // Get all days that have exercises (not empty and not rest days)
+      const daysWithExercises = days.filter(d => 
+        !d.is_rest && ((itemsByDay[d.id]?.length > 0) || (groupsByDay[d.id]?.length > 0))
+      );
+      
+      if (daysWithExercises.length === 0) {
+        toast({ description: "No days with exercises to mark as ready", variant: "destructive" as any });
+        return;
+      }
+      
+      // Get all session blocks for all these days
+      const dayIds = daysWithExercises.map(d => d.id);
+      const { data: blocks, error: blocksError } = await supabase
+        .from('session_blocks')
+        .select('id, sessions!inner(plan_day_id)')
+        .in('sessions.plan_day_id', dayIds);
+      
+      if (blocksError) throw blocksError;
+      
+      const blockIds = (blocks || []).map((b: any) => b.id);
+      
+      if (blockIds.length > 0) {
+        // Mark all blocks and items as ready
+        await supabase.from('session_block_items').update({ status: 'ready' }).in('block_id', blockIds);
+        await supabase.from('session_blocks').update({ status: 'ready' }).in('id', blockIds);
+        
+        // Update readyDays state
+        const newReadyDays: Record<string, boolean> = {};
+        daysWithExercises.forEach(d => {
+          newReadyDays[d.id] = true;
+        });
+        setReadyDays(prev => ({ ...prev, ...newReadyDays }));
+        
+        toast({ description: `✓ Marked ${daysWithExercises.length} days as ready!`, duration: 3000 });
+      }
+    } catch (e: any) {
+      toast({ description: e?.message || "Failed to mark days ready", variant: "destructive" as any });
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -2085,6 +2225,15 @@ const PlanDetail = () => {
             title="Save plan name"
           >
             <Save className="w-5 h-5" />
+          </button>
+          <button
+            onClick={markAllDaysReady}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-zinc-600 text-zinc-300 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            title="Mark all workout days as ready"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            Mark All Ready
           </button>
           <button
             onClick={async () => {
@@ -2455,43 +2604,8 @@ const PlanDetail = () => {
                         
                         let orderIndex = existingBlocks?.[0]?.order_index ?? -1;
                         
-                        // PASS 0: Pre-create all circuit wrappers so they always exist
-                        try {
-                          const circuitHeaders = dayRows.filter((r: any) => String(r.Type || '').trim().toLowerCase() === 'circuit');
-                          console.log(`  🔧 Pre-pass: ensuring ${circuitHeaders.length} circuit wrappers exist...`);
-                          for (const hdr of circuitHeaders) {
-                            const { data: existing } = await supabase
-                              .from('session_blocks')
-                              .select('id')
-                              .eq('session_id', session.id)
-                              .eq('title', hdr.Exercise)
-                              .maybeSingle();
-                            if (!existing) {
-                              orderIndex++;
-                              const roundsVal = hdr['Sets/Rounds'] || 1;
-                              const ins = await supabase
-                                .from('session_blocks')
-                                .insert({
-                                  session_id: session.id,
-                                  block_type: 'circuit',
-                                  title: hdr.Exercise,
-                                  rounds: roundsVal,
-                                  work_sec: 0,
-                                  rest_sec: 0,
-                                  rest_between_rounds_s: 0,
-                                  order_index: orderIndex,
-                                })
-                                .select('id')
-                                .single();
-                              if (ins.error) console.error('  ❌ Pre-pass create failed:', hdr.Exercise, ins.error);
-                              else console.log('  ✅ Pre-pass created wrapper:', hdr.Exercise, ins.data?.id);
-                            } else {
-                              console.log('  ↩︎ Pre-pass found existing wrapper:', hdr.Exercise, existing.id);
-                            }
-                          }
-                        } catch (preErr) {
-                          console.error('  ❌ Pre-pass error:', preErr);
-                        }
+                        // NOTE: Removed pre-pass that created circuit wrappers up-front.
+                        // We now create/update circuit blocks exactly at their CSV position.
                         
                         // Process rows
                         let i = 0;
@@ -2503,6 +2617,22 @@ const PlanDetail = () => {
                           // Update progress
                           setImportProgress(prev => ({ ...prev, currentRow: prev.currentRow + 1 }));
                           
+                          // Intro: write day description from legacy CSV format
+                          if (rowType === "intro") {
+                            try {
+                              const desc = (row.Exercise || '').toString();
+                              if (desc) {
+                                await supabase.from('plan_days').update({ description: desc }).eq('id', planDay.id);
+                                setDays(prev => prev.map((x:any) => x.id === planDay!.id ? { ...x, description: desc } : x));
+                                addImportLog(`📝 Day ${dayNum}: set description to "${desc}"`, 'success');
+                              }
+                            } catch (e:any) {
+                              addImportLog(`❌ Failed to set description for Day ${dayNum}: ${e?.message || e}`, 'error');
+                            }
+                            i++;
+                            continue;
+                          }
+
                           if (rowType === "circuit") {
                             try {
                               console.log(`    🔄 Circuit detected: ${row.Exercise}`, row);
@@ -2513,8 +2643,13 @@ const PlanDetail = () => {
                                 .eq('session_id', session.id)
                                 .eq('title', row.Exercise);
                               console.log('🟡 BEFORE circuit blocks for title:', row.Exercise, beforeBlocks.data || [], beforeBlocks.error || null);
-                              orderIndex++;
                               const roundsVal = row["Sets/Rounds"] || 1;
+                              const headerDurationMin = row["Duration (min)"] || null;
+                              const isTimedCircuit = headerDurationMin && Number(headerDurationMin) > 0;
+                              const timeCapSec = isTimedCircuit ? Math.round(Number(headerDurationMin) * 60) : null;
+                              
+                              console.log(`    🔍 Circuit "${row.Exercise}" - Duration: ${headerDurationMin}, isTimedCircuit: ${isTimedCircuit}, timeCapSec: ${timeCapSec}`);
+                              
                               // Reuse by title
                               let { data: preBlock } = await supabase
                                 .from('session_blocks')
@@ -2527,13 +2662,14 @@ const PlanDetail = () => {
                                   .from('session_blocks')
                                   .insert({
                                     session_id: session.id,
-                                    block_type: 'circuit',
+                                    block_type: isTimedCircuit ? 'amrap' : 'circuit',
                                     title: row.Exercise,
-                                    rounds: roundsVal,
-                                    work_sec: 0,
-                                    rest_sec: 0,
-                                    rest_between_rounds_s: 0,
-                                    order_index: orderIndex,
+                                    rounds: isTimedCircuit ? null : roundsVal,
+                                    work_sec: null,  // Don't set to 0 - leave as null for rounds-based circuits
+                                    rest_sec: null,  // Don't set to 0 - leave as null for rounds-based circuits
+                                    rest_between_rounds_s: null,
+                                    time_cap_sec: timeCapSec,
+                                    order_index: orderIndex + 1,
                                   })
                                   .select()
                                   .single();
@@ -2541,7 +2677,19 @@ const PlanDetail = () => {
                                 if (inserted.error) console.error('    ❌ Failed to pre-create circuit block:', inserted.error);
                                 else console.log(`    ✅ Pre-created circuit block: ${preBlock?.id}`);
                               } else {
-                                console.log(`    ↩︎ Using existing circuit block: ${preBlock.id}`);
+                                // Update existing block to ensure block_type and time_cap_sec are current
+                                console.log(`    ↩︎ Updating existing circuit block: ${preBlock.id}`);
+                                await supabase
+                                  .from('session_blocks')
+                                  .update({
+                                    block_type: isTimedCircuit ? 'amrap' : 'circuit',
+                                    rounds: isTimedCircuit ? null : roundsVal,
+                                    time_cap_sec: timeCapSec,
+                                    work_sec: null,  // Clear any old timing values
+                                    rest_sec: null,
+                                    rest_between_rounds_s: null,
+                                  })
+                                  .eq('id', preBlock.id);
                               }
 
                               const circuitBlockId = preBlock?.id;
@@ -2598,16 +2746,19 @@ const PlanDetail = () => {
                             }
                             
                             orderIndex++;
+                            // Reuse headerDurationMin, isTimedCircuit, and timeCapSec from above (already declared at lines 2568-2570)
                             const workSecRaw = circuitExercises[0]?.["Work (seconds)"] ?? null;
                             const restSecRaw = circuitExercises[0]?.["Rest between rounds (s)"] ?? null;
-                            const workSec = typeof workSecRaw === 'string' ? parseFloat(workSecRaw) : workSecRaw;
-                            const restSec = typeof restSecRaw === 'string' ? parseFloat(restSecRaw) : (restSecRaw ?? 0);
-                            const restBetween = typeof restBetweenRounds === 'string' ? parseFloat(restBetweenRounds) : (restBetweenRounds ?? 0);
-                            console.log(`    📦 Creating/Updating circuit block:`, {
+                            const workSec = (typeof workSecRaw === 'string' ? parseFloat(workSecRaw) : workSecRaw) || null;
+                            const restSec = (typeof restSecRaw === 'string' ? parseFloat(restSecRaw) : restSecRaw) || null;
+                            const restBetween = (typeof restBetweenRounds === 'string' ? parseFloat(restBetweenRounds) : restBetweenRounds) || null;
+                            
+                            console.log(`    📦 Creating/Updating ${isTimedCircuit ? 'timed AMRAP' : 'circuit'} block:`, {
                               title: row.Exercise,
-                              work_sec: workSec ?? 0,
-                              rest_sec: restSec ?? 0,
-                              rounds: roundsVal,
+                              work_sec: workSec,
+                              rest_sec: restSec,
+                              rounds: isTimedCircuit ? null : roundsVal,
+                              time_cap_sec: timeCapSec,
                               rest_between_rounds_s: restBetween,
                               first_exercise: circuitExercises[0] || null
                             });
@@ -2616,10 +2767,13 @@ const PlanDetail = () => {
                             const upd = await supabase
                               .from('session_blocks')
                               .update({
-                                work_sec: workSec ?? 0,
-                                rest_sec: restSec ?? 0,
-                                rest_between_rounds_s: restBetween ?? 0,
-                                rounds: roundsVal,
+                                work_sec: workSec,      // null if no timings specified
+                                rest_sec: restSec,      // null if no timings specified
+                                rest_between_rounds_s: restBetween,  // null if not specified
+                                rounds: isTimedCircuit ? null : roundsVal,
+                                order_index: orderIndex,
+                                block_type: isTimedCircuit ? 'amrap' : 'circuit',
+                                time_cap_sec: timeCapSec,
                               })
                               .eq('id', circuitBlockId!)
                               .select('id')
@@ -2689,12 +2843,16 @@ const PlanDetail = () => {
                                 continue;
                               }
 
+                              const durationFromMin = ex["Duration (min)"];
+                              const durationFromWorkSec = ex["Work (seconds)"] ? Number(ex["Work (seconds)"]) / 60 : null;
+                              const computedDuration = durationFromMin ?? durationFromWorkSec ?? null;
+
                               const { data: item, error: itemError } = await supabase.from("session_block_items").insert({
                                 block_id: block.id,
                                 exercise_id: matchedEx.id,
                                 item_order: nextOrder,
                                 extra: {
-                                  duration: ex["Duration (min)"],
+                                  duration: computedDuration,
                                   sets: ex["Sets/Rounds"],
                                   reps: ex.Reps,
                                   weight: ex.Kg,
@@ -2750,6 +2908,7 @@ const PlanDetail = () => {
                             if (rowType === "running") blockType = "cardio";
                             else if (rowType === "strength" || rowType === "weights") blockType = "strength";
                             else if (rowType === "mobility") blockType = "mobility";
+                            else if (rowType === "bodyweight") blockType = "mobility"; // bodyweight core-style moves behave like time-based
                             else if (rowType === "intervals") blockType = "intervals";
                             else if (rowType === "amrap") blockType = "amrap";
                             else if (rowType === "emom") blockType = "emom";
@@ -2782,12 +2941,17 @@ const PlanDetail = () => {
                             
                             console.log(`    ✅ Created standalone block ID: ${block.id}`);
                             
+                            // Prefer Duration (min); fallback to Work (seconds)/60 when provided
+                            const durationFromMin = row["Duration (min)"];
+                            const durationFromWorkSec = row["Work (seconds)"] ? Number(row["Work (seconds)"]) / 60 : null;
+                            const computedDuration = durationFromMin ?? durationFromWorkSec ?? null;
+
                             const { data: item, error: itemError } = await supabase.from("session_block_items").insert({
                               block_id: block.id,
                               exercise_id: matchedEx.id,
                               item_order: 0,
                               extra: {
-                                duration: row["Duration (min)"],
+                                duration: computedDuration,
                                 sets: row["Sets/Rounds"],
                                 reps: row.Reps,
                                 weight: row.Kg,

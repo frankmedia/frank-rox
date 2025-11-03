@@ -60,6 +60,41 @@ const Overview = () => {
           return;
         }
 
+        // Check if this is a new plan (different from last loaded plan)
+        // If so, clear completion data to avoid showing old ticks on new program
+        const userStr = localStorage.getItem("frank_rock_user");
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          const lastPlanIdKey = `lastActivePlanId_${user.username}`;
+          const lastPlanId = localStorage.getItem(lastPlanIdKey);
+          const currentPlanId = String(plan.id);
+          
+          // Clear if plan changed OR if this is first time (lastPlanId is null)
+          if (!lastPlanId || lastPlanId !== currentPlanId) {
+            console.log('🔄 New plan detected, clearing completion data', { old: lastPlanId || 'none', new: currentPlanId });
+            // Clear localStorage completion data
+            const completedDaysKey = `completedDays_${user.username}`;
+            localStorage.removeItem(completedDaysKey);
+            
+            // Clear workout cache for all days
+            const workoutCacheKey = `workoutSession_${user.username}`;
+            localStorage.removeItem(workoutCacheKey);
+            
+            // Also clear old completion data from Supabase for previous plans
+            if (lastPlanId && lastPlanId !== currentPlanId) {
+              console.log('🗑️ Removing old plan completion records from database');
+              await supabase
+                .from('completed_days')
+                .delete()
+                .eq('client_id', authUser.clientId)
+                .neq('plan_id', currentPlanId);
+            }
+          }
+          
+          // Update last plan ID
+          localStorage.setItem(lastPlanIdKey, currentPlanId);
+        }
+
         // Get all plan days to determine max day and rest days
         const { data: planDays } = await supabase
           .from('plan_days')
@@ -87,14 +122,13 @@ const Overview = () => {
         // Load exercises for each day
         const summaries: DaySummary[] = [];
 
-        // Store original training day
-        const userStr = localStorage.getItem("frank_rock_user");
+        // Store original training day (reuse userStr from above)
         if (!userStr) {
           setLoading(false);
           return;
         }
-        const user = JSON.parse(userStr);
-        const userKey = `currentTrainingDay_${user.username}`;
+        const userData = JSON.parse(userStr);
+        const userKey = `currentTrainingDay_${userData.username}`;
         const originalDay = localStorage.getItem(userKey);
 
         for (let day = 1; day <= max; day++) {
@@ -123,7 +157,7 @@ const Overview = () => {
           const hasAMRAP = exercises.some(e => e.type === "amrap");
 
           // Check if this training day is marked as complete
-          const completedDaysKey = `completedDays_${user.username}`;
+          const completedDaysKey = `completedDays_${userData.username}`;
           const completedDaysStr = localStorage.getItem(completedDaysKey);
           const completedDays: number[] = completedDaysStr ? JSON.parse(completedDaysStr) : [];
           const isCompleted = completedDays.includes(day);

@@ -140,10 +140,6 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
               {exercise.type === "bodyweight" && (
                 <span className="text-sm text-muted-foreground">Bodyweight</span>
               )}
-              {/* Show message if no data */}
-              {!exercise.sets && !exercise.reps && !exercise.suggestedKg && (
-                <span className="text-sm text-muted-foreground italic">No plan set yet</span>
-              )}
             </div>
           )}
 
@@ -161,23 +157,17 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                   Target: <span className="font-semibold text-secondary">{exercise.targetDistanceKm.toFixed(1)}km</span>
                 </span>
               )}
-              {/* Show message if no data */}
-              {!exercise.durationMin && !exercise.targetDistanceKm && (
-                <span className="text-sm text-muted-foreground italic">No plan set yet</span>
-              )}
             </div>
           )}
 
           {exercise.type === "mobility" && (
             <div className="flex items-center gap-4 text-muted-foreground">
-              {exercise.durationMin ? (
+              {exercise.durationMin && (
                 <span className="text-4xl font-bold text-foreground">
                   {exercise.durationMin < 1 
                     ? `${Math.round(exercise.durationMin * 60)} sec` 
                     : `${exercise.durationMin} min`}
                 </span>
-              ) : (
-                <span className="text-sm text-muted-foreground italic">No plan set yet</span>
               )}
               <span className="text-sm text-muted-foreground">Mobility</span>
             </div>
@@ -252,10 +242,6 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                       : `${exercise.durationMin} min`}
                   </span>
                 </span>
-              )}
-              {/* Show message if no data */}
-              {!exercise.targetDistanceKm && !exercise.durationMin && (
-                <span className="text-sm text-muted-foreground italic">No plan set yet</span>
               )}
             </div>
           )}

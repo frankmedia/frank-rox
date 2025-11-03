@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { getUserSheet, fetchTodayExercises } from "@/services/googleSheets";
 import { getTodayExercises } from "@/services/supabasePlans";
 import { Exercise } from "@/types/workout";
+import { supabase } from "@/utils/supabaseClient";
 
 // 🔄 FEATURE FLAG: Toggle between Supabase and Google Sheets
 const USE_SUPABASE = true; // Set to true to use Supabase (RECOMMENDED)
@@ -57,6 +58,48 @@ export const DataProvider = ({ children }: DataProviderProps) => {
       const clientId = user?.clientId;
 
       console.log(`🔄 DataContext loading data for user: ${currentUser}, training day: ${currentTrainingDay}, clientId: ${clientId}, USE_SUPABASE: ${USE_SUPABASE}`);
+
+      // Check if this is a new plan (different from last loaded plan)
+      // If so, clear completion data to avoid showing old ticks on new program
+      if (USE_SUPABASE && clientId) {
+        const { data: plan } = await supabase
+          .from('plans')
+          .select('id')
+          .eq('client_id', clientId)
+          .eq('status', 'active')
+          .single();
+        
+        if (plan && user?.username) {
+          const lastPlanIdKey = `lastActivePlanId_${user.username}`;
+          const lastPlanId = localStorage.getItem(lastPlanIdKey);
+          const currentPlanId = String(plan.id);
+          
+          // Clear if plan changed OR if this is first time (lastPlanId is null)
+          if (!lastPlanId || lastPlanId !== currentPlanId) {
+            console.log('🔄 New plan detected in DataContext, clearing completion data', { old: lastPlanId || 'none', new: currentPlanId });
+            // Clear localStorage completion data
+            const completedDaysKey = `completedDays_${user.username}`;
+            localStorage.removeItem(completedDaysKey);
+            
+            // Clear workout cache for all days
+            const workoutCacheKey = `workoutSession_${user.username}`;
+            localStorage.removeItem(workoutCacheKey);
+            
+            // Also clear old completion data from Supabase for previous plans
+            if (lastPlanId && lastPlanId !== currentPlanId) {
+              console.log('🗑️ Removing old plan completion records from database');
+              await supabase
+                .from('completed_days')
+                .delete()
+                .eq('client_id', clientId)
+                .neq('plan_id', currentPlanId);
+            }
+          }
+          
+          // Update last plan ID
+          localStorage.setItem(lastPlanIdKey, currentPlanId);
+        }
+      }
 
       // Decide which data source to use
       if (USE_SUPABASE && clientId) {

@@ -55,3 +55,6 @@ FROM program_templates
 WHERE name = 'HYROX Interval Day';
 
 
+
+
+

@@ -93,6 +93,8 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
     if (sessions) {
       for (const session of sessions) {
         const blocks = (session as any).session_blocks || [];
+        // Ensure blocks are processed in defined order
+        blocks.sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0));
         
         for (const block of blocks) {
           // Sort items by item_order to respect admin ordering
@@ -122,9 +124,11 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
               
               if (modality === "cardio" || modality === "running") {
                 childType = "cardio";
+              } else if (modality === "erg") {
+                childType = "cardio";
               } else if (modality === "bodyweight") {
                 childType = "bodyweight";
-              } else if (modality === "mobility") {
+              } else if (modality === "mobility" || modality === "core") {
                 childType = "mobility";
               } else if (modality === "strength") {
                 childType = "weights";
@@ -167,10 +171,10 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
             }
             
             // Create the parent/header exercise
-            // Use ?? to allow 0 values, and default null to 0 for rest
-            const workSec = block.work_sec ?? blockParams.work ?? 30;
-            const restSec = block.rest_sec ?? blockParams.rest ?? 0; // null becomes 0
-            const restBetweenRounds = block.rest_between_rounds_s ?? blockParams.rest_between_rounds ?? 0;
+            // Only use work/rest if explicitly set (not null) - don't apply defaults
+            const workSec = block.work_sec ?? blockParams.work ?? null;
+            const restSec = block.rest_sec ?? blockParams.rest ?? null;
+            const restBetweenRounds = block.rest_between_rounds_s ?? blockParams.rest_between_rounds ?? null;
             
             const parentExercise = {
               id: String(block.id),
@@ -180,7 +184,7 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
               exercises: childExercises,
               totalRounds: block.rounds || blockParams.rounds || 3,
               timeCap: block.time_cap_sec || blockParams.time_cap || undefined,
-              workRestRatio: workSec && restSec ? `${workSec}s/${restSec}s` : undefined,
+              workRestRatio: (workSec != null && restSec != null) ? `${workSec}s/${restSec}s` : undefined,
               work_sec: workSec,
               rest_sec: restSec,
               rest_between_rounds_s: restBetweenRounds,
@@ -242,11 +246,11 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
               
               if (modality === "intro") {
                 exerciseType = "intro";
-              } else if (modality === "cardio" || modality === "running") {
+              } else if (modality === "cardio" || modality === "running" || modality === "erg") {
                 exerciseType = "cardio";
               } else if (modality === "bodyweight") {
                 exerciseType = "bodyweight";
-              } else if (modality === "mobility") {
+              } else if (modality === "mobility" || modality === "core") {
                 exerciseType = "mobility";
               } else if (modality === "rehab") {
                 exerciseType = "rehab";
