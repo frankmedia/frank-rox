@@ -443,14 +443,14 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                         <Button
                           onClick={() => pauseStation(index)}
                           variant="outline"
-                          className="flex-1 border-white text-white hover:bg-white/10"
+                          className="flex-[1] border-white text-white hover:bg-white/10"
                         >
                           <Pause className="w-4 h-4 mr-2" />
                           Pause
                         </Button>
                         <Button
                           onClick={() => completeStation(index)}
-                          className="flex-1 bg-white text-black hover:bg-white/90"
+                          className="flex-[3] bg-white text-black hover:bg-white/90"
                         >
                           <Check className="w-4 h-4 mr-2" />
                           Complete
