@@ -56,36 +56,164 @@ async function handleParseWorkout(req: any, res: any, data: any) {
     }
   });
 
-  const prompt = `
-You are a workout parser. Extract exercises and metadata from this workout program.
+  const prompt = `You are a strict JSON workout parser. Your ONLY job is to output valid JSON. No explanations, no markdown, no code blocks - ONLY RAW JSON.
 
-Workout Text:
+INPUT WORKOUT PROGRAM:
 ${workoutText}
 
-Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
+REQUIRED OUTPUT FORMAT (copy this structure exactly):
 {
   "metadata": {
-    "clientName": "string or null",
-    "email": "string or null",
-    "dob": "string or null",
-    "level": "string or null",
-    "experience": "string or null",
-    "goal": "string or null",
+    "clientName": null,
+    "email": null,
+    "dob": null,
+    "level": null,
+    "experience": null,
+    "goal": null,
     "weeklyPlan": {}
+  },
+  "days": []
+}
+
+STRICT PARSING RULES:
+
+1. METADATA EXTRACTION:
+   - clientName: Extract from "Name:", "Client:", or similar (string or null)
+   - email: Extract email addresses (string or null)
+   - dob: Extract date of birth in format "DD/MM/YYYY" (string or null)
+   - level: Extract from "Level:" - use exact text: "Beginner", "Intermediate", "Advanced" (string or null)
+   - experience: Extract from "Experience:" or "Hyrox Experience:" (string or null)
+   - goal: Extract from "Goal:" (string or null)
+   - weeklyPlan: Extract weekly schedule as {"Monday": "activity", "Tuesday": "activity"} (object)
+
+2. DAY STRUCTURE:
+   Each day MUST have:
+   {
+     "name": "Day 1" or "Day 1 - Upper Body" (string, required),
+     "exercises": [array of exercise objects]
+   }
+
+3. EXERCISE OBJECT (every exercise MUST have ALL these fields):
+   {
+     "name": "Exercise Name" (string, required),
+     "sets": 3 (number, default 0 if not specified),
+     "reps": 10 (number, default 0 if not specified),
+     "weight": "60kg" (string, use "0kg" if not specified),
+     "rest": 60 (number in seconds, default 0 if not specified),
+     "duration": 0 (number in minutes, default 0 if not specified),
+     "distance": 0 (number in meters, default 0 if not specified),
+     "notes": "" (string, include superset/circuit info, default ""),
+     "modality": "strength" (string, required - see list below)
+   }
+
+4. MODALITY CLASSIFICATION (MUST be one of these EXACT values):
+   - "strength" - barbell/dumbbell exercises with weights (Bench Press, Squats, Deadlifts)
+   - "bodyweight" - no equipment bodyweight exercises (Push-ups, Pull-ups, Dips)
+   - "cardio" - general cardio without distance (Bike, Assault Bike, Jump Rope)
+   - "running" - running exercises (1km Run, Sprints)
+   - "erg" - rowing/skiing machines (RowErg, SkiErg, Concept2)
+   - "carry" - loaded carries (Farmer Carry, Sled Push, Sled Pull)
+   - "core" - core/ab exercises (Plank, Sit-ups, Russian Twists)
+   - "mobility" - stretching/mobility (Stretches, Foam Rolling)
+
+5. SETS/REPS PARSING:
+   - "3 x 10" = 3 sets, 10 reps
+   - "5x5" = 5 sets, 5 reps
+   - "4 rounds" = 4 sets (reps from exercise)
+   - "3 rounds:" with list = 3 sets for each exercise in list
+   - "AMRAP 10 min" = sets: 1, duration: 10, notes: "AMRAP"
+
+6. WEIGHT PARSING:
+   - "60kg" = "60kg"
+   - "10-14kg" = "12kg" (use middle value)
+   - "bar only" = "20kg"
+   - "bodyweight" or "BW" = "0kg"
+   - "2x24kg" = "2x24kg" (for carries)
+   - If range like "60-80kg", use middle: "70kg"
+
+7. DISTANCE PARSING:
+   - "1000m" or "1km" = 1000 (meters)
+   - "5km" = 5000 (meters)
+   - "100m" = 100 (meters)
+
+8. DURATION PARSING:
+   - "10 min" or "10 minutes" = 10 (minutes)
+   - "30 sec" or "30 seconds" = 0.5 (minutes)
+   - "1:30" = 1.5 (minutes)
+
+9. REST PARSING:
+   - "90s" or "90 sec" = 90 (seconds)
+   - "1 min" = 60 (seconds)
+   - "2 minutes" = 120 (seconds)
+   - Default to 60 if not specified
+
+10. SUPERSETS/CIRCUITS:
+    - If text says "Superset:" combine exercises with notes: "Superset with [other exercise]"
+    - If "Circuit:" or "3 rounds:" group exercises with notes: "Circuit - 3 rounds"
+    - Example: "Superset: 3 x 10 Bench + 3 x 10 Rows" = 2 exercises, both with notes "Superset"
+
+11. SWIMMING/CARDIO WORKOUTS:
+    - Extract each set as separate exercise
+    - "200m Easy Swim" = name: "Easy Swim", distance: 200, modality: "cardio"
+    - "4 x 100m Freestyle" = name: "Freestyle", sets: 4, distance: 100, modality: "cardio"
+
+CRITICAL VALIDATION:
+- Output MUST be valid JSON (test with JSON.parse())
+- NO markdown code blocks (no \`\`\`json)
+- NO explanatory text before or after JSON
+- ALL exercise objects MUST have ALL 9 fields
+- modality MUST be one of the 8 exact values listed
+- numbers must be numbers (not strings): sets, reps, rest, duration, distance
+- strings must be strings: name, weight, notes, modality
+
+EXAMPLE OUTPUT:
+{
+  "metadata": {
+    "clientName": "Tom Jenkins",
+    "email": "thomas.s.jenkins@gmail.com",
+    "dob": "03/07/1982",
+    "level": "Intermediate",
+    "experience": "Non",
+    "goal": "Health",
+    "weeklyPlan": {
+      "Monday": "swim",
+      "Tuesday": "Upper Body weights",
+      "Wednesday": "rest",
+      "Thursday": "swim",
+      "Friday": "Lower Body weights",
+      "Saturday": "rest",
+      "Sunday": "rest or PT"
+    }
   },
   "days": [
     {
-      "name": "Day 1",
+      "name": "Day 1 - Swim",
       "exercises": [
         {
-          "name": "Exercise Name",
-          "sets": 3,
-          "reps": 10,
-          "weight": "20kg",
-          "rest": 60,
+          "name": "Easy Swim",
+          "sets": 1,
+          "reps": 0,
+          "weight": "0kg",
+          "rest": 0,
+          "duration": 0,
+          "distance": 200,
+          "notes": "Choice of stroke",
+          "modality": "cardio"
+        }
+      ]
+    },
+    {
+      "name": "Day 2 - Upper Body",
+      "exercises": [
+        {
+          "name": "Bench Press",
+          "sets": 5,
+          "reps": 5,
+          "weight": "60kg",
+          "rest": 90,
           "duration": 0,
           "distance": 0,
-          "notes": "",
+          "notes": "Working towards 5 rep max, use Smith machine",
           "modality": "strength"
         }
       ]
@@ -93,14 +221,7 @@ Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
   ]
 }
 
-Rules:
-- Parse ALL days and exercises
-- Extract sets/reps like "3 x 10", "5x5", "3 rounds"
-- Extract weights: "20kg", "10-14kg" (use middle), "bar only" (use 20kg)
-- Identify supersets, circuits (note in exercise notes)
-- Modality: strength, cardio, bodyweight, mobility, core, erg, carry
-- For weekly plan, extract Mon/Tue/etc activities
-`;
+NOW PARSE THE INPUT ABOVE. OUTPUT ONLY THE JSON, NOTHING ELSE.`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
