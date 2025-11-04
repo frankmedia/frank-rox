@@ -464,10 +464,11 @@ const Today = () => {
 
       {/* Header */}
       <header 
-        className="sticky z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border transition-transform duration-300 ease-in-out"
+        className="sticky z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border transition-transform duration-300 ease-in-out pt-safe"
         style={{
           top: 0,
           transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
+          paddingTop: 'env(safe-area-inset-top)',
         }}
       >
         <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-2 sm:py-3">
