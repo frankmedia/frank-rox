@@ -22,7 +22,7 @@ Go to your Vercel project settings:
 1. Navigate to **Settings** → **Environment Variables**
 2. Add:
    - `GOOGLE_AI_MODEL` = `gemini-2.0-flash-exp`
-   - `GOOGLE_AI_API_KEY` = `AIzaSyDJ1FDQRuC7wadSxYAswWrvVlcr8tNdzWc`
+   - `GOOGLE_AI_API_KEY` = `<your_api_key_here>`
 
 ### 2. API Routes
 
