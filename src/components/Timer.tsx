@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
@@ -15,9 +15,43 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
   const [isRunning, setIsRunning] = useState(autoStart);
   const intervalRef = useRef<number>();
   const audioContextRef = useRef<AudioContext | null>(null);
+  const mountedRef = useRef(true);
+  
+  console.log('⏱️ Timer render:', { mode, initialSeconds, autoStart, seconds, isRunning });
 
   // Keep screen awake during timer
-  useWakeLock(isRunning);
+  const { isSupported: wakeLockSupported, isWakeLockActive } = useWakeLock(isRunning);
+  
+  // Track mount/unmount for cleanup
+  useEffect(() => {
+    mountedRef.current = true;
+    console.log('⏱️ Timer mounted');
+    
+    return () => {
+      mountedRef.current = false;
+      console.log('⏱️ Timer unmounted');
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        console.log('⏱️ Timer interval cleared on unmount');
+      }
+    };
+  }, []);
+  
+  // Reset timer if initialSeconds changes
+  useEffect(() => {
+    console.log('⏱️ initialSeconds changed:', { old: seconds, new: initialSeconds });
+    setSeconds(initialSeconds);
+  }, [initialSeconds]);
+  
+  // Memoized completion callback to prevent unnecessary re-renders
+  const handleComplete = useCallback(() => {
+    if (!mountedRef.current) {
+      console.warn('⏱️ Timer completed but component is unmounted');
+      return;
+    }
+    console.log('⏱️ Timer completed, calling onComplete');
+    onComplete?.();
+  }, [onComplete]);
 
   // Create beep sound
   const playBeep = (secondsLeft: number) => {
@@ -80,8 +114,24 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
   };
 
   useEffect(() => {
+    console.log('⏱️ Timer interval effect triggered:', { isRunning, mode });
+    
     if (isRunning) {
+      // Clear any existing interval first (defensive)
+      if (intervalRef.current) {
+        console.log('⏱️ Clearing existing interval before creating new one');
+        clearInterval(intervalRef.current);
+      }
+      
       intervalRef.current = window.setInterval(() => {
+        if (!mountedRef.current) {
+          console.warn('⏱️ Timer tick but component is unmounted, clearing interval');
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+          }
+          return;
+        }
+        
         setSeconds((prev) => {
           if (mode === "countdown") {
             // Play beep at specific times:
@@ -91,8 +141,9 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
             }
             
             if (prev <= 1) {
+              console.log('⏱️ Countdown reached 0, stopping timer');
               setIsRunning(false);
-              onComplete?.();
+              handleComplete();
               return 0;
             }
             return prev - 1;
@@ -101,18 +152,24 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
           }
         });
       }, 1000);
+      
+      console.log('⏱️ Timer interval started:', intervalRef.current);
     } else {
       if (intervalRef.current) {
+        console.log('⏱️ Timer paused, clearing interval');
         clearInterval(intervalRef.current);
+        intervalRef.current = undefined;
       }
     }
 
     return () => {
       if (intervalRef.current) {
+        console.log('⏱️ Timer interval effect cleanup, clearing interval');
         clearInterval(intervalRef.current);
+        intervalRef.current = undefined;
       }
     };
-  }, [isRunning, mode, onComplete]);
+  }, [isRunning, mode, handleComplete]);
 
   const formatTime = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -121,9 +178,28 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
   };
 
   const reset = () => {
+    console.log('⏱️ Timer reset');
     setIsRunning(false);
     setSeconds(initialSeconds);
   };
+  
+  // Handle page visibility changes (mobile browsers often pause timers when tab is hidden)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('⏱️ Page hidden, timer state:', { isRunning, seconds });
+      } else {
+        console.log('⏱️ Page visible again, timer state:', { isRunning, seconds });
+        // Timer should continue automatically since state is preserved
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isRunning, seconds]);
 
   const isLastFive = mode === "countdown" && seconds > 0 && seconds <= 5;
   
@@ -136,10 +212,24 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
         backgroundColor: isLastFive && isRunning ? '#EF4444' : 'transparent',
       }}
     >
+      {/* Wake Lock Status Indicator */}
+      {isRunning && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+          <div className={`w-2 h-2 rounded-full ${isWakeLockActive ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
+          <span>
+            {isWakeLockActive 
+              ? '🔓 Screen will stay on' 
+              : wakeLockSupported 
+                ? '⏳ Activating wake lock...'
+                : '⚠️ Keep screen active manually'}
+          </span>
+        </div>
+      )}
+      
       {/* Tap timer to start/pause */}
       <div 
         className={`font-bold tabular-nums cursor-pointer select-none active:scale-95 transition-all text-center ${
-          isRunning ? 'opacity-100' : 'opacity-40'
+          isRunning ? 'opacity-100 animate-breathe' : 'opacity-40'
         }`}
         style={{ 
           fontSize: 'clamp(95px, 23.4vw, 214px)', 
@@ -150,6 +240,17 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
       >
         {formatTime(seconds)}
       </div>
+      
+      {/* Add CSS animation for subtle pulse effect - once every 10 seconds */}
+      <style>{`
+        @keyframes subtle-pulse {
+          0%, 95%, 100% { opacity: 1; transform: scale(1); }
+          97.5% { opacity: 0.97; transform: scale(1.003); }
+        }
+        .animate-breathe {
+          animation: subtle-pulse 10s ease-in-out infinite;
+        }
+      `}</style>
       <div className="mt-12">
         {/* Stop button (resets timer) */}
         <div className="flex justify-center">

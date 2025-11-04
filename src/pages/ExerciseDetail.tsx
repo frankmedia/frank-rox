@@ -52,6 +52,7 @@ const ExerciseDetail = () => {
   
   // Edit mode for exercise plan
   const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState<string>("");
   const [editSets, setEditSets] = useState<number>(0);
   const [editReps, setEditReps] = useState<number>(0);
   const [editSuggestedKg, setEditSuggestedKg] = useState<number>(0);
@@ -130,6 +131,7 @@ const ExerciseDetail = () => {
             setEditMode(false);
             
             // Initialize edit fields with current exercise data
+            setEditName(ex.name || "");
             setEditSets(ex.sets || 0);
             setEditReps(ex.reps || 0);
             setEditSuggestedKg(ex.suggestedKg || 0);
@@ -697,8 +699,19 @@ const ExerciseDetail = () => {
           {/* Edit Exercise Plan */}
           {editMode && (
             <Card className="p-6 bg-secondary/10 border-2 border-yellow-500">
-              <h3 className="text-4xl font-bold text-foreground mb-6">Edit Exercise Plan</h3>
               <div className="space-y-6">
+                {/* Exercise Name */}
+                <div>
+                  <Label className="text-3xl font-bold mb-3 block">Exercise Name</Label>
+                  <Input
+                    type="text"
+                    value={editName || ""}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="text-3xl h-16 text-center font-bold"
+                    placeholder="Enter exercise name"
+                  />
+                </div>
+                
                 {(exercise.type === "weights" || exercise.type === "bodyweight") && (
                   <div className="grid grid-cols-2 gap-6">
                     <div>
@@ -775,8 +788,8 @@ const ExerciseDetail = () => {
                           if (editReps) extra.reps = editReps;
                         }
                         
-                        if (exercise.type === "weights" && editSuggestedKg) {
-                          extra.weight = editSuggestedKg;
+                        if (exercise.type === "weights" && editSuggestedKg && editSuggestedKg > 0) {
+                          extra.weight = editSuggestedKg; // Store as number only, no "kg" suffix
                         }
                         
                         if ((exercise.type === "cardio" || exercise.type === "running" || exercise.type === "mobility") && editDuration) {
@@ -787,10 +800,16 @@ const ExerciseDetail = () => {
                           extra.distance = editDistance; // Changed from distance_km to distance
                         }
                         
+                        // Store custom name in extra field (if changed)
+                        if (editName && editName !== exercise.name) {
+                          extra.custom_name = editName;
+                        }
+                        
                         // Update in Supabase
                         console.log('💾 Saving to Supabase:', {
                           exercise_id: exercise.id,
-                          exercise_name: exercise.name,
+                          old_name: exercise.name,
+                          new_name: editName,
                           extra
                         });
                         
@@ -803,9 +822,13 @@ const ExerciseDetail = () => {
                         
                         console.log('✅ Saved successfully to Supabase');
                         
+                        // Preserve current weights if user has already entered them
+                        const hasEnteredWeights = setWeights.some(w => w && w !== "" && parseFloat(w) !== (exercise.suggestedKg || 0));
+                        
                         // Update local state with new values (use editX values when they're not 0/null)
                         const updatedExercise = {
                           ...exercise,
+                          name: editName || exercise.name,
                           sets: editSets !== 0 ? editSets : exercise.sets,
                           reps: editReps !== 0 ? editReps : exercise.reps,
                           suggestedKg: editSuggestedKg !== 0 ? editSuggestedKg : exercise.suggestedKg,
@@ -820,27 +843,56 @@ const ExerciseDetail = () => {
                         );
                         setExercises(updatedExercises);
                         
-                        // Re-initialize weight inputs with new values
+                        // Update weight inputs based on what changed
                         if (updatedExercise.type === "weights" && updatedExercise.sets) {
-                          const initialWeights = Array(updatedExercise.sets).fill(updatedExercise.suggestedKg?.toString() || "");
-                          setSetWeights(initialWeights);
-                          setSetCompleted(Array(updatedExercise.sets).fill(false));
+                          const newSetsCount = updatedExercise.sets;
+                          const oldSetsCount = setWeights.length;
+                          const weightChanged = editSuggestedKg !== 0 && editSuggestedKg !== exercise.suggestedKg;
+                          const setsChanged = newSetsCount !== oldSetsCount;
+                          
+                          // If suggested weight changed, update ALL sets with new default (even if user entered weights)
+                          if (weightChanged) {
+                            console.log('🔄 Suggested weight changed, updating all sets:', { old: exercise.suggestedKg, new: editSuggestedKg });
+                            const newWeights = Array(newSetsCount).fill(updatedExercise.suggestedKg?.toString() || "");
+                            const newCompleted = Array(newSetsCount).fill(false);
+                            setSetWeights(newWeights);
+                            setSetCompleted(newCompleted);
+                          } 
+                          // If only sets count changed (not weight), preserve existing weights where possible
+                          else if (setsChanged) {
+                            console.log('🔄 Sets count changed, adjusting array:', { old: oldSetsCount, new: newSetsCount });
+                            const newWeights = Array(newSetsCount).fill("").map((_, idx) => 
+                              idx < oldSetsCount ? setWeights[idx] : (updatedExercise.suggestedKg?.toString() || "")
+                            );
+                            const newCompleted = Array(newSetsCount).fill(false).map((_, idx) =>
+                              idx < oldSetsCount ? setCompleted[idx] : false
+                            );
+                            setSetWeights(newWeights);
+                            setSetCompleted(newCompleted);
+                          }
+                          // If nothing changed and user has weights, keep them
+                          else if (hasEnteredWeights) {
+                            console.log('✅ Keeping user-entered weights');
+                          }
                         }
                         
                         setEditMode(false);
                         
                         console.log('✅ Exercise updated:', {
                           id: exercise.id,
-                          name: exercise.name,
+                          name: updatedExercise.name,
                           sets: updatedExercise.sets,
                           reps: updatedExercise.reps,
                           suggestedKg: updatedExercise.suggestedKg,
                           durationMin: updatedExercise.durationMin,
-                          targetDistanceKm: updatedExercise.targetDistanceKm
+                          targetDistanceKm: updatedExercise.targetDistanceKm,
+                          weightsPreserved: hasEnteredWeights
                         });
                         
                         toast.success("Exercise updated!", {
-                          description: `Now: ${updatedExercise.sets}×${updatedExercise.reps} @ ${updatedExercise.suggestedKg}kg`
+                          description: editName !== exercise.name 
+                            ? `${editName} - ${updatedExercise.sets}×${updatedExercise.reps}` 
+                            : `${updatedExercise.sets}×${updatedExercise.reps} @ ${updatedExercise.suggestedKg}kg`
                         });
                       } catch (error) {
                         console.error("Error saving exercise:", error);
@@ -1009,7 +1061,7 @@ const ExerciseDetail = () => {
                 <p className="text-7xl font-bold text-foreground mb-4">
                   {exercise.sets} × {exercise.reps}
                 </p>
-                {exercise.type === "weights" && exercise.suggestedKg && (
+                {exercise.type === "weights" && exercise.suggestedKg && exercise.suggestedKg > 0 && (
                   <p className="text-2xl text-secondary font-semibold">
                     Suggested: {exercise.suggestedKg}kg
                   </p>

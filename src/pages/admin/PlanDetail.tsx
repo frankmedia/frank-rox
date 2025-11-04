@@ -616,6 +616,14 @@ const PlanDetail = () => {
     if (week === "w1") return days.filter((d) => d.day_index < 7);
     return days.filter((d) => d.day_index >= 7);
   }, [days, week]);
+  
+  // Auto-select first day when days load
+  useEffect(() => {
+    if (!selectedDayId && filteredDays.length > 0) {
+      setSelectedDayId(filteredDays[0].id);
+      console.log('🎯 Auto-selected first day:', filteredDays[0].label || `Day ${filteredDays[0].day_index + 1}`);
+    }
+  }, [filteredDays, selectedDayId]);
 
   const filteredExercises = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -2330,7 +2338,7 @@ const PlanDetail = () => {
         {!loading && filteredDays.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filteredDays.map((d) => (
-              <div key={d.id} onClick={()=>setSelectedDayId(d.id)} className={`rounded-lg p-3 border ${d.is_rest ? "border-zinc-700 bg-black/40 opacity-40" : readyDays[d.id] ? "border-green-400 bg-black/60" : "border-zinc-800 bg-black"} ${savingDayId===d.id? 'animate-pulse': ''}`}>
+              <div key={d.id} onClick={()=>setSelectedDayId(d.id)} className={`rounded-lg p-3 border cursor-pointer transition-all ${selectedDayId === d.id ? 'ring-2 ring-yellow-500 border-yellow-500' : ''} ${d.is_rest ? "border-zinc-700 bg-black/40 opacity-40" : readyDays[d.id] ? "border-green-400 bg-black/60" : "border-zinc-800 bg-black"} ${savingDayId===d.id? 'animate-pulse': ''} hover:border-zinc-600`}>
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-medium">{d.label ? d.label : `Day ${d.day_index + 1}`}</div>
@@ -3657,12 +3665,22 @@ const PlanDetail = () => {
       {showAIAssistant && plan && (
         <AIAssistant
           planId={plan.id}
+          dayId={selectedDayId || filteredDays[0]?.id || ''}
           clientId={plan.client_id}
           onClose={() => setShowAIAssistant(false)}
-          onWorkoutCreated={() => {
+          onWorkoutCreated={async () => {
             // Refresh the plan data after AI creates workout
-            loadDays();
-            toast({ title: "Workout created!", description: "Check your training days" });
+            console.log('🔄 Refreshing workout data...');
+            
+            // Simple refresh: just reload the page after a short delay
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+            
+            toast({ 
+              title: "Workout created!", 
+              description: "Refreshing page to show new workouts..." 
+            });
           }}
         />
       )}

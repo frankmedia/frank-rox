@@ -2,6 +2,28 @@ import { supabase } from "@/utils/supabaseClient";
 import type { Exercise } from "@/types/workout";
 
 /**
+ * Helper function to parse weight values that might contain "kg" suffix
+ * @param value - Weight value (could be number, string, or string with "kg")
+ * @returns Parsed number or undefined
+ */
+function parseWeight(value: any): number | undefined {
+  if (value === null || value === undefined) return undefined;
+  
+  // If it's already a number, return it
+  if (typeof value === 'number') return value > 0 ? value : undefined;
+  
+  // If it's a string, try to parse it
+  if (typeof value === 'string') {
+    // Remove "kg" suffix if present (case insensitive)
+    const cleanValue = value.replace(/kg$/i, '').trim();
+    const parsed = parseFloat(cleanValue);
+    return (!isNaN(parsed) && parsed > 0) ? parsed : undefined;
+  }
+  
+  return undefined;
+}
+
+/**
  * Fetch the active plan for a client from Supabase
  */
 export async function getActivePlan(clientId: string) {
@@ -269,7 +291,7 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
 
               const exerciseObj = {
                 id: String(item.id), // USE session_block_items.id, NOT exercises.id!
-                name: ex.name,
+                name: extra.custom_name || ex.name, // Use custom name if set, otherwise use base exercise name
                 type: exerciseType,
                 notes: ex.notes || undefined,
                 mediaUrl: ex.media?.youtube || ex.media?.video || undefined,
@@ -277,7 +299,7 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                 // Extract workout parameters from extra (matching Google Sheets format)
                 sets: extra.sets || undefined,
                 reps: extra.reps || undefined,
-                suggestedKg: extra.weight || undefined,
+                suggestedKg: parseWeight(extra.weight), // Parse weight to handle "kg" suffix
                 durationMin: extra.duration || undefined,
                 // Only set distance if it's reasonable (0.01km to 100km)
                 targetDistanceKm: (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) ? extra.distance : undefined,

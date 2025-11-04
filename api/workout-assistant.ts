@@ -1,10 +1,16 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createClient } from '@supabase/supabase-js';
 
 // Initialize Gemini (server-side with actual API key)
 const apiKey = process.env.GOOGLE_AI_API_KEY || "";
 const modelName = process.env.GOOGLE_AI_MODEL || "gemini-2.0-flash-exp";
 
 const genAI = new GoogleGenerativeAI(apiKey);
+
+// Initialize Supabase with service role key (bypasses RLS for admin operations)
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req: any, res: any) {
   // Only allow POST
@@ -18,6 +24,9 @@ export default async function handler(req: any, res: any) {
     switch (action) {
       case 'parse_workout':
         return await handleParseWorkout(req, res, data);
+      
+      case 'create_workout':
+        return await handleCreateWorkout(req, res, data);
       
       case 'match_exercise':
         return await handleMatchExercise(req, res, data);
@@ -436,6 +445,129 @@ Rules:
     return res.status(500).json({
       error: 'Failed to generate program',
       rawResponse: text
+    });
+  }
+}
+
+async function handleCreateWorkout(req: any, res: any, data: any) {
+  const { planId, clientId, workout } = data;
+  
+  if (!planId || !workout || !workout.days) {
+    return res.status(400).json({ error: 'planId and workout.days are required' });
+  }
+
+  console.log('Creating workout for plan:', planId);
+  console.log('Days to create:', workout.days.length);
+
+  let sessionsCreated = 0;
+  const errors = [];
+
+  try {
+    for (const day of workout.days) {
+      const { name, exercises } = day;
+      
+      if (!exercises || exercises.length === 0) {
+        continue;
+      }
+
+      // Create session
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .insert({
+          plan_id: planId,
+          name: name || `Day ${sessionsCreated + 1}`,
+          order_index: sessionsCreated,
+        })
+        .select()
+        .single();
+
+      if (sessionError || !sessionData) {
+        console.error('Failed to create session:', sessionError);
+        errors.push(`Failed to create session for ${name}: ${sessionError?.message}`);
+        continue;
+      }
+
+      console.log('Created session:', sessionData.id);
+
+      // Create blocks for each exercise
+      for (let i = 0; i < exercises.length; i++) {
+        const exercise = exercises[i];
+        
+        // Match exercise to database
+        const { data: dbExercise } = await supabase
+          .from('exercises')
+          .select('id, modality')
+          .ilike('name', `%${exercise.name}%`)
+          .limit(1)
+          .single();
+
+        if (!dbExercise) {
+          console.warn(`Exercise not found: ${exercise.name}`);
+          errors.push(`Exercise not found: ${exercise.name}`);
+          continue;
+        }
+
+        // Create session_block
+        const { data: blockData, error: blockError } = await supabase
+          .from('session_blocks')
+          .insert({
+            session_id: sessionData.id,
+            title: exercise.name,
+            block_type: 'strength', // Default to strength
+            order_index: i,
+            rounds: 1,
+            parameters: {},
+          })
+          .select()
+          .single();
+
+        if (blockError || !blockData) {
+          console.error('Failed to create block:', blockError);
+          errors.push(`Failed to create block for ${exercise.name}: ${blockError?.message}`);
+          continue;
+        }
+
+        // Create session_block_item
+        const extra: any = {};
+        if (exercise.sets) extra.sets = exercise.sets;
+        if (exercise.reps) extra.reps = exercise.reps;
+        if (exercise.weight) extra.weight = exercise.weight;
+        if (exercise.duration) extra.duration = exercise.duration;
+        if (exercise.distance) extra.distance = exercise.distance;
+
+        const { error: itemError } = await supabase
+          .from('session_block_items')
+          .insert({
+            block_id: blockData.id,
+            exercise_id: dbExercise.id,
+            item_order: 0,
+            status: 'draft',
+            extra,
+          });
+
+        if (itemError) {
+          console.error('Failed to create item:', itemError);
+          errors.push(`Failed to create item for ${exercise.name}: ${itemError.message}`);
+        }
+      }
+
+      sessionsCreated++;
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        sessionsCreated,
+        errors: errors.length > 0 ? errors : undefined,
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Create workout error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to create workout',
+      details: error.toString(),
     });
   }
 }

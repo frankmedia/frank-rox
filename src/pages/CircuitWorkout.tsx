@@ -37,6 +37,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
   const [completedRounds, setCompletedRounds] = useState<Record<string, number[]>>({});
   const [showTimer, setShowTimer] = useState(false);
   const [timerDuration, setTimerDuration] = useState(90);
+  const [hasUnsavedProgress, setHasUnsavedProgress] = useState(false);
   
   // Load user data and cached progress on mount
   useEffect(() => {
@@ -67,6 +68,36 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
       console.error("Error loading circuit data:", e);
     }
   }, [exercise.id, authUser]);
+  
+  // Auto-save progress every time completedRounds changes
+  useEffect(() => {
+    if (username && trainingDay) {
+      console.log("💾 Auto-saving circuit progress:", completedRounds);
+      // Progress is already saved via markCircuitRound() in toggleNextRound()
+      // This is just a safety backup in case of unmount
+      
+      // Check if there's any completed rounds (unsaved progress)
+      const hasProgress = Object.values(completedRounds).some(rounds => rounds.length > 0);
+      setHasUnsavedProgress(hasProgress && !isAllComplete());
+    }
+  }, [completedRounds, username, trainingDay]);
+  
+  // Warn user before leaving if they have unsaved progress
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedProgress) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome requires returnValue to be set
+        return 'You have unsaved circuit progress. Are you sure you want to leave?';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedProgress]);
   
   const toggleNextRound = (exerciseId: string, exerciseName: string) => {
     if (!username) return;
@@ -124,6 +155,9 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
     
     // Mark this circuit as complete in the cache
     markExerciseComplete(username, trainingDay, exercise.id, authUser?.clientId);
+    
+    // Clear unsaved progress flag since we're saving now
+    setHasUnsavedProgress(false);
     
     // Sync to Supabase immediately (hybrid approach)
     if (authUser?.clientId) {
@@ -184,7 +218,18 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (hasUnsavedProgress) {
+                const confirmed = window.confirm(
+                  'You have unsaved circuit progress. Your progress is saved locally, but the circuit is not marked as complete. Are you sure you want to go back?'
+                );
+                if (confirmed) {
+                  navigate(-1);
+                }
+              } else {
+                navigate(-1);
+              }
+            }}
             className="rounded-full h-8 w-8 sm:h-10 sm:w-10"
           >
             <ArrowLeft className="w-4 h-4 sm:w-6 sm:h-6" />

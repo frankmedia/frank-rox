@@ -74,26 +74,48 @@ export const DataProvider = ({ children }: DataProviderProps) => {
           const lastPlanId = localStorage.getItem(lastPlanIdKey);
           const currentPlanId = String(plan.id);
           
-          // Clear if plan changed OR if this is first time (lastPlanId is null)
-          if (!lastPlanId || lastPlanId !== currentPlanId) {
-            console.log('🔄 New plan detected in DataContext, clearing completion data', { old: lastPlanId || 'none', new: currentPlanId });
-            // Clear localStorage completion data
+          // Only clear if plan actually changed (not on first load)
+          if (lastPlanId && lastPlanId !== currentPlanId) {
+            console.log('🔄 Plan changed in DataContext, clearing completion data', { old: lastPlanId, new: currentPlanId });
+            
+            // Get today's date to preserve today's workout cache
+            const today = new Date().toISOString().split('T')[0];
+            const workoutCacheKey = `workout_cache_${user.username}`;
+            const currentCache = localStorage.getItem(workoutCacheKey);
+            let preserveToday = false;
+            
+            // Check if today's cache is from today - if so, preserve it
+            if (currentCache) {
+              try {
+                const cache = JSON.parse(currentCache);
+                if (cache.date === today) {
+                  console.log('💾 Preserving today\'s workout progress during plan switch');
+                  preserveToday = true;
+                }
+              } catch (e) {
+                console.error('Error parsing workout cache:', e);
+              }
+            }
+            
+            // Clear localStorage completion data for previous days only
             const completedDaysKey = `completedDays_${user.username}`;
             localStorage.removeItem(completedDaysKey);
             
-            // Clear workout cache for all days
-            const workoutCacheKey = `workoutSession_${user.username}`;
-            localStorage.removeItem(workoutCacheKey);
+            // Clear old workout cache ONLY if it's not from today
+            if (!preserveToday) {
+              localStorage.removeItem(workoutCacheKey);
+            }
             
             // Also clear old completion data from Supabase for previous plans
-            if (lastPlanId && lastPlanId !== currentPlanId) {
-              console.log('🗑️ Removing old plan completion records from database');
-              await supabase
-                .from('completed_days')
-                .delete()
-                .eq('client_id', clientId)
-                .neq('plan_id', currentPlanId);
-            }
+            console.log('🗑️ Removing old plan completion records from database');
+            await supabase
+              .from('completed_days')
+              .delete()
+              .eq('client_id', clientId)
+              .neq('plan_id', currentPlanId);
+          } else if (!lastPlanId) {
+            // First time loading - don't clear anything, just set the plan ID
+            console.log('✨ First plan load, preserving any existing data', { planId: currentPlanId });
           }
           
           // Update last plan ID
