@@ -4,11 +4,12 @@
  * Run with: node dev-api-server.js
  */
 
-const http = require('http');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+import http from 'http';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import dotenv from 'dotenv';
 
 // Load environment variables
-require('dotenv').config();
+dotenv.config();
 
 const PORT = 3001;
 const apiKey = process.env.GOOGLE_AI_API_KEY || "";
