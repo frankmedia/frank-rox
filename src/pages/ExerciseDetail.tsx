@@ -48,6 +48,7 @@ const ExerciseDetail = () => {
   const [workoutDuration, setWorkoutDuration] = useState(0);
   const [currentSet, setCurrentSet] = useState(1); // Track current set for rehab
   const [rehabTimerActive, setRehabTimerActive] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false); // Prevent duplicate ratings after countdown
   const [existingLogId, setExistingLogId] = useState<string | null>(null); // Track if exercise was already logged today
   
   // Edit mode for exercise plan
@@ -1088,17 +1089,18 @@ const ExerciseDetail = () => {
                       initialSeconds={workoutDuration}
                       autoStart={true}
                       onComplete={() => {
+                        setIsCompleting(true); // Prevent further interactions
                         const completedDuration = Math.round(workoutDuration / 60);
                         setTodaysDuration(completedDuration.toString());
                         setShowWorkoutTimer(false);
                         
                         // Auto-save the workout when timer completes
                         toast.success("🎉 Workout Complete!", {
-                          description: `${completedDuration} minutes completed! Saving...`,
+                          description: `${completedDuration} minutes completed! Moving to next exercise...`,
                           duration: 2000,
                         });
                         
-                        // Save automatically with no rating (user can rate later if they want)
+                        // Save automatically and advance immediately
                         setTimeout(() => handleMarkAsDone(), 500);
                       }}
                     />
@@ -1137,17 +1139,18 @@ const ExerciseDetail = () => {
                       initialSeconds={workoutDuration}
                       autoStart={true}
                       onComplete={() => {
+                        setIsCompleting(true); // Prevent further interactions
                         const completedDuration = Math.round(workoutDuration / 60);
                         setTodaysDuration(completedDuration.toString());
                         setShowWorkoutTimer(false);
                         
                         // Auto-save the workout when timer completes
                         toast.success("🎉 Workout Complete!", {
-                          description: `${completedDuration} minutes completed! Saving...`,
+                          description: `${completedDuration} minutes completed! Moving to next exercise...`,
                           duration: 2000,
                         });
                         
-                        // Save automatically with no rating (user can rate later if they want)
+                        // Save automatically and advance immediately
                         setTimeout(() => handleMarkAsDone(), 500);
                       }}
                     />
@@ -1504,10 +1507,12 @@ const ExerciseDetail = () => {
             <FlameRating 
               value={rating} 
               onChange={(selectedRating) => {
+                if (isCompleting) return; // Prevent rating after countdown completes
                 setRating(selectedRating);
                 // Auto-complete when flame is clicked, passing the rating directly
                 setTimeout(() => handleMarkAsDone(selectedRating), 100);
               }} 
+              readonly={isCompleting}
               size="lg" 
             />
             
