@@ -71,7 +71,27 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         })
       });
 
-      const result = await response.json();
+      // Check if response is ok
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        throw new Error(`API Error (${response.status}): ${errorText || 'Failed to parse workout'}`);
+      }
+
+      // Check if response has content
+      const responseText = await response.text();
+      if (!responseText || responseText.trim() === '') {
+        throw new Error('API returned empty response. Please check your GOOGLE_AI_API_KEY is set in environment variables.');
+      }
+
+      // Parse JSON
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse response:', responseText);
+        throw new Error('API returned invalid JSON. Please check server logs.');
+      }
 
       if (result.success) {
         const aiMessage: Message = {
@@ -96,9 +116,18 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
     } catch (error: any) {
       console.error('AI Assistant error:', error);
       
+      let errorMsg = error.message || 'Unknown error occurred';
+      
+      // Provide helpful hints
+      if (errorMsg.includes('empty response')) {
+        errorMsg += '\n\n💡 Check that GOOGLE_AI_API_KEY is set in your .env file';
+      } else if (errorMsg.includes('404')) {
+        errorMsg = 'API endpoint not found. The /api/workout-assistant endpoint may not be deployed.';
+      }
+      
       const errorMessage: Message = {
         role: 'assistant',
-        content: `❌ Sorry, I encountered an error: ${error.message}. Please try again or rephrase your request.`,
+        content: `❌ Sorry, I encountered an error:\n\n${errorMsg}\n\nPlease check the console for more details.`,
         timestamp: new Date(),
         action: 'error'
       };
@@ -107,7 +136,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
 
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMsg.split('\n')[0], // First line only for toast
         variant: "destructive" as any,
       });
     } finally {
