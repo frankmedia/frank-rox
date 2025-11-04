@@ -18,6 +18,8 @@ export default defineConfig(({ mode }) => {
     __VITE_SUPABASE_ANON_KEY__: JSON.stringify(
       env.VITE_SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || ""
     ),
+    // Google AI (only model name - API key is server-side only)
+    __VITE_GOOGLE_AI_MODEL__: JSON.stringify(env.VITE_GOOGLE_AI_MODEL || env.GOOGLE_AI_MODEL || "gemini-2.0-flash-exp"),
   };
 
   return {

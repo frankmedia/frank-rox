@@ -1,14 +1,15 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/utils/supabaseClient";
-import { Pause, Check, Dumbbell, Activity, Gauge, Timer, Repeat, AlarmClock, Package, Move, Lightbulb, CircleDot, Trash2, StretchHorizontal, Loader2, RefreshCcw, Save, Send, Footprints, Upload, CheckCircle2 } from "lucide-react";
+import { Pause, Check, Dumbbell, Activity, Gauge, Timer, Repeat, AlarmClock, Package, Move, Lightbulb, CircleDot, Trash2, StretchHorizontal, Loader2, RefreshCcw, Save, Send, Footprints, Upload, CheckCircle2, Bot, Sparkles } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { DndContext, useDraggable, useDroppable, DragEndEvent } from "@dnd-kit/core";
 import { useSortable, SortableContext, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { generateHyroxWeek, clearDay as clearHyroxDay } from "@/services/generators/hyroxGenerator";
+import AIAssistant from "@/components/AIAssistant";
 
-interface Plan { id: string; name: string; cycle_days?: number }
+interface Plan { id: string; name: string; cycle_days?: number; client_id?: string; }
 interface PlanDay { id: string; day_index: number; label?: string; is_rest?: boolean; description?: string }
 interface Exercise { id: string; name: string; modality?: string; primary_area?: string; pattern?: string; tags?: string | null; equipment?: string[] | null }
 interface RenderedItem { id: string; name: string; modality?: string; item_order?: number }
@@ -79,6 +80,7 @@ const PlanDetail = () => {
   const [planNameSaved, setPlanNameSaved] = useState<boolean>(false);
   const [importing, setImporting] = useState<boolean>(false);
   const [showCSVModal, setShowCSVModal] = useState<boolean>(false);
+  const [showAIAssistant, setShowAIAssistant] = useState<boolean>(false);
   const [importProgress, setImportProgress] = useState<{
     show: boolean;
     logs: string[];
@@ -2629,6 +2631,14 @@ const PlanDetail = () => {
             <Save className="w-5 h-5" />
           </button>
           <button
+            onClick={() => setShowAIAssistant(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-400 hover:to-yellow-500 transition-all font-semibold shadow-lg shadow-yellow-500/20"
+            title="AI Workout Builder"
+          >
+            <Sparkles className="w-4 h-4" />
+            AI Assistant
+          </button>
+          <button
             onClick={markAllDaysReady}
             disabled={loading}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-zinc-600 text-zinc-300 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
@@ -3641,6 +3651,20 @@ const PlanDetail = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* AI Assistant */}
+      {showAIAssistant && plan && (
+        <AIAssistant
+          planId={plan.id}
+          clientId={plan.client_id}
+          onClose={() => setShowAIAssistant(false)}
+          onWorkoutCreated={() => {
+            // Refresh the plan data after AI creates workout
+            loadDays();
+            toast({ title: "Workout created!", description: "Check your training days" });
+          }}
+        />
       )}
     </>
   );
