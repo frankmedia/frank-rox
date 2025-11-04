@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/utils/supabaseClient";
 import { useToast } from "@/components/ui/use-toast";
+import { Info, X } from "lucide-react";
 
 interface ExerciseRow { id: string; name: string; modality?: string | null; primary_area?: string | null; pattern?: string | null; tags?: string | null; equipment?: string[] | null; notes?: string | null; media?: any | null; youtube?: string | null }
 
@@ -13,6 +14,7 @@ const Exercises = () => {
   const { toast } = useToast();
   const [sortKey, setSortKey] = useState<keyof ExerciseRow>("name");
   const [sortDir, setSortDir] = useState<"asc"|"desc">("asc");
+  const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
 
   // Core movement patterns for templates
   const validPatterns = ['squat', 'hinge', 'push', 'pull', 'carry', 'thrust', 'abduction', 'rotation', 'isolation'];
@@ -196,6 +198,13 @@ const Exercises = () => {
         <h1 className="text-2xl font-semibold">Exercises</h1>
         <div className="flex items-center gap-2">
           <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Search…" className="bg-black border border-zinc-800 rounded-md px-2 py-1 text-sm" />
+          <button 
+            onClick={() => setShowGuideModal(true)} 
+            className="px-3 py-1 rounded-md border border-blue-500 text-blue-400 hover:bg-blue-500/10 transition-colors flex items-center gap-1.5"
+          >
+            <Info className="w-4 h-4" />
+            Editing Guide
+          </button>
           <button onClick={saveAll} className="px-3 py-1 rounded-md border border-yellow-500 text-yellow-400">Save All</button>
           <button onClick={addExercise} className="px-3 py-1 rounded-md border border-zinc-700">+ Add Exercise</button>
         </div>
@@ -270,6 +279,264 @@ const Exercises = () => {
           })}
         </div>
       </div>
+
+      {/* Editing Guide Modal */}
+      {showGuideModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowGuideModal(false)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="sticky top-0 bg-zinc-900 border-b border-zinc-700 px-6 py-4 flex items-center justify-between z-10">
+              <h2 className="text-2xl font-bold text-white">Exercise Editing Options by Type</h2>
+              <button onClick={() => setShowGuideModal(false)} className="p-2 hover:bg-zinc-800 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-zinc-400" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              <p className="text-zinc-300 text-sm">
+                This table shows what editing options are available for each exercise type/modality in the PlanDetail admin panel.
+              </p>
+
+              {/* Summary Table */}
+              <div className="overflow-x-auto border border-zinc-700 rounded-lg">
+                <table className="w-full text-sm">
+                  <thead className="bg-zinc-800 border-b border-zinc-700">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold text-yellow-400">Type</th>
+                      <th className="px-4 py-3 text-center font-semibold text-zinc-300">Sets</th>
+                      <th className="px-4 py-3 text-center font-semibold text-zinc-300">Reps</th>
+                      <th className="px-4 py-3 text-center font-semibold text-zinc-300">Weight</th>
+                      <th className="px-4 py-3 text-center font-semibold text-zinc-300">Distance</th>
+                      <th className="px-4 py-3 text-center font-semibold text-zinc-300">Duration</th>
+                      <th className="px-4 py-3 text-center font-semibold text-zinc-300">Rest</th>
+                      <th className="px-4 py-3 text-center font-semibold text-zinc-300">Tempo</th>
+                      <th className="px-4 py-3 text-center font-semibold text-zinc-300">Intensity</th>
+                      <th className="px-4 py-3 text-center font-semibold text-zinc-300">Work/Rest</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800">
+                    {/* Strength */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">strength</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(kg)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                    </tr>
+                    {/* Bodyweight */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">bodyweight</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(text)</span></td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(m)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                    </tr>
+                    {/* Core */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">core</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(min)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                    </tr>
+                    {/* Mobility */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">mobility</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(min)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                    </tr>
+                    {/* Rehab */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">rehab</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(kg)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(min)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                    </tr>
+                    {/* Cardio */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">cardio</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(min)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(Z2-Z4)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                    </tr>
+                    {/* Running */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">running</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(km)</span></td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(min)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(Z2-Z4)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                    </tr>
+                    {/* Erg */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">erg</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(km)</span></td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(min)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(Z2-Z4)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                    </tr>
+                    {/* Carry */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">carry</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(text)</span></td>
+                      <td className="px-4 py-3 text-center text-green-400">✓<span className="text-xs text-zinc-500 ml-1">(m)</span></td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                    </tr>
+                    {/* Skill */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">skill</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                    </tr>
+                    {/* Circuit */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">circuit</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                    </tr>
+                    {/* Intervals/HIIT */}
+                    <tr className="hover:bg-zinc-800/50">
+                      <td className="px-4 py-3 font-mono text-blue-400">intervals/hiit</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-zinc-600">—</td>
+                      <td className="px-4 py-3 text-center text-green-400">✓</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Legend */}
+              <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-white mb-3">Legend:</h3>
+                <ul className="space-y-2 text-sm text-zinc-300">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 font-bold">✓</span>
+                    <span>Field is available for this exercise type</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-zinc-600 font-bold">—</span>
+                    <span>Field is not available for this exercise type</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-xs text-zinc-500">(kg)</span>
+                    <span>Weight as a number in kilograms</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-xs text-zinc-500">(text)</span>
+                    <span>Weight as text (e.g., "6kg", "2x24kg")</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-xs text-zinc-500">(m)</span>
+                    <span>Distance in meters (stored as km in DB)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-xs text-zinc-500">(km)</span>
+                    <span>Distance in kilometers</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-xs text-zinc-500">(min)</span>
+                    <span>Duration in minutes (decimals allowed, e.g., 0.5 = 30 seconds)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-xs text-zinc-500">(Z2-Z4)</span>
+                    <span>Intensity zones (Z2, Z3, Z4)</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Note */}
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-yellow-400 mb-2">📝 Note:</h3>
+                <p className="text-sm text-zinc-300">
+                  <strong>Core</strong> and <strong>Mobility</strong> exercises currently do not have a weight field. 
+                  Some exercises (like Wood Chop or weighted planks) may require weight tracking.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="sticky bottom-0 bg-zinc-900 border-t border-zinc-700 px-6 py-4 flex justify-end">
+              <button 
+                onClick={() => setShowGuideModal(false)} 
+                className="px-4 py-2 bg-yellow-500 text-black rounded-lg font-semibold hover:bg-yellow-400 transition-colors"
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

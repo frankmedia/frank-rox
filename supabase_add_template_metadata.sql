@@ -59,3 +59,4 @@ WHERE name = 'HYROX Interval Day';
 
 
 
+
