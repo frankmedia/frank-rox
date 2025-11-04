@@ -7,7 +7,7 @@ Add these to your `.env` file locally and to **Vercel Environment Variables**:
 ```bash
 # Gemini AI
 GOOGLE_AI_MODEL=gemini-2.0-flash-exp
-GOOGLE_AI_API_KEY=AIzaSyDJ1FDQRuC7wadSxYAswWrvVlcr8tNdzWc
+GOOGLE_AI_API_KEY=your_actual_api_key_here
 
 # (Your existing Supabase vars)
 VITE_SUPABASE_URL=...
