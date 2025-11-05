@@ -2190,25 +2190,45 @@ const PlanDetail = () => {
   }
 
   async function loadDayGroups(dayId: string) {
+    console.log('🔄 📥 loadDayGroups called for day:', dayId);
     const sess = await supabase
       .from('sessions')
       .select('id,name,order_index,collapsed,session_blocks(id,block_type,title,parameters,rounds,rest_between_rounds_s,time_cap_sec,work_sec,rest_sec,intensity,session_block_items(id,exercise_id,item_order,status))')
       .eq('plan_day_id', dayId)
       .order('order_index', { ascending: true });
     
-    if (sess.error) { setGroupsByDay(prev=>({ ...prev, [dayId]: [] })); return; }
+    if (sess.error) { 
+      console.log('🔄 ❌ Error loading sessions:', sess.error);
+      setGroupsByDay(prev=>({ ...prev, [dayId]: [] })); 
+      return; 
+    }
+    
+    console.log('🔄 📥 Loaded sessions from DB:', sess.data?.map(s => ({ 
+      id: s.id, 
+      name: s.name, 
+      order_index: s.order_index 
+    })));
 
     // Build blocks list preserving session and block order
     const blocks = (sess.data || []).flatMap((s:any)=> {
       const arr = Array.isArray(s.session_blocks) ? s.session_blocks : (s.session_blocks ? [s.session_blocks] : []);
       // Sort blocks within a session by order_index to preserve import order
       arr.sort((a:any,b:any)=> (a?.order_index ?? 0) - (b?.order_index ?? 0));
+      
+      // CRITICAL FIX: Sort items within each block by item_order
+      arr.forEach((block:any) => {
+        if (block.session_block_items) {
+          block.session_block_items.sort((a:any, b:any) => (a.item_order ?? 0) - (b.item_order ?? 0));
+        }
+      });
+      
       return arr.map((b:any)=> ({
         sessionId: String(s.id),
         blockId: b?.id ? String(b.id) : `sess-${s.id}-blk-unknown`,
         title: (b?.title || s.name) as string,
         blockType: b?.block_type as string,
-        order_index: b?.order_index ?? 0,
+        sessionOrderIndex: s.order_index ?? 0,  // CRITICAL: Use SESSION order_index, not block
+        blockOrderIndex: b?.order_index ?? 0,
         collapsed: s.collapsed,
         parameters: b?.parameters || null,
         rounds: b?.rounds ?? null,
@@ -2248,17 +2268,26 @@ const PlanDetail = () => {
 
     setGroupsByDay(prev=> ({ ...prev, [dayId]: groups }));
     // Standalones are items from non-group blocks only (exclude circuit/amrap)
-    // For standalone items, sort by parent block order_index first, then item_order
+    // CRITICAL FIX: Sort by SESSION order_index (sessionOrderIndex), not block order_index
     const nonGroupEntries = blocks
       .filter((b:any)=> b.blockType !== 'circuit' && b.blockType !== 'amrap' && b.blockType !== 'simulation')
-      .map((b:any)=> ({ order_index: b.order_index ?? 0, items: (b.itemRows||[]) }));
+      .map((b:any)=> ({ sessionOrderIndex: b.sessionOrderIndex ?? 0, blockOrderIndex: b.blockOrderIndex ?? 0, items: (b.itemRows||[]) }));
 
     const allRows = blocks.flatMap((b:any)=> (b.itemRows||[]));
 
     const flatItems: RenderedItem[] = nonGroupEntries
-      .flatMap((entry:any)=> (entry.items||[]).map((r:any)=> ({ r, parentOrder: entry.order_index })))
-      .sort((a:any,b:any)=> (a.parentOrder - b.parentOrder) || ((a.r.item_order??0) - (b.r.item_order??0)))
+      .flatMap((entry:any)=> (entry.items||[]).map((r:any)=> ({ r, sessionOrderIndex: entry.sessionOrderIndex, blockOrderIndex: entry.blockOrderIndex })))
+      .sort((a:any,b:any)=> {
+        // CRITICAL: Sort by session order first, then block order, then item order
+        const sessionDiff = a.sessionOrderIndex - b.sessionOrderIndex;
+        if (sessionDiff !== 0) return sessionDiff;
+        const blockDiff = a.blockOrderIndex - b.blockOrderIndex;
+        if (blockDiff !== 0) return blockDiff;
+        return (a.r.item_order ?? 0) - (b.r.item_order ?? 0);
+      })
       .map((x:any)=> ({ id: String(x.r.id), name: exMap[String(x.r.exercise_id)]?.name || 'Exercise', modality: exMap[String(x.r.exercise_id)]?.modality, item_order: x.r.item_order }));
+    
+    console.log('🔄 📥 Final flatItems order:', flatItems.map((it, idx) => ({ position: idx + 1, name: it.name })));
     setItemsByDay(prev=> ({ ...prev, [dayId]: flatItems }));
 
     // Build interleaved sequence list according to block order
