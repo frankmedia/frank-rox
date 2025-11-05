@@ -44,6 +44,7 @@ const ExerciseDetail = () => {
   const [todaysDistance, setTodaysDistance] = useState("");
   const [todaysDuration, setTodaysDuration] = useState("");
   const [rating, setRating] = useState(0); // 0-5 flame rating
+  const [runStats, setRunStats] = useState<{ speed: number; pace: string; time: string; distance: string } | null>(null);
   
   // Save in-progress weights and completions to localStorage
   const saveInProgressData = useCallback((weights: string[], completed: boolean[]) => {
@@ -894,16 +895,20 @@ const ExerciseDetail = () => {
                     </p>
                   </div>
                 )}
-                {exercise.type === "running" && (
+                {(exercise.type === "running" || exercise.type === "cardio") && (
                   <div>
                     <Label className="text-3xl font-bold mb-3 block">Target Distance (km)</Label>
                     <Input
                       type="number"
-                      step="0.1"
+                      step="0.001"
                       value={editDistance || ""}
                       onChange={(e) => setEditDistance(parseFloat(e.target.value) || 0)}
                       className="text-5xl h-20 text-center font-bold"
+                      placeholder="e.g., 0.5 = 500m, 5.0 = 5km"
                     />
+                    <p className="text-sm text-muted-foreground text-center mt-2">
+                      Use 0.5 for 500m, 1.0 for 1km, etc.
+                    </p>
                   </div>
                 )}
                 <Button
@@ -929,7 +934,7 @@ const ExerciseDetail = () => {
                           extra.duration = editDuration; // Changed from duration_min to duration
                         }
                         
-                        if (exercise.type === "running" && editDistance) {
+                        if ((exercise.type === "running" || exercise.type === "cardio") && editDistance) {
                           extra.distance = editDistance; // Changed from distance_km to distance
                         }
                         
@@ -1283,22 +1288,30 @@ const ExerciseDetail = () => {
                           const paceMinPerKm = elapsedSeconds / 60 / targetKm; // min/km
                           const paceMin = Math.floor(paceMinPerKm);
                           const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
+                          const paceString = `${paceMin}:${paceSec.toString().padStart(2, '0')}`;
                           
                           setTodaysDuration(elapsedMinutes);
                           setTodaysDistance(distanceValue);
                           setShowWorkoutTimer(false);
                           
+                          // Store stats to display on page
                           const distanceDisplay = isMeters ? `${Math.round(targetKm * 1000)}m` : `${targetKm}km`;
-                          toast.success("✅ Recorded!", {
-                            description: `${distanceDisplay} in ${elapsedMinutes} min\n🏃 ${avgSpeed.toFixed(1)} km/h | ${paceMin}:${paceSec.toString().padStart(2, '0')} /km`,
-                            duration: 5000,
+                          const mins = Math.floor(elapsedSeconds / 60);
+                          const secs = elapsedSeconds % 60;
+                          const timeString = `${mins}:${secs.toString().padStart(2, '0')}`;
+                          
+                          setRunStats({
+                            speed: parseFloat(avgSpeed.toFixed(1)),
+                            pace: paceString,
+                            time: timeString,
+                            distance: distanceDisplay
                           });
                           
-                          // Scroll to rating section
+                          // Scroll to stats section
                           setTimeout(() => {
-                            const ratingElement = document.querySelector('.rating-section');
-                            if (ratingElement) {
-                              ratingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            const statsElement = document.querySelector('.run-stats');
+                            if (statsElement) {
+                              statsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
                           }, 500);
                         }}
@@ -1386,6 +1399,33 @@ const ExerciseDetail = () => {
               </>
             ) : null}
           </>
+        )}
+        
+        {/* Run Stats Display - Show after timer completes */}
+        {runStats && (exercise.type === "running" || exercise.type === "cardio") && (
+          <Card className="p-6 bg-gradient-to-r from-green-500/10 to-blue-500/10 border-green-500/30 run-stats">
+            <h3 className="text-2xl font-bold text-center mb-4 text-green-400">
+              🏃 Run Complete!
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 bg-background/50 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Distance</p>
+                <p className="text-3xl font-bold text-foreground">{runStats.distance}</p>
+              </div>
+              <div className="text-center p-4 bg-background/50 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Time</p>
+                <p className="text-3xl font-bold text-foreground">{runStats.time}</p>
+              </div>
+              <div className="text-center p-4 bg-background/50 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Avg Speed</p>
+                <p className="text-3xl font-bold text-primary">{runStats.speed} km/h</p>
+              </div>
+              <div className="text-center p-4 bg-background/50 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Pace</p>
+                <p className="text-3xl font-bold text-primary">{runStats.pace} /km</p>
+              </div>
+            </div>
+          </Card>
         )}
         
         {/* Simple Timer for Rehab Exercises without sets */}
