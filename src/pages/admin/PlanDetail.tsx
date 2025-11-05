@@ -1456,7 +1456,29 @@ const PlanDetail = () => {
           const reordered = arrayMove(standaloneItems, fromIdx, toIdx);
           setItemsByDay(prev => ({ ...prev, [dayIdA]: reordered }));
           
-          // Update each session's order_index based on new position
+          // TWO-PHASE UPDATE to avoid conflicts when moving to position 1:
+          // Phase 1: Set all to temporary negative values to break existing order
+          for (const item of reordered) {
+            const { data: itemData } = await supabase
+              .from('session_block_items')
+              .select('id, block_id, session_blocks!inner(id, session_id)')
+              .eq('id', item.id)
+              .single();
+            
+            if (!itemData || !(itemData as any).session_blocks) {
+              continue;
+            }
+            
+            const sessionId = (itemData as any).session_blocks.session_id;
+            
+            // Set to temporary negative value
+            await supabase
+              .from('sessions')
+              .update({ order_index: -999 })
+              .eq('id', sessionId);
+          }
+          
+          // Phase 2: Assign final order_index values (1-based)
           for (let idx = 0; idx < reordered.length; idx++) {
             const item = reordered[idx];
             const orderIndex = idx + 1; // 1-based indexing
@@ -1474,7 +1496,7 @@ const PlanDetail = () => {
             
             const sessionId = (itemData as any).session_blocks.session_id;
             
-            // Simply update the session's order_index
+            // Set final order_index
             await supabase
               .from('sessions')
               .update({ order_index: orderIndex })
