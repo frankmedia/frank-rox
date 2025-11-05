@@ -64,9 +64,8 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
     <Card
       className={cn(
         "relative overflow-hidden transition-all duration-300 cursor-pointer",
-        completed
-          ? "bg-secondary/10 border-2 border-green-500"
-          : `bg-card hover:bg-card/80 border-2 ${getBorderColor()}`
+        "bg-card hover:bg-card/80 border-2",
+        getBorderColor()
       )}
       onClick={onClick}
     >
