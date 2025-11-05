@@ -1749,7 +1749,15 @@ const PlanDetail = () => {
 
       // Create session
       const sessionName = 'Hyrox Simulation (Open Men)';
-      const sIns = await supabase.from('sessions').insert({ plan_day_id: target, name: sessionName }).select('id').single();
+      // Get max order_index for this day
+      const { data: existingSessions } = await supabase
+        .from('sessions')
+        .select('order_index')
+        .eq('plan_day_id', target)
+        .order('order_index', { ascending: false })
+        .limit(1);
+      const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+      const sIns = await supabase.from('sessions').insert({ plan_day_id: target, name: sessionName, order_index: maxOrder + 1 }).select('id').single();
       if (sIns.error) throw sIns.error;
       const sessionId = String((sIns.data as any).id);
 
@@ -1966,7 +1974,15 @@ const PlanDetail = () => {
       if (!target) { toast({ description: 'Select a day first', variant: 'default' as any }); return; }
       // Direct create: session + block (avoids RPC type mismatches)
       const name = `${format} Block`;
-      const sIns = await supabase.from('sessions').insert({ plan_day_id: target, name }).select('id').single();
+      // Get max order_index for this day
+      const { data: existingSessions } = await supabase
+        .from('sessions')
+        .select('order_index')
+        .eq('plan_day_id', target)
+        .order('order_index', { ascending: false })
+        .limit(1);
+      const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+      const sIns = await supabase.from('sessions').insert({ plan_day_id: target, name, order_index: maxOrder + 1 }).select('id').single();
       if (sIns.error) throw sIns.error;
       const sessionId = String((sIns.data as any).id);
       const blockType = mapFormatToBlockType(format);
@@ -2131,7 +2147,15 @@ const PlanDetail = () => {
       if (!sFind.error && sFind.data && sFind.data.length > 0) {
         sessionId = String(sFind.data[0].id);
       } else {
-        const sIns = await supabase.from("sessions").insert({ plan_day_id: day.id, name: sessionName }).select("id").single();
+        // Get max order_index for this day
+        const { data: existingSessions } = await supabase
+          .from('sessions')
+          .select('order_index')
+          .eq('plan_day_id', day.id)
+          .order('order_index', { ascending: false })
+          .limit(1);
+        const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+        const sIns = await supabase.from("sessions").insert({ plan_day_id: day.id, name: sessionName, order_index: maxOrder + 1 }).select("id").single();
         if (sIns.error) throw sIns.error;
         sessionId = String((sIns.data as any).id);
       }
@@ -3001,12 +3025,20 @@ const PlanDetail = () => {
                         
                         if (!session) {
                           console.log(`  ➕ Creating session for plan_day ${planDay.id}`);
+                          // Get max order_index for this day
+                          const { data: existingSessions } = await supabase
+                            .from('sessions')
+                            .select('order_index')
+                            .eq('plan_day_id', planDay.id)
+                            .order('order_index', { ascending: false })
+                            .limit(1);
+                          const maxOrder = existingSessions?.[0]?.order_index ?? 0;
                           const { data: newSession, error: createSessionError } = await supabase
                             .from("sessions")
                             .insert({
                               plan_day_id: planDay.id,
                               name: `Day ${dayNum} Session`,
-                              order_index: 0,
+                              order_index: maxOrder + 1,
                             })
                             .select()
                             .single();
