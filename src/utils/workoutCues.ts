@@ -1,3 +1,21 @@
+// Cache for loaded voices
+let cachedVoices: SpeechSynthesisVoice[] = [];
+let voicesLoaded = false;
+
+// Load voices on initialization
+if ('speechSynthesis' in window) {
+  // Voices might load asynchronously
+  window.speechSynthesis.onvoiceschanged = () => {
+    cachedVoices = window.speechSynthesis.getVoices();
+    voicesLoaded = true;
+  };
+  // Try to load immediately
+  cachedVoices = window.speechSynthesis.getVoices();
+  if (cachedVoices.length > 0) {
+    voicesLoaded = true;
+  }
+}
+
 /**
  * Text-to-Speech utility - works everywhere (PWA + Native)
  */
@@ -7,8 +25,37 @@ export const speak = (text: string, options?: { rate?: number; pitch?: number; v
     window.speechSynthesis.cancel();
     
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = options?.rate || 1.0;     // Speed (0.1 to 10)
-    utterance.pitch = options?.pitch || 1.0;   // Pitch (0 to 2)
+    
+    // Get voices (use cached if available)
+    const voices = voicesLoaded ? cachedVoices : window.speechSynthesis.getVoices();
+    
+    if (voices.length > 0) {
+      // Prefer these voices in order (they sound better/more natural):
+      const preferredVoices = [
+        'Samantha',           // macOS/iOS - very natural
+        'Alex',               // macOS - good quality
+        'Karen',              // macOS/iOS
+        'Google US English',  // Android
+        'Microsoft David',    // Windows
+        'Microsoft Zira',     // Windows
+      ];
+      
+      let selectedVoice = voices.find(voice => 
+        preferredVoices.some(preferred => voice.name.includes(preferred))
+      );
+      
+      // If no preferred voice, use first en-US voice
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice => voice.lang.startsWith('en-US'));
+      }
+      
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
+    }
+    
+    utterance.rate = options?.rate || 1.1;     // Slightly faster (more energetic)
+    utterance.pitch = options?.pitch || 1.05;  // Slightly higher pitch (more engaging)
     utterance.volume = options?.volume || 1.0; // Volume (0 to 1)
     utterance.lang = 'en-US';
     
