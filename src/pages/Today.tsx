@@ -30,11 +30,55 @@ const Today = () => {
     heartRate: { average: number; max: number; min: number } | null;
   } | null>(null);
   const [healthConnected, setHealthConnected] = useState(false);
+  const [exerciseLogs, setExerciseLogs] = useState<Record<string, {
+    duration?: number;
+    distance?: number;
+    weight?: number;
+    weights?: number[];
+  }>>({});
   
   // Debug: Log exercises whenever they change
   useEffect(() => {
     console.log(`📋 Today page: Received ${exercises.length} exercises from DataContext:`, exercises.map(e => `${e.name} (${e.type})`));
   }, [exercises]);
+  
+  // Fetch workout logs for today's exercises
+  useEffect(() => {
+    const fetchLogs = async () => {
+      if (!authUser?.clientId) return;
+      
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (!userStr) return;
+      
+      const userData = JSON.parse(userStr);
+      const trainingDay = parseInt(localStorage.getItem(`currentTrainingDay_${userData.username}`) || "1");
+      
+      try {
+        const { data: logs } = await supabase
+          .from('workout_logs')
+          .select('exercise_name, duration_min, distance_km, weight, weights')
+          .eq('client_id', authUser.clientId)
+          .eq('training_day', trainingDay);
+        
+        if (logs) {
+          const logMap: Record<string, any> = {};
+          logs.forEach(log => {
+            logMap[log.exercise_name] = {
+              duration: log.duration_min,
+              distance: log.distance_km,
+              weight: log.weight,
+              weights: log.weights,
+            };
+          });
+          setExerciseLogs(logMap);
+        }
+      } catch (e) {
+        console.error('Error fetching exercise logs:', e);
+      }
+    };
+    
+    fetchLogs();
+  }, [authUser?.clientId, exercises]);
   
   // Check if health is connected and fetch data
   useEffect(() => {
@@ -1017,12 +1061,18 @@ const Today = () => {
                   return null;
                 }
                 
+                const loggedData = exerciseLogs[exercise.name];
+                
                 return (
                   <ExerciseCard
                     key={exercise.id}
                     exercise={exercise}
                     onClick={() => navigate(`/exercise/${exercise.id}`)}
                     isCompleted={completedExercises.has(exercise.name)}
+                    loggedDuration={loggedData?.duration}
+                    loggedDistance={loggedData?.distance}
+                    loggedWeight={loggedData?.weight}
+                    loggedWeights={loggedData?.weights}
                   />
                 );
               })}

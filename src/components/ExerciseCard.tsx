@@ -24,9 +24,13 @@ interface ExerciseCardProps {
   };
   onClick?: () => void;
   isCompleted?: boolean;
+  loggedDuration?: number;
+  loggedDistance?: number;
+  loggedWeight?: number;
+  loggedWeights?: number[];
 }
 
-export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, loggedDistance, loggedWeight, loggedWeights }: ExerciseCardProps) {
   const completed = isCompleted || exercise.completed;
   
   // Define border colors for new workout types
@@ -160,7 +164,7 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
           )}
 
           {exercise.type === "mobility" && (
-            <div className="flex items-center gap-4 text-muted-foreground">
+            <div className="flex items-center gap-4 text-muted-foreground flex-wrap">
               {exercise.durationMin && (
                 <span className="text-4xl font-bold text-foreground">
                   {exercise.durationMin < 1 
@@ -168,7 +172,12 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
                     : `${exercise.durationMin} min`}
                 </span>
               )}
-              <span className="text-sm text-muted-foreground">Mobility</span>
+              {loggedDuration && (
+                <span className="text-2xl font-bold text-green-400">
+                  ✓ {loggedDuration} min
+                </span>
+              )}
+              {!loggedDuration && <span className="text-sm text-muted-foreground">Mobility</span>}
             </div>
           )}
 
