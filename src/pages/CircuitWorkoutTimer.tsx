@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/utils/supabaseClient";
 import { FlameRating } from "@/components/FlameRating";
 import { useWorkoutSession } from "@/contexts/WorkoutSessionContext";
+import { hiitCues, workoutCues } from "@/utils/workoutCues";
 
 interface CircuitWorkoutTimerProps {
   exercise: Exercise;
@@ -124,10 +125,17 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
           return 0;
         }
         
-        // Beep at 3, 2, 1 seconds
+        // Beep and voice cues at specific times
         if ((prev === 3 || prev === 2 || prev === 1) && audioRef.current) {
           audioRef.current.play();
           triggerSuccessHaptic();
+          // Voice countdown for last 3 seconds
+          workoutCues.countdown(prev);
+        }
+        
+        // Additional voice cues
+        if (prev === 10) {
+          workoutCues.last10Seconds();
         }
         
         return prev - 1;
@@ -143,6 +151,9 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
     if (phase === "GET_READY") {
       setPhase("WORK");
       setTimeRemaining(Number(workSeconds));
+      // Announce start of work
+      const exerciseName = exercises[currentExerciseIndex]?.name;
+      hiitCues.workStart(exerciseName);
     } else if (phase === "WORK") {
       // Mark current exercise as complete for this round
       setCompletedExercises((prev) => {
@@ -160,36 +171,58 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
         if (currentRound === totalRounds) {
           setPhase("COMPLETE");
           setIsRunning(false);
+          hiitCues.workoutComplete();
           handleComplete();
         } else {
+          // Announce round complete
+          hiitCues.roundComplete(currentRound, totalRounds);
+          
+          // Check if next round is the last
+          if (currentRound + 1 === totalRounds) {
+            hiitCues.lastRound();
+          }
+          
           // Start rest between rounds ONLY if restBetweenRounds > 0
           if (restBetweenRounds > 0) {
             setPhase("REST_BETWEEN_ROUNDS");
             setTimeRemaining(restBetweenRounds);
+            hiitCues.restStart();
           } else {
             // No rest between rounds - go directly to next round
             setCurrentRound((prev) => prev + 1);
             setCurrentExerciseIndex(0);
             setPhase("WORK");
             setTimeRemaining(Number(workSeconds));
+            const nextExerciseName = exercises[0]?.name;
+            hiitCues.workStart(nextExerciseName);
           }
         }
       } else {
         // More exercises in this round - start rest
         setPhase("REST");
         setTimeRemaining(Number(restSeconds));
+        hiitCues.restStart();
+        // Announce next exercise during rest
+        const nextExerciseName = exercises[currentExerciseIndex + 1]?.name;
+        if (nextExerciseName && restSeconds >= 5) {
+          hiitCues.getReady(nextExerciseName);
+        }
       }
     } else if (phase === "REST") {
       // Move to next exercise
       setCurrentExerciseIndex((prev) => prev + 1);
       setPhase("WORK");
       setTimeRemaining(Number(workSeconds));
+      const exerciseName = exercises[currentExerciseIndex + 1]?.name;
+      hiitCues.workStart(exerciseName);
     } else if (phase === "REST_BETWEEN_ROUNDS") {
       // Start next round
       setCurrentRound((prev) => prev + 1);
       setCurrentExerciseIndex(0);
       setPhase("WORK");
       setTimeRemaining(Number(workSeconds));
+      const exerciseName = exercises[0]?.name;
+      hiitCues.workStart(exerciseName);
     }
   };
   
