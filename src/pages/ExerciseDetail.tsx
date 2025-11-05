@@ -345,7 +345,13 @@ const ExerciseDetail = () => {
 
     if (exercise.type === "cardio" || exercise.type === "running") {
       // Cardio & Running exercises: both distance and duration
-      data.distance = todaysDistance ? parseFloat(todaysDistance) : undefined;
+      // Convert distance: if target was < 1km, user entered meters, so convert to km for database
+      let distanceKm: number | undefined;
+      if (todaysDistance) {
+        const isMeters = exercise.targetDistanceKm && exercise.targetDistanceKm < 1;
+        distanceKm = isMeters ? parseFloat(todaysDistance) / 1000 : parseFloat(todaysDistance);
+      }
+      data.distance = distanceKm;
       data.duration = todaysDuration ? parseFloat(todaysDuration) : undefined;
     } else if (exercise.type === "mobility") {
       // Mobility exercises: duration only, no PB tracking
@@ -1266,12 +1272,18 @@ const ExerciseDetail = () => {
                           const elapsedSeconds = timerElement ? parseInt(timerElement.getAttribute('data-timer-elapsed') || '0') : 0;
                           const elapsedMinutes = (elapsedSeconds / 60).toFixed(2);
                           
+                          // Set distance: if target < 1km, store in meters; otherwise in km
+                          const targetKm = exercise.targetDistanceKm || 0;
+                          const isMeters = targetKm < 1;
+                          const distanceValue = isMeters ? (targetKm * 1000).toFixed(0) : targetKm.toString();
+                          
                           setTodaysDuration(elapsedMinutes);
-                          setTodaysDistance((exercise.targetDistanceKm || 0).toString());
+                          setTodaysDistance(distanceValue);
                           setShowWorkoutTimer(false);
                           
+                          const distanceDisplay = isMeters ? `${Math.round(targetKm * 1000)}m` : `${targetKm}km`;
                           toast.success("✅ Recorded!", {
-                            description: `${exercise.targetDistanceKm}km in ${elapsedMinutes} min`,
+                            description: `${distanceDisplay} in ${elapsedMinutes} min`,
                             duration: 3000,
                           });
                           
@@ -1566,10 +1578,12 @@ const ExerciseDetail = () => {
                   <Button
                     type="button"
                     onClick={() => {
+                      // If target is in meters (< 1km), work in meters; otherwise km
+                      const isMeters = exercise.targetDistanceKm && exercise.targetDistanceKm < 1;
                       const current = parseFloat(todaysDistance || "0");
-                      const increment = exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? 10 : 0.1; // 10m or 0.1km
+                      const increment = isMeters ? 10 : 0.1;
                       const newValue = Math.max(0, current - increment);
-                      setTodaysDistance(newValue.toFixed(exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? 0 : 1));
+                      setTodaysDistance(newValue.toFixed(isMeters ? 0 : 1));
                     }}
                     className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
@@ -1588,10 +1602,12 @@ const ExerciseDetail = () => {
                   <Button
                     type="button"
                     onClick={() => {
+                      // If target is in meters (< 1km), work in meters; otherwise km
+                      const isMeters = exercise.targetDistanceKm && exercise.targetDistanceKm < 1;
                       const current = parseFloat(todaysDistance || "0");
-                      const increment = exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? 10 : 0.1; // 10m or 0.1km
+                      const increment = isMeters ? 10 : 0.1;
                       const newValue = current + increment;
-                      setTodaysDistance(newValue.toFixed(exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? 0 : 1));
+                      setTodaysDistance(newValue.toFixed(isMeters ? 0 : 1));
                     }}
                     className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
