@@ -1723,41 +1723,6 @@ const ExerciseDetail = () => {
           </>
         )}
 
-        {/* Today's Logged Data - Show what was entered */}
-        {(todaysDistance || todaysDuration || setWeights.some(w => w)) && (
-          <Card className="p-6 bg-green-500/10 border-2 border-green-500/30">
-            <h3 className="text-xl font-bold text-center mb-4 text-green-400">
-              📝 Today's Log
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              {todaysDuration && (
-                <div className="text-center p-3 bg-background/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">Duration</p>
-                  <p className="text-2xl font-bold text-foreground">{todaysDuration} min</p>
-                </div>
-              )}
-              {todaysDistance && (
-                <div className="text-center p-3 bg-background/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">Distance</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {exercise.targetDistanceKm && exercise.targetDistanceKm < 1 
-                      ? `${todaysDistance}m` 
-                      : `${todaysDistance}km`}
-                  </p>
-                </div>
-              )}
-              {setWeights.some(w => w) && (
-                <div className="text-center p-3 bg-background/50 rounded-lg col-span-2">
-                  <p className="text-xs text-muted-foreground mb-1">Weights</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {setWeights.filter(w => w).map((w, i) => `${w}kg`).join(" → ")}
-                  </p>
-                </div>
-              )}
-            </div>
-          </Card>
-        )}
-
         {/* Flame Rating - Click to Rate & Complete */}
         <Card className="rating-section p-6 bg-yellow-500/10 border-4 border-yellow-500">
           <div className="flex flex-col items-center gap-4">
