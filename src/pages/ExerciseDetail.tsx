@@ -30,7 +30,7 @@ import { supabase } from "@/utils/supabaseClient";
 const ExerciseDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { exercises: contextExercises } = useData(); // Get exercises from DataContext
+  const { exercises: contextExercises, refresh: refreshDataContext } = useData(); // Get exercises and refresh from DataContext
   const { user: authUser } = useAuth();
   const { endWorkoutSession } = useWorkoutSession();
   
@@ -165,6 +165,12 @@ const ExerciseDetail = () => {
             setRating(0);
             setExistingLogId(null);
             setEditMode(false);
+            
+            // Clear run/cardio specific data when navigating to new exercise
+            setTodaysDistance("");
+            setTodaysDuration("");
+            setRunStats(null);
+            setShowWorkoutTimer(false);
             
             // Initialize edit fields with current exercise data
             setEditName(ex.name || "");
@@ -1027,11 +1033,17 @@ const ExerciseDetail = () => {
                           weightsPreserved: hasEnteredWeights
                         });
                         
+                        // Refresh DataContext to reload all exercises with updated values
+                        console.log("🔄 Refreshing DataContext after save...");
+                        await refreshDataContext();
+                        
                         toast.success("Exercise updated!", {
                           description: editName !== exercise.name 
                             ? `${editName} - ${updatedExercise.sets}×${updatedExercise.reps}` 
                             : `${updatedExercise.sets}×${updatedExercise.reps} @ ${updatedExercise.suggestedKg}kg`
                         });
+                        
+                        setEditMode(false); // Close edit modal after successful save
                       } catch (error) {
                         console.error("Error saving exercise:", error);
                         toast.error("Failed to save changes", {
