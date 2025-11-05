@@ -176,7 +176,9 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
                   ✓ {loggedDuration} min
                 </span>
               )}
-              {!loggedDuration && <span className="text-sm text-muted-foreground">Mobility</span>}
+              {!exercise.durationMin && !loggedDuration && (
+                <span className="text-sm text-muted-foreground">Mobility</span>
+              )}
             </div>
           )}
 

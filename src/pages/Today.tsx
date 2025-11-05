@@ -70,6 +70,7 @@ const Today = () => {
               weights: log.weights,
             };
           });
+          console.log('📊 Fetched exercise logs:', logMap);
           setExerciseLogs(logMap);
         }
       } catch (e) {
@@ -1062,6 +1063,7 @@ const Today = () => {
                 }
                 
                 const loggedData = exerciseLogs[exercise.name];
+                console.log(`📋 Exercise "${exercise.name}" logged data:`, loggedData);
                 
                 return (
                   <ExerciseCard
