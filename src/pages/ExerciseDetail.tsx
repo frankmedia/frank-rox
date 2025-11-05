@@ -1271,11 +1271,18 @@ const ExerciseDetail = () => {
                           const timerElement = document.querySelector('[data-timer-elapsed]');
                           const elapsedSeconds = timerElement ? parseInt(timerElement.getAttribute('data-timer-elapsed') || '0') : 0;
                           const elapsedMinutes = (elapsedSeconds / 60).toFixed(2);
+                          const elapsedHours = elapsedSeconds / 3600;
                           
                           // Set distance: if target < 1km, store in meters; otherwise in km
                           const targetKm = exercise.targetDistanceKm || 0;
                           const isMeters = targetKm < 1;
                           const distanceValue = isMeters ? (targetKm * 1000).toFixed(0) : targetKm.toString();
+                          
+                          // Calculate speed (km/h) and pace (min/km)
+                          const avgSpeed = targetKm / elapsedHours; // km/h
+                          const paceMinPerKm = elapsedSeconds / 60 / targetKm; // min/km
+                          const paceMin = Math.floor(paceMinPerKm);
+                          const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
                           
                           setTodaysDuration(elapsedMinutes);
                           setTodaysDistance(distanceValue);
@@ -1283,8 +1290,8 @@ const ExerciseDetail = () => {
                           
                           const distanceDisplay = isMeters ? `${Math.round(targetKm * 1000)}m` : `${targetKm}km`;
                           toast.success("✅ Recorded!", {
-                            description: `${distanceDisplay} in ${elapsedMinutes} min`,
-                            duration: 3000,
+                            description: `${distanceDisplay} in ${elapsedMinutes} min\n🏃 ${avgSpeed.toFixed(1)} km/h | ${paceMin}:${paceSec.toString().padStart(2, '0')} /km`,
+                            duration: 5000,
                           });
                           
                           // Scroll to rating section
@@ -1312,7 +1319,7 @@ const ExerciseDetail = () => {
                 ) : (
                   <Button
                     size="lg"
-                    onClick={handleStartWorkout}
+                    onClick={() => setShowWorkoutTimer(true)} // Just start the stopwatch, no duration needed!
                     className="h-24 px-16 text-3xl font-bold w-full"
                     style={{ backgroundColor: '#FFCC00', color: '#000' }}
                   >
