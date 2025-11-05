@@ -1475,7 +1475,8 @@ const PlanDetail = () => {
             name: it.name 
           })));
           
-          setItemsByDay(prev => ({ ...prev, [dayIdA]: reordered }));
+          // DON'T update UI state yet - it causes premature reload!
+          // setItemsByDay will be updated after loadDayGroups() completes
           
           // TWO-PHASE UPDATE to avoid conflicts when moving to position 1:
           console.log('🔄 ========== PHASE 1: Set to -999 ==========');
