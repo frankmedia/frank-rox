@@ -117,29 +117,23 @@ const Overview = () => {
           localStorage.setItem(lastPlanIdKey, currentPlanId);
         }
 
-        // 🚀 PERFORMANCE FIX: Fetch ALL plan days with exercises in ONE query
-        const { data: planDaysWithExercises, error: planDaysError } = await supabase
+        // Fetch plan_days to get structure
+        const { data: planDays, error: planDaysError } = await supabase
           .from('plan_days')
-          .select(`
-            day_index,
-            is_rest,
-            exercises (
-              id, name, type, sets, reps, suggestedKg, durationMin, targetDistanceKm, notes, mediaUrl, child_exercises
-            )
-          `)
+          .select('day_index, is_rest')
           .eq('plan_id', plan.id)
           .order('day_index', { ascending: true });
 
-        if (planDaysError || !planDaysWithExercises || planDaysWithExercises.length === 0) {
+        if (planDaysError || !planDays || planDays.length === 0) {
           console.error("Error loading plan days:", planDaysError);
           setLoading(false);
           return;
         }
 
-        console.log(`⚡ Loaded ${planDaysWithExercises.length} days in ONE query (fast!)`);
+        console.log(`📋 Loaded ${planDays.length} plan days`);
 
         // Calculate max day
-        const maxDayIndex = Math.max(...planDaysWithExercises.map(pd => pd.day_index));
+        const maxDayIndex = Math.max(...planDays.map(pd => pd.day_index));
         const max = maxDayIndex + 1; // day_index is 0-based
         setMaxDay(max);
 
@@ -153,11 +147,12 @@ const Overview = () => {
         // Load from Supabase first (source of truth)
         const { data: completedDaysData } = await supabase
           .from('completed_days')
-          .select('day_number')
+          .select('day_index')
           .eq('client_id', authUser.clientId)
           .eq('plan_id', plan.id);
         
-        const completedDaysFromDB = completedDaysData?.map(cd => cd.day_number) || [];
+        // day_index is 0-based, convert to 1-based day numbers
+        const completedDaysFromDB = completedDaysData?.map(cd => cd.day_index + 1) || [];
         
         // Also check localStorage as backup
         const completedDaysKey = `completedDays_${userData.username}`;
@@ -169,11 +164,21 @@ const Overview = () => {
         
         console.log(`✅ Found ${completedDays.length} completed days:`, completedDays);
 
-        // Process all days in memory (no more database queries!)
-        const summaries: DaySummary[] = planDaysWithExercises.map((planDay) => {
+        // Now load exercises for each day using the existing getTodayExercises function
+        const summaries: DaySummary[] = [];
+        const userKey = `currentTrainingDay_${userData.username}`;
+        const originalDay = localStorage.getItem(userKey);
+
+        for (let dayIdx = 0; dayIdx < planDays.length; dayIdx++) {
+          const planDay = planDays[dayIdx];
           const day = planDay.day_index + 1; // Convert to 1-based
-          const exercises = planDay.exercises || [];
           const isRestDay = planDay.is_rest || false;
+
+          // Temporarily set day in localStorage to fetch exercises
+          localStorage.setItem(userKey, day.toString());
+          
+          // Use existing getTodayExercises which handles the complex query
+          const exercises = await getTodayExercises(authUser.clientId);
 
           // Analyze exercise types
           const hasWeights = exercises.some(e => e.type === "weights");
@@ -191,7 +196,7 @@ const Overview = () => {
           // Filter out intro cards for exercise count
           const workoutExercises = exercises.filter(e => e.type !== "intro");
 
-          return {
+          summaries.push({
             day,
             exercises,
             totalExercises: workoutExercises.length,
@@ -205,10 +210,16 @@ const Overview = () => {
             hasHIIT,
             hasCircuit,
             hasAMRAP,
-          };
-        });
+          });
+        }
+
+        // Restore original day
+        if (originalDay) {
+          localStorage.setItem(userKey, originalDay);
+        }
 
         setDaySummaries(summaries);
+        console.log(`✅ Loaded ${summaries.length} days with exercises`);
       } catch (error) {
         console.error("Error loading days:", error);
       } finally {
