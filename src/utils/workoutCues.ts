@@ -72,11 +72,9 @@ export const workoutCues = {
     speak("GO!", { rate: 1.2 });
   },
   
-  // Countdown (call for each second)
+  // Countdown (call for each second) - SILENT (beeps only)
   countdown: (seconds: number) => {
-    if (seconds <= 3 && seconds > 0) {
-      speak(seconds.toString(), { rate: 1.3 });
-    }
+    // Don't speak - let beeps handle it
   },
   
   // Halfway through
@@ -94,27 +92,24 @@ export const workoutCues = {
     speak("30 seconds left, push hard!", { rate: 1.0 });
   },
   
-  // 10 seconds remaining
+  // 10 seconds remaining - SILENT (beeps only)
   last10Seconds: () => {
-    speak("10 seconds!", { rate: 1.1 });
+    // Don't speak - let beeps handle it
   },
   
   // Workout complete
   finish: () => {
-    speak("Stop! Well done!", { rate: 0.9 });
+    speak("Done!", { rate: 1.0 });
   },
   
   // Lap/round complete
   lapComplete: (lap: number, totalLaps?: number) => {
-    const message = totalLaps 
-      ? `Lap ${lap} of ${totalLaps} complete`
-      : `Lap ${lap} complete`;
-    speak(message, { rate: 1.0 });
+    speak("Round complete", { rate: 1.0 });
   },
   
   // Rest period start
   rest: (seconds: number) => {
-    speak(`Rest for ${seconds} seconds`, { rate: 1.0 });
+    speak("Rest", { rate: 1.0 });
   },
   
   // Rest ending soon
@@ -185,29 +180,27 @@ export const runningCues = {
  */
 export const hiitCues = {
   workStart: (exerciseName?: string) => {
-    const message = exerciseName ? `Go! ${exerciseName}` : "Go! Work!";
-    speak(message, { rate: 1.2 });
+    speak("GO!", { rate: 1.2 });
   },
   
   restStart: () => {
-    speak("Rest", { rate: 0.9 });
+    speak("Rest", { rate: 1.0 });
   },
   
   getReady: (nextExercise?: string) => {
-    const message = nextExercise ? `Get ready for ${nextExercise}` : "Get ready!";
-    speak(message, { rate: 1.0 });
+    speak("Get ready!", { rate: 1.0 });
   },
   
   roundComplete: (round: number, totalRounds: number) => {
-    speak(`Round ${round} of ${totalRounds} complete`, { rate: 1.0 });
+    speak("Round complete", { rate: 1.0 });
   },
   
   lastRound: () => {
-    speak("Final round, give it everything!", { rate: 1.0 });
+    // Silent - don't announce
   },
   
   workoutComplete: () => {
-    speak("Workout complete! Amazing work!", { rate: 0.9 });
+    speak("Done!", { rate: 1.0 });
   },
 };
 
