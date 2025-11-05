@@ -890,10 +890,16 @@ const ExerciseDetail = () => {
                   <div>
                     <Label className="text-3xl font-bold mb-3 block">Duration (min)</Label>
                     <Input
-                      type="number"
-                      step="0.1"
-                      value={editDuration || ""}
-                      onChange={(e) => setEditDuration(parseFloat(e.target.value) || 0)}
+                      type="text"
+                      inputMode="decimal"
+                      value={editDuration === 0 ? "" : editDuration}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        // Allow empty, numbers, and decimal point only
+                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                          setEditDuration(val === "" ? 0 : parseFloat(val) || 0);
+                        }
+                      }}
                       className="text-5xl h-20 text-center font-bold"
                     />
                     <p className="text-sm text-muted-foreground text-center mt-2">
@@ -905,10 +911,16 @@ const ExerciseDetail = () => {
                   <div>
                     <Label className="text-3xl font-bold mb-3 block">Target Distance (km)</Label>
                     <Input
-                      type="number"
-                      step="0.001"
-                      value={editDistance || ""}
-                      onChange={(e) => setEditDistance(parseFloat(e.target.value) || 0)}
+                      type="text"
+                      inputMode="decimal"
+                      value={editDistance === 0 ? "" : editDistance}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        // Allow empty, numbers, and decimal point
+                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                          setEditDistance(val === "" ? 0 : parseFloat(val) || 0);
+                        }
+                      }}
                       className="text-5xl h-20 text-center font-bold"
                       placeholder="e.g., 0.5 = 500m, 5.0 = 5km"
                     />
