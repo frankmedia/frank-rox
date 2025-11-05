@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Dumbbell, Medal, Activity, Zap, Repeat, Target, PersonStanding, HeartPulse } from "lucide-react";
+import { Clock, Dumbbell, Medal, Activity, Zap, Repeat, Target, PersonStanding, HeartPulse, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InlineHeartRate } from "@/components/HeartRateZone";
 
@@ -31,7 +31,7 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
   
   // Define border colors for new workout types
   const getBorderColor = () => {
-    if (completed) return "border-yellow-500";
+    if (completed) return "border-green-500"; // Green for completed
     switch (exercise.type) {
       case "hiit":
       case "hiit_exercise": return "border-[#FF00B2]"; // Hot pink
@@ -357,9 +357,9 @@ export function ExerciseCard({ exercise, onClick, isCompleted }: ExerciseCardPro
         </div>
 
         {completed && (
-          <div className="absolute top-0 right-0 w-16 h-16">
-            <div className="absolute transform rotate-45 bg-yellow-500 text-black text-xs font-bold py-1 right-[-30px] top-[10px] w-[100px] text-center">
-              ✓ DONE
+          <div className="absolute top-2 right-2">
+            <div className="bg-green-500 text-white rounded-full p-2 shadow-lg">
+              <CheckCircle2 className="w-8 h-8" />
             </div>
           </div>
         )}
