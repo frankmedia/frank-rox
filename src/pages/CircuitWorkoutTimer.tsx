@@ -50,7 +50,7 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
   const [currentRound, setCurrentRound] = useState(1);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(10); // 10 second get ready
-  const [isRunning, setIsRunning] = useState(true); // Auto-start
+  const [isRunning, setIsRunning] = useState(false); // Don't auto-start (need user gesture for audio)
   const [isPaused, setIsPaused] = useState(false);
   const [rating, setRating] = useState(0); // 0-5 flame rating
   
@@ -226,7 +226,16 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
     }
   };
   
-  const handleStart = () => {
+  const handleStart = async () => {
+    // Unlock audio on user interaction (required by browsers)
+    if ((audioRef as any).current?.context) {
+      const ctx = (audioRef as any).current.context;
+      if (ctx.state === 'suspended') {
+        console.log('🔊 Unlocking audio on start...');
+        await ctx.resume();
+        console.log('🔊 Audio unlocked!');
+      }
+    }
     setIsRunning(true);
     setIsPaused(false);
   };
@@ -416,7 +425,16 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
 
         {/* Controls */}
         <div className="mt-4 space-y-4">
-          {phase !== "COMPLETE" && (
+          {!isRunning && !isPaused && phase === "GET_READY" && (
+            <Button
+              onClick={handleStart}
+              className="w-full h-16 text-xl font-bold bg-green-600 hover:bg-green-700 text-white"
+            >
+              START WORKOUT
+            </Button>
+          )}
+          
+          {phase !== "COMPLETE" && (isRunning || isPaused) && (
             <Button
               onClick={handleReset}
               className="w-full h-12 text-base font-bold bg-red-600 hover:bg-red-700 text-white"

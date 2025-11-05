@@ -53,18 +53,8 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
     // Note: We don't end the session when timer stops - only when workout is complete/exited
   }, [isRunning, startWorkoutSession]);
   
-  // Announce "GO!" when timer first starts (autoStart or manual)
+  // Track if we've announced start (only announce on user click, not autoStart)
   const hasAnnouncedStart = useRef(false);
-  useEffect(() => {
-    if (isRunning && !hasAnnouncedStart.current) {
-      workoutCues.start();
-      hasAnnouncedStart.current = true;
-    }
-    if (!isRunning && seconds === initialSeconds) {
-      // Reset flag when timer is reset
-      hasAnnouncedStart.current = false;
-    }
-  }, [isRunning, seconds, initialSeconds]);
   
   // Memoized completion callback to prevent unnecessary re-renders
   const handleComplete = useCallback(() => {
@@ -276,8 +266,11 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
         }}
         onClick={() => {
           if (!isRunning) {
-            // Starting timer - say "GO!"
-            workoutCues.start();
+            // Starting timer - say "GO!" (only on first start)
+            if (!hasAnnouncedStart.current) {
+              workoutCues.start();
+              hasAnnouncedStart.current = true;
+            }
           } else {
             // Pausing timer
             workoutCues.pause();
