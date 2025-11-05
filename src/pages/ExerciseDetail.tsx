@@ -502,12 +502,13 @@ const ExerciseDetail = () => {
           .eq("status", "active")
           .single();
           
-        await syncWorkoutLogToSupabase(
+        const syncResult = await syncWorkoutLogToSupabase(
           authUser.clientId,
           plan?.id || null,
           trainingDay,
           {
             exerciseName: exercise.name,
+            exerciseId: exercise.id, // Add exercise ID for tracking
             weight: data.weight,
             weights: data.weights,
             sets: data.sets,
@@ -518,6 +519,10 @@ const ExerciseDetail = () => {
             isPB,
           }
         );
+        
+        if (syncResult.success) {
+          console.log("✅ Exercise synced to Supabase with log ID:", syncResult.logId);
+        }
         
         console.log("✅ Exercise synced to Supabase with PB check");
       }

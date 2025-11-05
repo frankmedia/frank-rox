@@ -17,6 +17,15 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
+interface ExerciseLog {
+  exerciseName: string;
+  weight?: number;
+  weights?: number[];
+  duration?: number;
+  distance?: number;
+  rating?: number;
+}
+
 interface DaySummary {
   day: number;
   exercises: Exercise[];
@@ -31,6 +40,7 @@ interface DaySummary {
   hasHIIT: boolean;
   hasCircuit: boolean;
   hasAMRAP: boolean;
+  exerciseLogs: ExerciseLog[]; // Logged workout data for this day
 }
 
 const Overview = () => {
@@ -209,6 +219,23 @@ const Overview = () => {
           // Filter out intro cards for exercise count
           const workoutExercises = exercises.filter(e => e.type !== "intro");
 
+          // Fetch workout logs for this day
+          const { data: logs } = await supabase
+            .from('workout_logs')
+            .select('exercise_name, weight, weights, duration_min, distance_km, rating')
+            .eq('client_id', authUser.clientId)
+            .eq('training_day', day)
+            .order('logged_at', { ascending: false });
+
+          const exerciseLogs: ExerciseLog[] = (logs || []).map(log => ({
+            exerciseName: log.exercise_name,
+            weight: log.weight || undefined,
+            weights: log.weights || undefined,
+            duration: log.duration_min || undefined,
+            distance: log.distance_km || undefined,
+            rating: log.rating || undefined,
+          }));
+
           summaries.push({
             day,
             exercises,
@@ -223,6 +250,7 @@ const Overview = () => {
             hasHIIT,
             hasCircuit,
             hasAMRAP,
+            exerciseLogs,
           });
         }
 
@@ -992,6 +1020,55 @@ const Overview = () => {
                           <span>AMRAP</span>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Logged exercise data - show if completed */}
+                  {summary.isCompleted && summary.exerciseLogs.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <div className="grid grid-cols-1 gap-2">
+                        {summary.exerciseLogs.slice(0, 3).map((log, idx) => (
+                          <div key={idx} className="text-xs">
+                            <span className="font-medium text-foreground">{log.exerciseName}</span>
+                            <div className="flex items-center gap-3 mt-1 text-muted-foreground">
+                              {log.weights && log.weights.length > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Dumbbell className="w-3 h-3" />
+                                  {Math.max(...log.weights)}kg
+                                </span>
+                              )}
+                              {log.weight && (
+                                <span className="flex items-center gap-1">
+                                  <Dumbbell className="w-3 h-3" />
+                                  {log.weight}kg
+                                </span>
+                              )}
+                              {log.duration && (
+                                <span className="flex items-center gap-1">
+                                  ⏱️ {log.duration}min
+                                </span>
+                              )}
+                              {log.distance && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {log.distance}km
+                                </span>
+                              )}
+                              {log.rating && (
+                                <span className="flex items-center gap-1">
+                                  <Flame className="w-3 h-3" style={{ color: '#FFCC00' }} />
+                                  {log.rating}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {summary.exerciseLogs.length > 3 && (
+                          <span className="text-xs text-muted-foreground italic">
+                            +{summary.exerciseLogs.length - 3} more...
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

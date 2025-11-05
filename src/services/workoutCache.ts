@@ -321,6 +321,7 @@ export async function syncWorkoutLogToSupabase(
   trainingDay: number,
   logData: {
     exerciseName: string;
+    exerciseId?: string; // Add exercise ID for tracking
     weight?: number;
     weights?: number[];
     sets?: number;
@@ -331,7 +332,7 @@ export async function syncWorkoutLogToSupabase(
     notes?: string;
     isPB?: boolean;
   }
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; logId?: string }> {
   try {
     const timestamp = new Date().toISOString();
 
@@ -340,6 +341,7 @@ export async function syncWorkoutLogToSupabase(
       plan_id: planId,
       training_day: trainingDay,
       exercise_name: logData.exerciseName,
+      exercise_id: logData.exerciseId || null,
       logged_at: timestamp,
       weight: logData.weight || null,
       weights: logData.weights || null,
@@ -354,17 +356,19 @@ export async function syncWorkoutLogToSupabase(
 
     console.log("💾 Syncing workout log to Supabase:", workoutLog);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("workout_logs")
-      .insert(workoutLog);
+      .insert(workoutLog)
+      .select('id')
+      .single();
 
     if (error) {
       console.error("❌ Error syncing to Supabase:", error);
       return { success: false, error: error.message };
     }
 
-    console.log("✅ Successfully synced to Supabase");
-    return { success: true };
+    console.log("✅ Successfully synced to Supabase, log ID:", data?.id);
+    return { success: true, logId: data?.id };
   } catch (err) {
     console.error("❌ Unexpected error syncing to Supabase:", err);
     return { 
