@@ -343,11 +343,8 @@ const ExerciseDetail = () => {
       rating: finalRating > 0 ? finalRating : undefined, // Only send if rated (1-5)
     };
 
-    if (exercise.type === "cardio") {
-      // Cardio exercises: duration only, no distance
-      data.duration = todaysDuration ? parseFloat(todaysDuration) : undefined;
-    } else if (exercise.type === "running") {
-      // Running exercises: both distance and duration
+    if (exercise.type === "cardio" || exercise.type === "running") {
+      // Cardio & Running exercises: both distance and duration
       data.distance = todaysDistance ? parseFloat(todaysDistance) : undefined;
       data.duration = todaysDuration ? parseFloat(todaysDuration) : undefined;
     } else if (exercise.type === "mobility") {
@@ -1076,38 +1073,15 @@ const ExerciseDetail = () => {
           )}
         </div>
 
-        {/* Target Card - Hide when timer is running for mobility exercises or when empty */}
-        {!(exercise.type === "mobility" && showWorkoutTimer) && 
-         !(exercise.type === "cardio" && !exercise.durationMin) &&
-         !(exercise.type === "running" && !exercise.durationMin && !exercise.targetDistanceKm) && (
+        {/* Target Card - Hide for cardio/running (shown in timer section), hide when timer running for mobility */}
+        {exercise.type !== "cardio" && exercise.type !== "running" && !(exercise.type === "mobility" && showWorkoutTimer) && (
         <Card className="p-6 bg-secondary/10 border-secondary">
           <div className="text-center">
             {/* Hide "Target" label for mobility exercises */}
             {exercise.type !== "mobility" && (
               <p className="text-sm text-muted-foreground mb-2">Target</p>
             )}
-            {exercise.type === "cardio" ? (
-              <>
-                {exercise.durationMin && exercise.durationMin > 0 && (
-                  <p className="text-5xl font-bold text-foreground mb-4">
-                    {exercise.durationMin} min
-                  </p>
-                )}
-              </>
-            ) : exercise.type === "running" ? (
-              <>
-                {exercise.durationMin && exercise.durationMin > 0 && (
-                  <p className="text-5xl font-bold text-foreground mb-4">
-                    {exercise.durationMin} min
-                  </p>
-                )}
-                {exercise.targetDistanceKm && exercise.targetDistanceKm > 0 && (
-                  <p className="text-2xl text-secondary font-semibold">
-                    Distance: {exercise.targetDistanceKm?.toFixed(1)}km
-                  </p>
-                )}
-              </>
-            ) : exercise.type === "mobility" ? (
+            {exercise.type === "mobility" ? (
               <>
                 <Label htmlFor="mobility-duration" className="text-xl font-bold block text-center mb-4">Duration (minutes)</Label>
                 <p className="text-sm text-muted-foreground text-center mb-2">0.5 min = 30 seconds</p>
@@ -1261,57 +1235,137 @@ const ExerciseDetail = () => {
           </>
         )}
         
-        {/* Workout Countdown Timer (for cardio/running exercises - shown later) */}
-        {(exercise.type === "cardio" || exercise.type === "running") && (
+        {/* Running & Cardio (ERG) Exercises */}
+        {(exercise.type === "running" || exercise.type === "cardio") && (
           <>
-            {showWorkoutTimer ? (
+            {/* DISTANCE-BASED: Use stopwatch to record time */}
+            {exercise.targetDistanceKm && exercise.targetDistanceKm > 0 ? (
               <>
-                <div className="overflow-hidden rounded-xl border-2 border-primary">
-                  <Timer
-                      mode="countdown"
-                      initialSeconds={workoutDuration}
-                      autoStart={true}
-                      onComplete={() => {
-                        const completedDuration = Math.round(workoutDuration / 60);
-                        setTodaysDuration(completedDuration.toString());
-                        setShowWorkoutTimer(false);
-                        
-                        // Show completion message and let user rate
-                        toast.success("🎉 Countdown Complete!", {
-                          description: "Tap a flame below to rate and continue",
-                          duration: 4000,
-                        });
-                        
-                        // Scroll to rating section after brief delay
-                        setTimeout(() => {
-                          const ratingElement = document.querySelector('.rating-section');
-                          if (ratingElement) {
-                            ratingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          }
-                        }, 500);
-                      }}
-                    />
-                </div>
-                <div className="flex justify-center mt-4">
+                <Card className="p-6 bg-primary/10 border-primary mb-4">
+                  <p className="text-center text-2xl font-bold">
+                    Target: <span className="text-primary">{exercise.targetDistanceKm < 1 ? `${(exercise.targetDistanceKm * 1000).toFixed(0)}m` : `${exercise.targetDistanceKm}km`}</span>
+                  </p>
+                </Card>
+                
+                {showWorkoutTimer ? (
+                  <>
+                    <div className="overflow-hidden rounded-xl border-2 border-primary">
+                      <Timer
+                        mode="stopwatch"
+                        initialSeconds={0}
+                        autoStart={true}
+                        onComplete={() => {}}
+                      />
+                    </div>
+                    <div className="flex justify-center gap-4 mt-4">
+                      <Button
+                        size="lg"
+                        onClick={() => {
+                          // Get elapsed time from timer
+                          const timerElement = document.querySelector('[data-timer-elapsed]');
+                          const elapsedSeconds = timerElement ? parseInt(timerElement.getAttribute('data-timer-elapsed') || '0') : 0;
+                          const elapsedMinutes = (elapsedSeconds / 60).toFixed(2);
+                          
+                          setTodaysDuration(elapsedMinutes);
+                          setTodaysDistance((exercise.targetDistanceKm || 0).toString());
+                          setShowWorkoutTimer(false);
+                          
+                          toast.success("✅ Recorded!", {
+                            description: `${exercise.targetDistanceKm}km in ${elapsedMinutes} min`,
+                            duration: 3000,
+                          });
+                          
+                          // Scroll to rating section
+                          setTimeout(() => {
+                            const ratingElement = document.querySelector('.rating-section');
+                            if (ratingElement) {
+                              ratingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }, 500);
+                        }}
+                        className="h-16 px-12 text-2xl font-bold flex-1"
+                        style={{ backgroundColor: '#22c55e', color: '#fff' }}
+                      >
+                        STOP & SAVE
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setShowWorkoutTimer(false)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                ) : (
                   <Button
-                    variant="ghost"
-                    onClick={() => setShowWorkoutTimer(false)}
-                    className="text-muted-foreground hover:text-foreground"
+                    size="lg"
+                    onClick={handleStartWorkout}
+                    className="h-24 px-16 text-3xl font-bold w-full"
+                    style={{ backgroundColor: '#FFCC00', color: '#000' }}
                   >
-                    Cancel Workout
+                    START RECORDING
                   </Button>
-                </div>
+                )}
               </>
-            ) : (
-              <Button
-                size="lg"
-                onClick={handleStartWorkout}
-                className="h-24 px-16 text-3xl font-bold w-full"
-                style={{ backgroundColor: '#FFCC00', color: '#000' }}
-              >
-                START COUNTDOWN
-              </Button>
-            )}
+            ) : exercise.durationMin && exercise.durationMin > 0 ? (
+              /* DURATION-BASED: Use countdown timer, record distance achieved */
+              <>
+                <Card className="p-6 bg-primary/10 border-primary mb-4">
+                  <p className="text-center text-2xl font-bold">
+                    Duration: <span className="text-primary">{exercise.durationMin} min</span>
+                  </p>
+                </Card>
+                
+                {showWorkoutTimer ? (
+                  <>
+                    <div className="overflow-hidden rounded-xl border-2 border-primary">
+                      <Timer
+                        mode="countdown"
+                        initialSeconds={workoutDuration}
+                        autoStart={true}
+                        onComplete={() => {
+                          const completedDuration = Math.round(workoutDuration / 60);
+                          setTodaysDuration(completedDuration.toString());
+                          setShowWorkoutTimer(false);
+                          
+                          toast.success("🎉 Time Complete!", {
+                            description: "Enter distance achieved below",
+                            duration: 4000,
+                          });
+                          
+                          // Scroll to distance input
+                          setTimeout(() => {
+                            const distanceInput = document.querySelector('#distance');
+                            if (distanceInput) {
+                              distanceInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }, 500);
+                        }}
+                      />
+                    </div>
+                    <div className="flex justify-center mt-4">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setShowWorkoutTimer(false)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <Button
+                    size="lg"
+                    onClick={handleStartWorkout}
+                    className="h-24 px-16 text-3xl font-bold w-full"
+                    style={{ backgroundColor: '#FFCC00', color: '#000' }}
+                  >
+                    START COUNTDOWN
+                  </Button>
+                )}
+              </>
+            ) : null}
           </>
         )}
         
@@ -1502,50 +1556,21 @@ const ExerciseDetail = () => {
             </div>
           )}
           
-          {exercise.type === "cardio" && (
+          {(exercise.type === "running" || exercise.type === "cardio") && (
             <>
               <div>
-                <Label htmlFor="duration" className="text-xl font-bold">Duration (minutes)</Label>
-                <p className="text-sm text-muted-foreground mt-1">0.5 min = 30 seconds</p>
+                <Label htmlFor="distance" className="text-xl font-bold">
+                  Distance {exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? '(meters)' : '(km)'}
+                </Label>
                 <div className="flex items-center gap-3 mt-3">
                   <Button
                     type="button"
-                    onClick={() => setTodaysDuration((prev) => Math.max(0.5, parseFloat(prev || "0") - 0.5).toFixed(1))}
-                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                    variant="default"
-                  >
-                    -
-                  </Button>
-                  <Input
-                    id="duration"
-                    type="number"
-                    step="0.1"
-                    value={todaysDuration || ""}
-                    onChange={(e) => setTodaysDuration(e.target.value)}
-                    className="text-6xl font-bold h-32 text-center border-2 flex-1"
-                    placeholder="20"
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => setTodaysDuration((prev) => (parseFloat(prev || "0") + 0.5).toFixed(1))}
-                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                    variant="default"
-                  >
-                    +
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-          
-          {exercise.type === "running" && (
-            <>
-              <div>
-                <Label htmlFor="distance" className="text-xl font-bold">Distance (km)</Label>
-                <div className="flex items-center gap-3 mt-3">
-                  <Button
-                    type="button"
-                    onClick={() => setTodaysDistance((prev) => Math.max(0, parseFloat(prev || "0") - 0.1).toFixed(1))}
+                    onClick={() => {
+                      const current = parseFloat(todaysDistance || "0");
+                      const increment = exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? 10 : 0.1; // 10m or 0.1km
+                      const newValue = Math.max(0, current - increment);
+                      setTodaysDistance(newValue.toFixed(exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? 0 : 1));
+                    }}
                     className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
                   >
@@ -1554,15 +1579,20 @@ const ExerciseDetail = () => {
                   <Input
                     id="distance"
                     type="number"
-                    step="0.1"
+                    step={exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? "10" : "0.1"}
                     value={todaysDistance || ""}
                     onChange={(e) => setTodaysDistance(e.target.value)}
                     className="text-6xl font-bold h-32 text-center border-2 flex-1"
-                    placeholder="5.0"
+                    placeholder={exercise.targetDistanceKm ? (exercise.targetDistanceKm < 1 ? (exercise.targetDistanceKm * 1000).toFixed(0) : exercise.targetDistanceKm.toFixed(1)) : "5.0"}
                   />
                   <Button
                     type="button"
-                    onClick={() => setTodaysDistance((prev) => (parseFloat(prev || "0") + 0.1).toFixed(1))}
+                    onClick={() => {
+                      const current = parseFloat(todaysDistance || "0");
+                      const increment = exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? 10 : 0.1; // 10m or 0.1km
+                      const newValue = current + increment;
+                      setTodaysDistance(newValue.toFixed(exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? 0 : 1));
+                    }}
                     className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
                   >

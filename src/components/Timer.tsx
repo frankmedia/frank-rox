@@ -219,6 +219,7 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
       style={{ 
         backgroundColor: isLastFive && isRunning ? '#EF4444' : 'transparent',
       }}
+      data-timer-elapsed={seconds}
     >
       {/* Wake Lock Status Indicator */}
         {isRunning && (
