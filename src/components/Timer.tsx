@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useWorkoutSession } from "@/contexts/WorkoutSessionContext";
+import { workoutCues } from "@/utils/workoutCues";
 
 interface TimerProps {
   mode: "stopwatch" | "countdown";
@@ -148,9 +149,21 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
               playBeep(prev);
             }
             
+            // Voice cues at specific times
+            if (prev === 60) {
+              workoutCues.lastMinute();
+            } else if (prev === 30) {
+              workoutCues.last30Seconds();
+            } else if (prev === 10) {
+              workoutCues.last10Seconds();
+            } else if (prev <= 3 && prev > 0) {
+              workoutCues.countdown(prev);
+            }
+            
             if (prev <= 1) {
               console.log('⏱️ Countdown reached 0, stopping timer');
               setIsRunning(false);
+              workoutCues.finish();
               handleComplete();
               return 0;
             }
@@ -238,7 +251,16 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
           lineHeight: '1.1',
           color: isLastFive && isRunning ? '#FFFFFF' : 'hsl(var(--primary))',
         }}
-        onClick={() => setIsRunning(!isRunning)}
+        onClick={() => {
+          if (!isRunning) {
+            // Starting timer - say "GO!"
+            workoutCues.start();
+          } else {
+            // Pausing timer
+            workoutCues.pause();
+          }
+          setIsRunning(!isRunning);
+        }}
       >
         {formatTime(seconds)}
       </div>
