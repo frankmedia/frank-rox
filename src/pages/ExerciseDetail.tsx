@@ -858,8 +858,8 @@ const ExerciseDetail = () => {
                       <Label className="text-3xl font-bold mb-3 block">Sets</Label>
                       <Input
                         type="number"
-                        value={editSets || ""}
-                        onChange={(e) => setEditSets(parseInt(e.target.value) || 0)}
+                        value={editSets === 0 ? "0" : (editSets || "")}
+                        onChange={(e) => setEditSets(e.target.value === "" ? 0 : parseInt(e.target.value) || 0)}
                         className="text-5xl h-20 text-center font-bold"
                       />
                     </div>
@@ -867,8 +867,8 @@ const ExerciseDetail = () => {
                       <Label className="text-3xl font-bold mb-3 block">Reps</Label>
                       <Input
                         type="number"
-                        value={editReps || ""}
-                        onChange={(e) => setEditReps(parseInt(e.target.value) || 0)}
+                        value={editReps === 0 ? "0" : (editReps || "")}
+                        onChange={(e) => setEditReps(e.target.value === "" ? 0 : parseInt(e.target.value) || 0)}
                         className="text-5xl h-20 text-center font-bold"
                       />
                     </div>
@@ -880,8 +880,8 @@ const ExerciseDetail = () => {
                     <Input
                       type="number"
                       step="0.5"
-                      value={editSuggestedKg || ""}
-                      onChange={(e) => setEditSuggestedKg(parseFloat(e.target.value) || 0)}
+                      value={editSuggestedKg === 0 ? "0" : (editSuggestedKg || "")}
+                      onChange={(e) => setEditSuggestedKg(e.target.value === "" ? 0 : parseFloat(e.target.value) || 0)}
                       className="text-5xl h-20 text-center font-bold"
                     />
                   </div>

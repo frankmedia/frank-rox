@@ -2072,7 +2072,7 @@ const PlanDetail = () => {
 
     const label = (t:string)=> <span className="block text-sm text-zinc-400 mb-1">{t}</span>;
     const input = (val:any,setter:any,placeholder?:string)=> (
-      <input className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm" type="number" value={val} placeholder={placeholder||''} onChange={e=>setter(e.target.value?Number(e.target.value):'')} />
+      <input className="w-full h-10 bg-black border border-zinc-700 rounded px-3 text-sm" type="number" value={val} placeholder={placeholder||''} onChange={e=>setter(e.target.value === '' ? '' : Number(e.target.value))} />
     );
 
     return (
