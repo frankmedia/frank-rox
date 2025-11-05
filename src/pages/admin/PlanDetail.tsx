@@ -1489,6 +1489,7 @@ const PlanDetail = () => {
           
           for (let idx = 0; idx < reordered.length; idx++) {
             const item = reordered[idx];
+            const orderIndex = idx + 1; // START FROM 1, NOT 0!
             
             // Get the block_id for this item
             const { data: itemData } = await supabase
@@ -1524,7 +1525,7 @@ const PlanDetail = () => {
                 .insert({
                   plan_day_id: dayIdA,
                   name: blockData.title || 'Exercise',
-                  order_index: idx
+                  order_index: orderIndex
                 })
                 .select('id')
                 .single();
@@ -1536,16 +1537,16 @@ const PlanDetail = () => {
                   .update({ session_id: newSession.id })
                   .eq('id', itemData.block_id);
                 
-                console.log(`🔧 Moved block to new session with order_index ${idx}`);
+                console.log(`🔧 Moved block to new session with order_index ${orderIndex}`);
               }
             } else {
               // Block is already in its own session, just update the order_index
               await supabase
                 .from('sessions')
-                .update({ order_index: idx })
+                .update({ order_index: orderIndex })
                 .eq('id', blockData.session_id);
               
-              console.log(`🔧 Updated existing session order_index to ${idx}`);
+              console.log(`🔧 Updated existing session order_index to ${orderIndex}`);
             }
           }
           
