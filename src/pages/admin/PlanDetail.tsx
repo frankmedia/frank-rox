@@ -780,7 +780,6 @@ const PlanDetail = () => {
       }
       
       const loadValues = async () => {
-        console.log('📥 Loading data for:', it.name);
         setLoading(true);
         try {
           const res = await supabase.from('session_block_items').select('extra').eq('id', it.id).single();
@@ -1444,69 +1443,128 @@ const PlanDetail = () => {
       // If both items are standalone (not in groups), reorder standalone items
       if (!srcG && !dstG) {
         try {
+          console.log('🔄 ========== REORDER START ==========');
+          console.log('🔄 Active Item ID:', activeItemId);
+          console.log('🔄 Over Item ID:', overItemId);
+          console.log('🔄 Day ID:', dayIdA);
+          
           const standaloneItems = itemsByDay[dayIdA] || [];
+          console.log('🔄 Total standalone items:', standaloneItems.length);
+          console.log('🔄 Items BEFORE reorder:', standaloneItems.map((it, idx) => ({ 
+            position: idx + 1, 
+            id: it.id, 
+            name: it.name 
+          })));
+          
           const fromIdx = standaloneItems.findIndex(it => it.id === activeItemId);
           const toIdx = standaloneItems.findIndex(it => it.id === overItemId);
           
+          console.log('🔄 From Index:', fromIdx, '(0-based)');
+          console.log('🔄 To Index:', toIdx, '(0-based)');
+          
           if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) {
+            console.log('🔄 ❌ ABORT: Invalid indices or same position');
             return;
           }
           
           // Reorder in memory
           const reordered = arrayMove(standaloneItems, fromIdx, toIdx);
+          console.log('🔄 Items AFTER arrayMove:', reordered.map((it, idx) => ({ 
+            position: idx + 1, 
+            id: it.id, 
+            name: it.name 
+          })));
+          
           setItemsByDay(prev => ({ ...prev, [dayIdA]: reordered }));
           
           // TWO-PHASE UPDATE to avoid conflicts when moving to position 1:
+          console.log('🔄 ========== PHASE 1: Set to -999 ==========');
           // Phase 1: Set all to temporary negative values to break existing order
-          for (const item of reordered) {
-            const { data: itemData } = await supabase
+          for (let i = 0; i < reordered.length; i++) {
+            const item = reordered[i];
+            console.log(`🔄 [${i + 1}/${reordered.length}] Getting session for item:`, item.name, '(ID:', item.id, ')');
+            
+            const { data: itemData, error: itemError } = await supabase
               .from('session_block_items')
               .select('id, block_id, session_blocks!inner(id, session_id)')
               .eq('id', item.id)
               .single();
             
+            if (itemError) {
+              console.log(`🔄 ❌ Error fetching item data:`, itemError);
+              continue;
+            }
+            
             if (!itemData || !(itemData as any).session_blocks) {
+              console.log(`🔄 ❌ No session_blocks found for item:`, item.name);
               continue;
             }
             
             const sessionId = (itemData as any).session_blocks.session_id;
+            console.log(`🔄 ✓ Found session ID:`, sessionId);
             
             // Set to temporary negative value
-            await supabase
+            console.log(`🔄 Setting session ${sessionId} to order_index = -999`);
+            const { error: updateError } = await supabase
               .from('sessions')
               .update({ order_index: -999 })
               .eq('id', sessionId);
+            
+            if (updateError) {
+              console.log(`🔄 ❌ Error updating to -999:`, updateError);
+            } else {
+              console.log(`🔄 ✓ Successfully set to -999`);
+            }
           }
           
+          console.log('🔄 ========== PHASE 2: Set final positions ==========');
           // Phase 2: Assign final order_index values (1-based)
           for (let idx = 0; idx < reordered.length; idx++) {
             const item = reordered[idx];
             const orderIndex = idx + 1; // 1-based indexing
             
+            console.log(`🔄 [${idx + 1}/${reordered.length}] Processing:`, item.name, '→ Position', orderIndex);
+            
             // Get session via: item -> block -> session (one query with join)
-            const { data: itemData } = await supabase
+            const { data: itemData, error: itemError } = await supabase
               .from('session_block_items')
               .select('id, block_id, session_blocks!inner(id, session_id)')
               .eq('id', item.id)
               .single();
             
+            if (itemError) {
+              console.log(`🔄 ❌ Error fetching item data:`, itemError);
+              continue;
+            }
+            
             if (!itemData || !(itemData as any).session_blocks) {
+              console.log(`🔄 ❌ No session_blocks found for item:`, item.name);
               continue;
             }
             
             const sessionId = (itemData as any).session_blocks.session_id;
+            console.log(`🔄 Session ID:`, sessionId);
             
             // Set final order_index
-            await supabase
+            console.log(`🔄 Setting session ${sessionId} to order_index = ${orderIndex}`);
+            const { error: updateError } = await supabase
               .from('sessions')
               .update({ order_index: orderIndex })
               .eq('id', sessionId);
+            
+            if (updateError) {
+              console.log(`🔄 ❌ Error updating to ${orderIndex}:`, updateError);
+            } else {
+              console.log(`🔄 ✓ Successfully set to ${orderIndex}`);
+            }
           }
           
+          console.log('🔄 ========== RELOADING DATA ==========');
           toast({ description: 'Reordered exercises' });
           await loadDayGroups(dayIdA);
+          console.log('🔄 ========== REORDER COMPLETE ==========');
         } catch(e) {
-          console.error('Reorder failed:', e);
+          console.error('🔄 ❌❌❌ REORDER FAILED:', e);
           toast({ description: 'Failed to reorder', variant: 'destructive' as any });
         }
         return;
