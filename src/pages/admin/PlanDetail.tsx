@@ -786,7 +786,6 @@ const PlanDetail = () => {
           const res = await supabase.from('session_block_items').select('extra').eq('id', it.id).single();
           if (!res.error && res.data?.extra) {
             const extra = res.data.extra as any;
-            console.log('✅ Loaded data:', it.name, extra);
             setSets(extra.sets ?? 3);
             setReps(extra.reps ?? 10);
             // For carry and bodyweight, weight is a string (e.g. "102kg", "6kg")
@@ -1445,16 +1444,11 @@ const PlanDetail = () => {
       // If both items are standalone (not in groups), reorder standalone items
       if (!srcG && !dstG) {
         try {
-          console.log('🔧 Reordering standalone items:', { activeItemId, overItemId, dayIdA });
-          
           const standaloneItems = itemsByDay[dayIdA] || [];
           const fromIdx = standaloneItems.findIndex(it => it.id === activeItemId);
           const toIdx = standaloneItems.findIndex(it => it.id === overItemId);
           
-          console.log('🔧 Found indices:', { fromIdx, toIdx, totalItems: standaloneItems.length });
-          
           if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) {
-            console.log('🔧 Skipping reorder - invalid indices');
             return;
           }
           
@@ -1462,110 +1456,35 @@ const PlanDetail = () => {
           const reordered = arrayMove(standaloneItems, fromIdx, toIdx);
           setItemsByDay(prev => ({ ...prev, [dayIdA]: reordered }));
           
-          console.log('🔧 New order:', reordered.map((it, idx) => ({ idx, id: it.id, name: it.name })));
-          
-          // All exercises are in ONE session with multiple blocks
-          // We need to move each block to its own session with the correct order_index
-          
-          console.log('🔧 Moving each block to its own session with correct order...');
-          
-          const oldSessionIds = new Set<string>();
-          
-          // Track sessions with multiple blocks to delete later
-          const { data: allSessions } = await supabase
-            .from('sessions')
-            .select('id, session_blocks(id)')
-            .eq('plan_day_id', dayIdA);
-          
-          if (allSessions) {
-            for (const session of allSessions) {
-              const blocks = (session as any).session_blocks || [];
-              if (blocks.length > 1) {
-                console.log(`🔧 Found old session with ${blocks.length} blocks, marking for deletion`);
-                oldSessionIds.add(session.id);
-              }
-            }
-          }
-          
+          // Update each session's order_index based on new position
           for (let idx = 0; idx < reordered.length; idx++) {
             const item = reordered[idx];
-            const orderIndex = idx + 1; // START FROM 1, NOT 0!
+            const orderIndex = idx + 1; // 1-based indexing
             
-            // Get the block_id for this item
+            // Get session via: item -> block -> session (one query with join)
             const { data: itemData } = await supabase
               .from('session_block_items')
-              .select('block_id')
+              .select('id, block_id, session_blocks!inner(id, session_id)')
               .eq('id', item.id)
               .single();
             
-            if (!itemData?.block_id) continue;
-            
-            // Get the current session for this block
-            const { data: blockData } = await supabase
-              .from('session_blocks')
-              .select('session_id, block_type, title')
-              .eq('id', itemData.block_id)
-              .single();
-            
-            if (!blockData?.session_id) continue;
-            
-            // Check if this block is already in its own session
-            const { data: sessionBlocks } = await supabase
-              .from('session_blocks')
-              .select('id')
-              .eq('session_id', blockData.session_id);
-            
-            // If the session has multiple blocks, we need to move this block to a new session
-            if (sessionBlocks && sessionBlocks.length > 1) {
-              oldSessionIds.add(blockData.session_id); // Track old session for cleanup
-              
-              // Create a new session for this block
-              const { data: newSession } = await supabase
-                .from('sessions')
-                .insert({
-                  plan_day_id: dayIdA,
-                  name: blockData.title || 'Exercise',
-                  order_index: orderIndex
-                })
-                .select('id')
-                .single();
-              
-              if (newSession) {
-                // Move the block to the new session
-                await supabase
-                  .from('session_blocks')
-                  .update({ session_id: newSession.id })
-                  .eq('id', itemData.block_id);
-                
-                console.log(`🔧 Moved block to new session with order_index ${orderIndex}`);
-              }
-            } else {
-              // Block is already in its own session, just update the order_index
-              await supabase
-                .from('sessions')
-                .update({ order_index: orderIndex })
-                .eq('id', blockData.session_id);
-              
-              console.log(`🔧 Updated existing session order_index to ${orderIndex}`);
+            if (!itemData || !(itemData as any).session_blocks) {
+              continue;
             }
+            
+            const sessionId = (itemData as any).session_blocks.session_id;
+            
+            // Simply update the session's order_index
+            await supabase
+              .from('sessions')
+              .update({ order_index: orderIndex })
+              .eq('id', sessionId);
           }
-          
-          // Clean up old sessions (even if they still have blocks, they're duplicates)
-          for (const oldSessionId of oldSessionIds) {
-            // Delete all blocks in the old session first
-            await supabase.from('session_blocks').delete().eq('session_id', oldSessionId);
-            // Then delete the session
-            await supabase.from('sessions').delete().eq('id', oldSessionId);
-            console.log(`🔧 Deleted old session and its blocks: ${oldSessionId}`);
-          }
-          
-          console.log('🔧 All blocks moved to separate sessions!');
           
           toast({ description: 'Reordered exercises' });
-          console.log('🔧 Reorder complete, reloading...');
           await loadDayGroups(dayIdA);
         } catch(e) {
-          console.error('❌ Reorder failed:', e);
+          console.error('Reorder failed:', e);
           toast({ description: 'Failed to reorder', variant: 'destructive' as any });
         }
         return;
@@ -2195,8 +2114,6 @@ const PlanDetail = () => {
       .select('id,name,order_index,collapsed,session_blocks(id,block_type,title,parameters,rounds,rest_between_rounds_s,time_cap_sec,work_sec,rest_sec,intensity,session_block_items(id,exercise_id,item_order,status))')
       .eq('plan_day_id', dayId)
       .order('order_index', { ascending: true });
-    
-    console.log('📦 Raw session data from DB:', JSON.stringify(sess.data, null, 2));
     
     if (sess.error) { setGroupsByDay(prev=>({ ...prev, [dayId]: [] })); return; }
 
@@ -3734,6 +3651,7 @@ const PlanDetail = () => {
 };
 
 export default PlanDetail;
+
 
 
 
