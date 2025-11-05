@@ -1,0 +1,27 @@
+# Android build files and directories
+android/
+*.apk
+*.aab
+
+# iOS build files and directories
+ios/
+
+# Node modules (already in .gitignore but adding for safety)
+node_modules/
+
+# Build output
+dist-android/
+dist-ios/
+
+# Resources
+resources/
+
+# Large files
+*.zip
+*.tar.gz
+
+# Development files
+.gradle/
+build/
+*.log
+
