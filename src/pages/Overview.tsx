@@ -69,12 +69,18 @@ const Overview = () => {
         }
 
         // Get active plan from Supabase
-        const { data: plan } = await supabase
+        const { data: plan, error: planError } = await supabase
           .from('plans')
           .select('id')
           .eq('client_id', authUser.clientId)
           .eq('status', 'active')
-          .single();
+          .maybeSingle();
+
+        if (planError) {
+          console.error("Error loading plan:", planError);
+          setLoading(false);
+          return;
+        }
 
         if (!plan) {
           console.log("No active plan found");
