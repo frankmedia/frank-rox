@@ -69,12 +69,13 @@ const Overview = () => {
         }
 
         // Get active plan from Supabase
-        const { data: plan, error: planError } = await supabase
+        // If multiple active plans exist, use the most recent one
+        const { data: plans, error: planError } = await supabase
           .from('plans')
-          .select('id')
+          .select('id, created_at')
           .eq('client_id', authUser.clientId)
           .eq('status', 'active')
-          .maybeSingle();
+          .order('created_at', { ascending: false });
 
         if (planError) {
           console.error("Error loading plan:", planError);
@@ -82,10 +83,16 @@ const Overview = () => {
           return;
         }
 
-        if (!plan) {
+        if (!plans || plans.length === 0) {
           console.log("No active plan found");
           setLoading(false);
           return;
+        }
+
+        // Use the most recent active plan if multiple exist
+        const plan = plans[0];
+        if (plans.length > 1) {
+          console.warn(`Found ${plans.length} active plans, using most recent:`, plan.id);
         }
 
         // Check if this is a new plan (different from last loaded plan)
