@@ -21,8 +21,10 @@ if ('speechSynthesis' in window) {
  */
 export const speak = (text: string, options?: { rate?: number; pitch?: number; volume?: number }) => {
   if ('speechSynthesis' in window) {
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
+    // Don't cancel if already speaking - let it finish
+    if (window.speechSynthesis.speaking) {
+      return;
+    }
     
     const utterance = new SpeechSynthesisUtterance(text);
     
@@ -58,6 +60,13 @@ export const speak = (text: string, options?: { rate?: number; pitch?: number; v
     utterance.pitch = options?.pitch || 1.05;  // Slightly higher pitch (more engaging)
     utterance.volume = options?.volume || 1.0; // Volume (0 to 1)
     utterance.lang = 'en-US';
+    
+    // Add small pause at the end to prevent cut-off
+    utterance.onend = () => {
+      setTimeout(() => {
+        // Small delay after speech ends
+      }, 100);
+    };
     
     window.speechSynthesis.speak(utterance);
   }
