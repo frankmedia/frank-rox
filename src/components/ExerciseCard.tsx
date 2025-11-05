@@ -35,7 +35,6 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
   
   // Define border colors for new workout types
   const getBorderColor = () => {
-    if (completed) return "border-green-500"; // Green for completed
     switch (exercise.type) {
       case "hiit":
       case "hiit_exercise": return "border-[#FF00B2]"; // Hot pink
