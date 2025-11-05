@@ -45,12 +45,26 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
   }, [initialSeconds]);
   
   // Start/stop global workout session when timer runs
+  // Also announce "GO!" when auto-starting
   useEffect(() => {
     if (isRunning) {
       startWorkoutSession();
     }
     // Note: We don't end the session when timer stops - only when workout is complete/exited
   }, [isRunning, startWorkoutSession]);
+  
+  // Announce "GO!" when timer first starts (autoStart or manual)
+  const hasAnnouncedStart = useRef(false);
+  useEffect(() => {
+    if (isRunning && !hasAnnouncedStart.current) {
+      workoutCues.start();
+      hasAnnouncedStart.current = true;
+    }
+    if (!isRunning && seconds === initialSeconds) {
+      // Reset flag when timer is reset
+      hasAnnouncedStart.current = false;
+    }
+  }, [isRunning, seconds, initialSeconds]);
   
   // Memoized completion callback to prevent unnecessary re-renders
   const handleComplete = useCallback(() => {
@@ -169,7 +183,16 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
             }
             return prev - 1;
           } else {
-            return prev + 1;
+            // Stopwatch mode - count up and announce milestones
+            const newTime = prev + 1;
+            
+            // Announce every minute
+            if (newTime % 60 === 0 && newTime > 0) {
+              const minutes = newTime / 60;
+              workoutCues.lapComplete(minutes); // e.g., "Lap 1 complete", "Lap 2 complete"
+            }
+            
+            return newTime;
           }
         });
       }, 1000);
