@@ -56,8 +56,8 @@ export const speak = (text: string, options?: { rate?: number; pitch?: number; v
       }
     }
     
-    utterance.rate = options?.rate || 1.1;     // Slightly faster (more energetic)
-    utterance.pitch = options?.pitch || 1.05;  // Slightly higher pitch (more engaging)
+    utterance.rate = options?.rate || 0.95;    // Slightly slower (more natural/human)
+    utterance.pitch = options?.pitch || 1.0;   // Normal pitch (more human)
     utterance.volume = options?.volume || 1.0; // Volume (0 to 1)
     utterance.lang = 'en-US';
     
@@ -78,7 +78,7 @@ export const speak = (text: string, options?: { rate?: number; pitch?: number; v
 export const workoutCues = {
   // Start of workout or timer
   start: () => {
-    speak("GO!", { rate: 1.2 });
+    speak("Go!", { rate: 0.95 });
   },
   
   // Countdown (call for each second) - SILENT (beeps only)
@@ -123,7 +123,7 @@ export const workoutCues = {
   
   // Rest ending soon
   restEnding: () => {
-    speak("Get ready!", { rate: 1.1 });
+    speak("Get ready", { rate: 0.95 });
   },
   
   // Next exercise announcement
@@ -189,19 +189,19 @@ export const runningCues = {
  */
 export const hiitCues = {
   workStart: (exerciseName?: string) => {
-    speak("GO!", { rate: 1.2 });
+    speak("Go", { rate: 0.95 });
   },
   
   restStart: () => {
-    speak("Rest", { rate: 1.0 });
+    speak("Rest", { rate: 0.9 });
   },
   
   getReady: (nextExercise?: string) => {
-    speak("Get ready!", { rate: 1.0 });
+    speak("Get ready", { rate: 0.95 });
   },
   
   roundComplete: (round: number, totalRounds: number) => {
-    speak("Round complete", { rate: 1.0 });
+    speak("Round complete", { rate: 0.9 });
   },
   
   lastRound: () => {
@@ -209,7 +209,7 @@ export const hiitCues = {
   },
   
   workoutComplete: () => {
-    speak("Done!", { rate: 1.0 });
+    speak("Done", { rate: 0.9 });
   },
 };
 
