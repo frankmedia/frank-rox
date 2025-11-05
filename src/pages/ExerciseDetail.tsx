@@ -1575,85 +1575,50 @@ const ExerciseDetail = () => {
             </div>
           )}
           
+          {/* Manual inputs for running/cardio - only shown for duration-based exercises OR if timer was used */}
           {(exercise.type === "running" || exercise.type === "cardio") && (
             <>
-              <div>
-                <Label htmlFor="distance" className="text-xl font-bold">
-                  Distance {exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? '(meters)' : '(km)'}
-                </Label>
-                <div className="flex items-center gap-3 mt-3">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      // If target is in meters (< 1km), work in meters; otherwise km
-                      const isMeters = exercise.targetDistanceKm && exercise.targetDistanceKm < 1;
-                      const current = parseFloat(todaysDistance || "0");
-                      const increment = isMeters ? 10 : 0.1;
-                      const newValue = Math.max(0, current - increment);
-                      setTodaysDistance(newValue.toFixed(isMeters ? 0 : 1));
-                    }}
-                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                    variant="default"
-                  >
-                    -
-                  </Button>
-                  <Input
-                    id="distance"
-                    type="number"
-                    step={exercise.targetDistanceKm && exercise.targetDistanceKm < 1 ? "10" : "0.1"}
-                    value={todaysDistance || ""}
-                    onChange={(e) => setTodaysDistance(e.target.value)}
-                    className="text-6xl font-bold h-32 text-center border-2 flex-1"
-                    placeholder={exercise.targetDistanceKm ? (exercise.targetDistanceKm < 1 ? (exercise.targetDistanceKm * 1000).toFixed(0) : exercise.targetDistanceKm.toFixed(1)) : "5.0"}
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      // If target is in meters (< 1km), work in meters; otherwise km
-                      const isMeters = exercise.targetDistanceKm && exercise.targetDistanceKm < 1;
-                      const current = parseFloat(todaysDistance || "0");
-                      const increment = isMeters ? 10 : 0.1;
-                      const newValue = current + increment;
-                      setTodaysDistance(newValue.toFixed(isMeters ? 0 : 1));
-                    }}
-                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                    variant="default"
-                  >
-                    +
-                  </Button>
+              {/* For DURATION-BASED runs: show distance input (to record distance achieved) */}
+              {exercise.durationMin && exercise.durationMin > 0 && !exercise.targetDistanceKm && (
+                <div>
+                  <Label htmlFor="distance" className="text-xl font-bold">Distance Achieved (km)</Label>
+                  <div className="flex items-center gap-3 mt-3">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const current = parseFloat(todaysDistance || "0");
+                        const newValue = Math.max(0, current - 0.1);
+                        setTodaysDistance(newValue.toFixed(1));
+                      }}
+                      className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                      variant="default"
+                    >
+                      -
+                    </Button>
+                    <Input
+                      id="distance"
+                      type="number"
+                      step="0.1"
+                      value={todaysDistance || ""}
+                      onChange={(e) => setTodaysDistance(e.target.value)}
+                      className="text-6xl font-bold h-32 text-center border-2 flex-1"
+                      placeholder="5.0"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const current = parseFloat(todaysDistance || "0");
+                        const newValue = current + 0.1;
+                        setTodaysDistance(newValue.toFixed(1));
+                      }}
+                      className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                      variant="default"
+                    >
+                      +
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="duration" className="text-xl font-bold">Duration (minutes)</Label>
-                <p className="text-sm text-muted-foreground mt-1">0.5 min = 30 seconds</p>
-                <div className="flex items-center gap-3 mt-3">
-                  <Button
-                    type="button"
-                    onClick={() => setTodaysDuration((prev) => Math.max(0.5, parseFloat(prev || "0") - 0.5).toFixed(1))}
-                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                    variant="default"
-                  >
-                    -
-                  </Button>
-                  <Input
-                    id="duration"
-                    type="number"
-                    step="0.1"
-                    value={todaysDuration || ""}
-                    onChange={(e) => setTodaysDuration(e.target.value)}
-                    className="text-6xl font-bold h-32 text-center border-2 flex-1"
-                    placeholder={exercise.durationMin?.toString() || "30"}
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => setTodaysDuration((prev) => (parseFloat(prev || "0") + 0.5).toFixed(1))}
-                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
-                    variant="default"
-                  >
-                    +
-                  </Button>
-                </div>
-              </div>
+              )}
             </>
           )}
           
