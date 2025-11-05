@@ -5,13 +5,15 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Medal, TrendingUp, Loader2, Calendar, Dumbbell, Clock, BookOpen, Trophy, Activity, Trash2 } from "lucide-react";
+import { ArrowLeft, Medal, TrendingUp, Loader2, Calendar, Dumbbell, Clock, BookOpen, Trophy, Activity, Trash2, RefreshCw } from "lucide-react";
 import { fetchWorkoutHistory, fetchUserStats } from "@/services/googleSheets";
 import { WorkoutLog, UserStats } from "@/types/workout";
 import { toast } from "sonner";
 import { FlameRating } from "@/components/FlameRating";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/utils/supabaseClient";
+import { Capacitor } from "@capacitor/core";
+import { AppHealth } from "@/services/appHealth";
 
 interface DailyWorkout {
   date: string; // YYYY-MM-DD format
@@ -406,25 +408,25 @@ const History = () => {
   }, [authUser?.clientId]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={{ paddingTop: 0 }}>
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="container max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center gap-3 relative">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/")}
-              className="rounded-full"
+              onClick={() => navigate("/overview")}
+              className="absolute left-0"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-2xl font-bold text-foreground">Progress</h1>
+            <h1 className="text-xl font-bold text-foreground">Logbook</h1>
           </div>
         </div>
       </header>
 
-      <main className="container max-w-2xl mx-auto px-4 py-6">
+      <main className="container max-w-2xl mx-auto px-4 pt-20 pb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="history" className="flex items-center gap-2">
@@ -604,8 +606,12 @@ const History = () => {
                                             </span>
                                             <span className="font-mono font-semibold text-foreground">
                                               {(() => {
-                                                const mins = Math.floor(split.elapsed / 60000);
-                                                const secs = Math.floor((split.elapsed % 60000) / 1000);
+                                                // Handle both old (ms) and new (seconds) formats
+                                                const elapsed = split.elapsed || 0;
+                                                // If elapsed > 10000, it's likely in milliseconds (old format)
+                                                const totalSecs = elapsed > 10000 ? Math.floor(elapsed / 1000) : elapsed;
+                                                const mins = Math.floor(totalSecs / 60);
+                                                const secs = totalSecs % 60;
                                                 return `${mins}:${secs.toString().padStart(2, '0')}`;
                                               })()}
                                             </span>
@@ -622,9 +628,12 @@ const History = () => {
                                       <p className="text-xs font-semibold text-muted-foreground mb-1">Total Time:</p>
                                       <p className="text-xl font-bold text-yellow-500">
                                         {(() => {
-                                          const totalMs = (entry as any).simulationData.total_time;
-                                          const mins = Math.floor(totalMs / 60000);
-                                          const secs = Math.floor((totalMs % 60000) / 1000);
+                                          const simData = (entry as any).simulationData;
+                                          // Handle both old (total_time in ms) and new (total_time_seconds in s) formats
+                                          const totalSecs = simData.total_time_seconds 
+                                            || Math.floor((simData.total_time || 0) / 1000);
+                                          const mins = Math.floor(totalSecs / 60);
+                                          const secs = totalSecs % 60;
                                           return `${mins}:${secs.toString().padStart(2, '0')}`;
                                         })()}
                                       </p>

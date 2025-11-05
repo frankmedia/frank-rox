@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ExternalLink, LogOut, Mail, User as UserIcon, ClipboardCheck, HeartPulse, Link2, Smartphone, Trophy, Calendar, Save, Loader2, Trash2 } from "lucide-react";
+import { ExternalLink, LogOut, Mail, User as UserIcon, ClipboardCheck, HeartPulse, Link2, Smartphone, Trophy, Calendar, Save, Loader2, Trash2, Flame, Activity, Heart, Moon, MapPin, Footprints, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { usePWAInstall } from "@/utils/pwaInstall";
-import { isHealthAvailable, requestHealthPermissions, getHealthDataForAssessment } from "@/services/healthKit";
+import { AppHealth } from "@/services/appHealth";
 import { importRecentActivities, saveActivitiesToLog } from "@/services/strava";
 import { supabase } from "@/utils/supabaseClient";
 
@@ -22,6 +22,14 @@ const Profile = () => {
   const [healthSupported, setHealthSupported] = useState<boolean>(false);
   const [healthConnected, setHealthConnected] = useState<boolean>(false);
   const [stravaConnected, setStravaConnected] = useState<boolean>(false);
+  const [healthData, setHealthData] = useState<{
+    steps: number;
+    heartRate: { average: number; max: number; min: number; samples: number } | null;
+    distance: number;
+    calories: number;
+    sleep: number;
+  }>({ steps: 0, heartRate: null, distance: 0, calories: 0, sleep: 0 });
+  const [refreshing, setRefreshing] = useState(false);
   const [raceName, setRaceName] = useState<string>("");
   const [raceDate, setRaceDate] = useState<string>("");
   const [savingRace, setSavingRace] = useState<boolean>(false);
@@ -39,13 +47,16 @@ const Profile = () => {
     const detect = async () => {
       try {
         const native = Capacitor.isNativePlatform();
-        if (!native) {
-          setHealthSupported(false);
-          return;
-        }
-        const { available } = await isHealthAvailable();
-        setHealthSupported(!!available);
+      if (!native) {
+        setHealthSupported(false);
+        return;
+      }
+        const response = await AppHealth.isAvailable();
+        console.log('Health Connect response:', response);
+        setHealthSupported(response.available);
       } catch (e) {
+        console.error('Health check error:', e);
+        toast.error(`Health check error: ${e}`);
         setHealthSupported(false);
       }
     };
@@ -59,6 +70,65 @@ const Profile = () => {
       setStravaConnected(flag === "true");
     } catch {}
   }, []);
+
+  // Check if health is already connected
+  useEffect(() => {
+    try {
+      const flag = localStorage.getItem("health_connected");
+      const connected = flag === "true";
+      setHealthConnected(connected);
+      if (connected) {
+        fetchHealthData();
+      }
+    } catch {}
+  }, []);
+
+  // Fetch health data
+  const fetchHealthData = async () => {
+    try {
+      setRefreshing(true);
+      // Get today's data from midnight to now
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const start = startOfToday.toISOString();
+      const end = now.toISOString();
+      
+      // For sleep: query from 6 PM yesterday to now (captures last night's sleep)
+      const yesterdayEvening = new Date(now);
+      yesterdayEvening.setDate(yesterdayEvening.getDate() - 1);
+      yesterdayEvening.setHours(18, 0, 0, 0); // 6 PM yesterday
+      const sleepStart = yesterdayEvening.toISOString();
+      
+      console.log('📊 [Profile] Fetching health data from:', start, 'to:', end);
+      console.log('📊 [Profile] Sleep data from:', sleepStart, 'to:', end);
+      
+      const [stepsResult, heartRateResult, distanceResult, caloriesResult, sleepResult] = await Promise.all([
+        AppHealth.getSteps({ start, end }).catch(() => ({ total: 0, platform: 'android' as const })),
+        AppHealth.getHeartRate({ start, end }).catch(() => null),
+        AppHealth.getDistance({ start, end }).catch(() => ({ kilometers: 0, meters: 0, platform: 'android' as const })),
+        AppHealth.getCalories({ start, end }).catch(() => ({ calories: 0, platform: 'android' as const })),
+        AppHealth.getSleep({ start: sleepStart, end }).catch(() => ({ hours: 0, minutes: 0, platform: 'android' as const }))
+      ]);
+      
+      setHealthData({
+        steps: stepsResult.total,
+        heartRate: heartRateResult && heartRateResult.samples > 0 ? {
+          average: heartRateResult.average,
+          max: heartRateResult.max,
+          min: heartRateResult.min,
+          samples: heartRateResult.samples
+        } : null,
+        distance: distanceResult.kilometers,
+        calories: caloriesResult.calories,
+        sleep: sleepResult.hours
+      });
+    } catch (e) {
+      console.error('Error fetching health data:', e);
+      toast.error('Failed to refresh health data');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Load all upcoming races
   const loadAllRaces = async () => {
@@ -149,23 +219,75 @@ const Profile = () => {
     }
   };
 
+  const handleDisconnectHealth = () => {
+    try {
+      localStorage.removeItem("health_connected");
+      setHealthConnected(false);
+      setHealthData({ steps: 0, heartRate: null });
+      toast.success("Health disconnected", {
+        description: "Your health data connection has been removed",
+        duration: 3000
+      });
+    } catch (e) {
+      toast.error("Failed to disconnect");
+    }
+  };
+
   const handleConnectHealth = async () => {
+    setLoading(true);
     try {
       if (!healthSupported) {
-        toast.error("Health not available", { description: "Install the native app to connect Apple Health / Health Connect" });
+        toast.error("Health not supported", { 
+          description: "Health Connect not available on this device",
+          duration: 10000
+        });
         return;
       }
-      const ok = await requestHealthPermissions();
-      if (!ok) {
-        toast.error("Permissions denied", { description: "Please enable permissions in your Health app" });
+      
+      const result = await AppHealth.requestHealthPermissions();
+      
+      if (!result.granted) {
+        // Show a toast with action to open settings
+        const openSettings = async () => {
+          try {
+            await AppHealth.openHealthConnectSettings();
+            toast.info("Enable 'Steps' permission for RoxPT", { duration: 5000 });
+          } catch (e) {
+            toast.error("Could not open settings");
+          }
+        };
+        
+        toast.error("Permission Required", { 
+          description: "You need to allow Health Connect access. Click to open settings.",
+          duration: 10000,
+          action: {
+            label: "Open Settings",
+            onClick: openSettings
+          }
+        });
         return;
       }
-      // Optional: light import to confirm connectivity
-      await getHealthDataForAssessment();
+      
+      toast.success("Permissions granted!", { duration: 2000 });
+      
       setHealthConnected(true);
-      toast.success("Health connected", { description: "You're ready to sync sleep and HR data" });
-    } catch (e) {
-      toast.error("Failed to connect health");
+      localStorage.setItem("health_connected", "true");
+      
+      // Fetch health data
+      await fetchHealthData();
+      
+      toast.success("Health connected!", { 
+        description: `Found ${healthData.steps} steps in last 24h`,
+        duration: 5000
+      });
+    } catch (e: any) {
+      const errorMsg = e?.message || String(e);
+      toast.error("Failed to connect", { 
+        description: errorMsg,
+        duration: 10000
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -291,10 +413,25 @@ const Profile = () => {
     .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <header className="bg-gradient-to-b from-primary/10 to-background pt-8 pb-12">
-        <div className="container max-w-2xl mx-auto px-4">
+    <div className="min-h-screen bg-background pb-24" style={{ paddingTop: 0 }}>
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+        <div className="container max-w-2xl mx-auto px-4 py-4">
+          <div 
+            className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => navigate("/overview")}
+          >
+            <Flame className="w-8 h-8" style={{ color: "#FFCC00" }} />
+            <h1 className="text-3xl font-black tracking-tight text-primary">
+              Rox<span className="text-foreground">PT</span>
+            </h1>
+          </div>
+        </div>
+      </header>
+
+      <main className="container max-w-2xl mx-auto px-4 pt-20 pb-6">
+        {/* User Profile Card */}
+        <Card className="p-6 mb-4 shadow-lg">
           <div className="flex flex-col items-center">
             <Avatar className="w-24 h-24 border-4 border-background shadow-lg">
               <AvatarImage src={user.avatarUrl} alt={user.name} />
@@ -308,29 +445,113 @@ const Profile = () => {
               {user.email}
             </Badge>
           </div>
-        </div>
-      </header>
+        </Card>
 
-      <main className="container max-w-2xl mx-auto px-4 -mt-6">
+        
         {/* Connections */}
         <Card className="p-6 mb-4 shadow-lg">
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">Connections</h3>
           <div className="space-y-3">
             {/* Native: Health Connect / HealthKit */}
             {Capacitor.isNativePlatform() && (
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-3">
-                  <HeartPulse className={`w-5 h-5 ${healthConnected ? "text-green-500" : "text-muted-foreground"}`} />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Health (Apple / Android)</p>
-                    <p className="text-xs text-muted-foreground">
-                      {healthSupported ? (healthConnected ? "Connected" : "Available") : "Not available on this device"}
-                    </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-3">
+                    <HeartPulse className={`w-5 h-5 ${healthConnected ? "text-green-500" : "text-muted-foreground"}`} />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Health</p>
+                      <p className="text-xs text-muted-foreground">
+                        {healthSupported ? (healthConnected ? "Connected" : "Available") : "Not available on this device"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {healthConnected ? (
+                      <>
+                        <Button size="sm" variant="outline" onClick={handleConnectHealth} disabled={!healthSupported}>
+                          Reconnect
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={handleDisconnectHealth}>
+                          Disconnect
+                        </Button>
+                      </>
+                    ) : (
+                      <Button size="sm" onClick={handleConnectHealth} disabled={!healthSupported}>
+                        Connect
+                      </Button>
+                    )}
                   </div>
                 </div>
-                <Button size="sm" onClick={handleConnectHealth} disabled={!healthSupported}>
-                  {healthConnected ? "Reconnect" : "Connect"}
-                </Button>
+                
+                {/* Health Data Display */}
+                {healthConnected && (
+                  <div className="mt-3 space-y-3">
+                    {/* Refresh Button */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Today's Stats</span>
+                      <Button 
+                        size="sm"
+                        variant="ghost"
+                        onClick={fetchHealthData}
+                        disabled={refreshing}
+                        className="h-7 px-2"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                      </Button>
+                    </div>
+
+                    {/* Stats Grid - Icons only with values */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {/* Steps */}
+                      {healthData.steps > 0 && (
+                        <div className="flex items-center justify-center gap-2 p-2.5 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                          <Footprints className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                          <span className="text-base font-bold text-blue-500">{healthData.steps.toLocaleString()}</span>
+                        </div>
+                      )}
+
+                      {/* Avg Heart Rate */}
+                      {healthData.heartRate && healthData.heartRate.average > 0 && (
+                        <div className="flex items-center justify-center gap-2 p-2.5 bg-red-500/10 rounded-lg border border-red-500/20">
+                          <Heart className="w-4 h-4 text-red-500 flex-shrink-0 animate-pulse" />
+                          <span className="text-base font-bold text-red-500">{healthData.heartRate.average}</span>
+                        </div>
+                      )}
+
+                      {/* Distance */}
+                      {healthData.distance > 0 && (
+                        <div className="flex items-center justify-center gap-2 p-2.5 bg-green-500/10 rounded-lg border border-green-500/20">
+                          <MapPin className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          <span className="text-base font-bold text-green-500">{healthData.distance.toFixed(1)}km</span>
+                        </div>
+                      )}
+
+                      {/* Calories */}
+                      {healthData.calories > 0 && (
+                        <div className="flex items-center justify-center gap-2 p-2.5 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                          <Flame className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                          <span className="text-base font-bold text-orange-500">{healthData.calories}</span>
+                        </div>
+                      )}
+
+                      {/* Sleep */}
+                      {healthData.sleep > 0 && (
+                        <div className="flex items-center justify-center gap-2 p-2.5 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                          <Moon className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                          <span className="text-base font-bold text-purple-500">{healthData.sleep.toFixed(1)}h</span>
+                        </div>
+                      )}
+
+                      {/* Max Heart Rate */}
+                      {healthData.heartRate && healthData.heartRate.max > 0 && (
+                        <div className="flex items-center justify-center gap-2 p-2.5 bg-red-500/10 rounded-lg border border-red-500/20">
+                          <Activity className="w-4 h-4 text-red-500 flex-shrink-0" />
+                          <span className="text-base font-bold text-red-500">{healthData.heartRate.max}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

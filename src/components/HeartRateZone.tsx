@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Activity, Heart } from 'lucide-react';
-import { startHeartRateMonitoring, calculateHeartRateZones } from '@/services/healthKit';
+// import { startHeartRateMonitoring, calculateHeartRateZones } from '@/services/healthKit';
 import type { HeartRateZone as HeartRateZoneType } from '@/types/health';
 
 interface HeartRateZoneProps {
@@ -16,15 +16,13 @@ export function HeartRateZone({ age = 30, showZoneBar = true, compact = false }:
   const [currentHR, setCurrentHR] = useState<number | null>(null);
   const [currentZone, setCurrentZone] = useState<HeartRateZoneType | null>(null);
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const [zones] = useState(() => calculateHeartRateZones(age));
+  const [zones] = useState(() => [] as HeartRateZoneType[]); // Temporarily disabled
 
   useEffect(() => {
     setIsMonitoring(true);
     
-    const cleanup = startHeartRateMonitoring((hr, zone) => {
-      setCurrentHR(hr);
-      setCurrentZone(zone);
-    }, age);
+    // Temporarily disabled - heart rate monitoring
+    const cleanup = () => {};
 
     return () => {
       cleanup();
@@ -136,10 +134,8 @@ export function InlineHeartRate({ age = 30 }: { age?: number }) {
   const [currentZone, setCurrentZone] = useState<HeartRateZoneType | null>(null);
 
   useEffect(() => {
-    const cleanup = startHeartRateMonitoring((hr, zone) => {
-      setCurrentHR(hr);
-      setCurrentZone(zone);
-    }, age);
+    // Temporarily disabled - heart rate monitoring
+    const cleanup = () => {};
 
     return cleanup;
   }, [age]);

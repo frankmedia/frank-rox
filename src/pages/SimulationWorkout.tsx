@@ -9,6 +9,8 @@ import { triggerSuccessHaptic } from "@/utils/haptics";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/utils/supabaseClient";
 import confetti from "canvas-confetti";
+import { useWorkoutSession } from "@/contexts/WorkoutSessionContext";
+import { markExerciseComplete, syncWorkoutLogToSupabase } from "@/services/workoutCache";
 
 interface SimulationWorkoutProps {
   exercise: Exercise;
@@ -44,6 +46,17 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
   
   // Timer
   const [now, setNow] = useState(Date.now());
+  
+  // Use global workout session to keep screen awake
+  const { startWorkoutSession, isWakeLockActive } = useWorkoutSession();
+  const currentStationData = stationTimes[currentStation];
+  
+  // Start global session when simulation starts
+  useEffect(() => {
+    if (simulationStarted && !simulationComplete && currentStationData?.isRunning) {
+      startWorkoutSession();
+    }
+  }, [simulationStarted, simulationComplete, currentStationData?.isRunning, startWorkoutSession]);
   
   // Initialize station times
   useEffect(() => {
@@ -171,7 +184,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
     );
   };
   
-  const completeStation = (index: number) => {
+  const completeStation = async (index: number) => {
     const currentTime = Date.now();
     
     setStationTimes((prev) =>
@@ -222,51 +235,72 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       setSimulationComplete(true);
       toast.success("🎉 Simulation complete!");
       
-      // Save to Supabase
-      syncToSupabase();
+      // Mark exercise as complete in cache and sync to Supabase
+      await saveSimulationResults();
     }
     
     triggerSuccessHaptic();
   };
   
-  const syncToSupabase = async () => {
-    if (!authUser?.clientId || !username) return;
+  const saveSimulationResults = async () => {
+    if (!authUser?.clientId || !username) {
+      console.log('⚠️ Cannot save simulation: missing user data');
+      return;
+    }
     
     try {
+      // Mark exercise as complete in local cache
+      markExerciseComplete(username, trainingDay, exercise.id, authUser.clientId);
+      console.log('✅ Simulation marked as complete in cache');
+      
       // Get the plan ID
       const { data: planData } = await supabase
         .from("plans")
         .select("id")
         .eq("client_id", authUser.clientId)
-        .eq("is_active", true)
+        .eq("status", "active")
         .single();
       
-      if (!planData?.id) return;
+      if (!planData?.id) {
+        console.log('⚠️ No active plan found for simulation save');
+        return;
+      }
       
-      // Store split times
+      // Store split times in notes
       const splits = stationTimes.map((station) => ({
         station: station.stationName,
-        elapsed: station.elapsed,
+        elapsed: Math.round(station.elapsed / 1000), // Convert to seconds
         complete: station.isComplete,
       }));
       
-      await supabase.from("workout_logs").insert({
-        client_id: authUser.clientId,
-        plan_id: planData.id,
-        training_day: trainingDay,
-        exercise_name: `Sim: ${exercise.name}`,
-        duration_min: Math.round(totalElapsed / 60000),
-        notes: JSON.stringify({
-          type: "simulation",
-          total_time: totalElapsed,
-          splits,
-          completed_at: new Date().toISOString(),
-        }),
+      const notes = JSON.stringify({
+        type: "simulation",
+        total_time_seconds: Math.round(totalElapsed / 1000),
+        splits,
+        stations_completed: stationTimes.filter(s => s.isComplete).length,
+        total_stations: stations.length,
       });
       
-      console.log("✅ Simulation synced to Supabase");
+      // Use the proper workout logging system
+      await syncWorkoutLogToSupabase(
+        authUser.clientId,
+        planData.id,
+        trainingDay,
+        {
+          exerciseName: exercise.name,
+          duration: Math.round(totalElapsed / 60), // Duration in minutes
+          notes,
+        }
+      );
+      
+      console.log("✅ Simulation synced to Supabase", {
+        exercise: exercise.name,
+        duration_min: Math.round(totalElapsed / 60),
+        splits: splits.length
+      });
     } catch (e) {
-      console.error("Error syncing simulation:", e);
+      console.error("❌ Error saving simulation:", e);
+      toast.error("Failed to save simulation results");
     }
   };
   
@@ -284,20 +318,11 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       return;
     }
     
-    // Mark exercise as complete
-    if (username && trainingDay) {
-      const key = `completedExercises_${username}_${trainingDay}`;
-      const completed = JSON.parse(localStorage.getItem(key) || "[]");
-      if (!completed.includes(exercise.id)) {
-        completed.push(exercise.id);
-        localStorage.setItem(key, JSON.stringify(completed));
-      }
-    }
-    
-    // Clear saved progress
+    // Clear saved progress (completion already marked in saveSimulationResults)
     if (username && trainingDay && exercise.id) {
       const savedKey = `simulation_${username}_${trainingDay}_${exercise.id}`;
       localStorage.removeItem(savedKey);
+      console.log('🧹 Cleared simulation progress from localStorage');
     }
     
     onComplete();
@@ -367,12 +392,19 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
         }}
       >
         <div className="text-center space-y-4">
+          {/* Wake Lock Status Indicator */}
+          {simulationStarted && !simulationComplete && currentStationData?.isRunning && (
+            <div className="flex items-center justify-center mb-2">
+              <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+            </div>
+          )}
+          
           {stations[currentStation] && (
             <div className="text-2xl font-bold text-white/90">
               {stations[currentStation].name}
             </div>
           )}
-          <div className="text-[132px] md:text-[176px] font-mono font-bold text-white leading-none">
+          <div className={`text-[132px] md:text-[176px] font-mono font-bold text-white leading-none ${simulationStarted && !simulationComplete && currentStationData?.isRunning ? 'animate-breathe' : ''}`}>
             {formatTime(totalElapsed)}
           </div>
           <div className="text-lg text-white/70 mt-6">
@@ -561,6 +593,17 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
           </div>
         </div>
       )}
+      
+      {/* CSS animation for subtle breathing effect */}
+      <style>{`
+        @keyframes breathe {
+          0%, 95%, 100% { opacity: 1; transform: scale(1); }
+          97.5% { opacity: 0.97; transform: scale(1.003); }
+        }
+        .animate-breathe {
+          animation: breathe 10s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { useWakeLock } from "@/hooks/useWakeLock";
+import { useWorkoutSession } from "@/contexts/WorkoutSessionContext";
 
 interface TimerProps {
   mode: "stopwatch" | "countdown";
@@ -19,8 +19,8 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
   
   console.log('⏱️ Timer render:', { mode, initialSeconds, autoStart, seconds, isRunning });
 
-  // Keep screen awake during timer
-  const { isSupported: wakeLockSupported, isWakeLockActive } = useWakeLock(isRunning);
+  // Use global workout session to keep screen awake
+  const { startWorkoutSession, endWorkoutSession, isWakeLockActive } = useWorkoutSession();
   
   // Track mount/unmount for cleanup
   useEffect(() => {
@@ -42,6 +42,14 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
     console.log('⏱️ initialSeconds changed:', { old: seconds, new: initialSeconds });
     setSeconds(initialSeconds);
   }, [initialSeconds]);
+  
+  // Start/stop global workout session when timer runs
+  useEffect(() => {
+    if (isRunning) {
+      startWorkoutSession();
+    }
+    // Note: We don't end the session when timer stops - only when workout is complete/exited
+  }, [isRunning, startWorkoutSession]);
   
   // Memoized completion callback to prevent unnecessary re-renders
   const handleComplete = useCallback(() => {
@@ -213,18 +221,11 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
       }}
     >
       {/* Wake Lock Status Indicator */}
-      {isRunning && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-          <div className={`w-2 h-2 rounded-full ${isWakeLockActive ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
-          <span>
-            {isWakeLockActive 
-              ? '🔓 Screen will stay on' 
-              : wakeLockSupported 
-                ? '⏳ Activating wake lock...'
-                : '⚠️ Keep screen active manually'}
-          </span>
-        </div>
-      )}
+        {isRunning && (
+          <div className="flex items-center justify-center mb-2">
+            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+          </div>
+        )}
       
       {/* Tap timer to start/pause */}
       <div 

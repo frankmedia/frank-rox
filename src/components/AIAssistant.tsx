@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Bot, Send, Loader2, X, Sparkles } from "lucide-react";
+import { Bot, Send, Loader2, X, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { useToast } from "./ui/use-toast";
 import { supabase } from "@/utils/supabaseClient";
@@ -30,6 +30,7 @@ interface AIAssistantProps {
   planId: string;
   dayId: string; // The training day to add workouts to
   clientId?: string;
+  availableDays?: Array<{ id: string; label: string; dayIndex: number }>;
   onClose: () => void;
   onWorkoutCreated?: () => void;
 }
@@ -38,12 +39,13 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   planId,
   dayId,
   clientId,
+  availableDays,
   onClose,
   onWorkoutCreated
 }) => {
   const storageKey = `ai-chat-${planId}`;
   
-  console.log('🤖 AI Assistant initialized with dayId:', dayId);
+  console.log('🤖 AI Assistant initialized with:', { dayId, availableDays });
   
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
@@ -69,28 +71,9 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   const [parsedWorkout, setParsedWorkout] = useState<ParsedWorkout | null>(null);
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
   const [creatingWorkout, setCreatingWorkout] = useState(false);
-  const [targetDayLabel, setTargetDayLabel] = useState<string>('');
+  const [selectedDayId, setSelectedDayId] = useState<string>(dayId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  
-  // Fetch target day label
-  useEffect(() => {
-    const fetchDayLabel = async () => {
-      if (!dayId) return;
-      const { data } = await supabase
-        .from('plan_days')
-        .select('day_index, label')
-        .eq('id', dayId)
-        .single();
-      
-      if (data) {
-        const label = data.label || `Day ${data.day_index + 1}`;
-        setTargetDayLabel(label);
-        console.log('📅 Target day:', label, '(ID:', dayId, ')');
-      }
-    };
-    fetchDayLabel();
-  }, [dayId]);
 
   // Save messages to localStorage
   useEffect(() => {
@@ -251,6 +234,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         // Store parsed data in state
         setParsedWorkout(result.data);
         setUserAnswers({}); // Reset answers for new questions
+        
+        // Debug logging
+        console.log('📋 Parsed workout:', {
+          hasQuestions,
+          questionsCount: result.data.questions?.length || 0,
+          questions: result.data.questions,
+          daysCount: result.data.days?.length || 0
+        });
 
         toast({
           title: "Workout Parsed!",
@@ -314,10 +305,16 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
     try {
       console.log('🚀 Creating workout with data:', {
         planId,
-        dayId,
+        dayId: selectedDayId,
         clientId,
         workout: parsedWorkout,
         answers: userAnswers
+      });
+      console.log('📤 Sending to API:', {
+        action: 'create_workout',
+        dayId: selectedDayId,
+        planId: planId,
+        dayLabel: availableDays?.find(d => d.id === selectedDayId)?.label
       });
       
       // Call API to create workout in database
@@ -327,7 +324,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         body: JSON.stringify({
           action: 'create_workout',
           data: {
-            dayId,
+            dayId: selectedDayId,
             planId,
             clientId,
             workout: parsedWorkout,
@@ -411,24 +408,62 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   return (
     <div className="fixed right-4 bottom-4 w-96 h-[600px] bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl flex flex-col z-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 px-4 py-3 rounded-t-lg flex items-center justify-between">
-        <div className="flex flex-col">
+      <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 px-4 py-3 rounded-t-lg">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-black" />
             <h3 className="font-bold text-black">AI Workout Builder</h3>
           </div>
-          {targetDayLabel && (
-            <div className="text-xs text-black/70 font-medium mt-0.5">
-              📅 Target: {targetDayLabel}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {messages.length > 2 && (
+              <button
+                onClick={() => {
+                  if (window.confirm('Clear chat history?')) {
+                    setMessages([{
+                      role: 'assistant',
+                      content: "👋 Hi! I'm your AI workout assistant.\n\n📋 **Paste your workout plan below** and I'll help you create it!\n\nI can handle:\n• Multiple days\n• Different exercise types\n• Sets, reps, weights\n• Distances, durations\n• And more!",
+                      timestamp: new Date(),
+                    }]);
+                    setParsedWorkout(null);
+                    setUserAnswers({});
+                    localStorage.removeItem(storageKey);
+                  }
+                }}
+                className="p-1 hover:bg-black/10 rounded transition-colors"
+                title="Clear chat"
+              >
+                <Trash2 className="w-4 h-4 text-black" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-black/10 rounded transition-colors"
+            >
+              <X className="w-5 h-5 text-black" />
+            </button>
+          </div>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1 hover:bg-black/10 rounded transition-colors"
-        >
-          <X className="w-5 h-5 text-black" />
-        </button>
+        
+        {/* Day Selector */}
+        {availableDays && availableDays.length > 0 && (
+          <div className="space-y-1">
+            <label className="text-xs text-black/80 font-medium">🎯 Which day should I add exercises to?</label>
+            <select
+              value={selectedDayId}
+              onChange={(e) => {
+                setSelectedDayId(e.target.value);
+                console.log('📅 Day selected:', e.target.value, availableDays.find(d => d.id === e.target.value));
+              }}
+              className="w-full px-3 py-2 text-sm bg-black/10 text-black border border-black/20 rounded font-medium focus:outline-none focus:ring-2 focus:ring-black/30"
+            >
+              {availableDays.map(day => (
+                <option key={day.id} value={day.id}>
+                  {day.label || `Day ${day.dayIndex + 1}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Messages */}
@@ -465,27 +500,27 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Questions Section */}
+      {/* Questions Section - PROMINENT DISPLAY */}
       {parsedWorkout && parsedWorkout.questions && parsedWorkout.questions.length > 0 && (
-        <div className="border-t border-zinc-700 px-4 py-3 bg-zinc-800/30 space-y-3 max-h-48 overflow-y-auto">
-          <div className="text-sm font-semibold text-yellow-500 flex items-center gap-2">
-            🤖 I have {parsedWorkout.questions.length} question(s) before creating:
+        <div className="border-t-2 border-yellow-500/50 px-4 py-4 bg-yellow-500/10 space-y-3 max-h-64 overflow-y-auto">
+          <div className="text-sm font-bold text-yellow-400 flex items-center gap-2 bg-yellow-500/20 px-3 py-2 rounded">
+            🤖 Answer {parsedWorkout.questions.length} question(s) to continue:
           </div>
           
           {parsedWorkout.questions.map((question) => (
-            <div key={question.id} className="space-y-2">
-              <div className="text-xs text-zinc-400">
-                <span className="font-semibold text-white">Q{question.id}:</span> {question.text}
+            <div key={question.id} className="space-y-2 bg-zinc-800/50 p-3 rounded border border-zinc-700">
+              <div className="text-sm text-white font-medium">
+                <span className="text-yellow-500 font-bold">Q{question.id}:</span> {question.text}
               </div>
               <div className="flex flex-wrap gap-2">
                 {question.options.map((option) => (
                   <button
                     key={option}
                     onClick={() => setUserAnswers(prev => ({ ...prev, [question.id]: option }))}
-                    className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+                    className={`px-3 py-2 rounded text-xs font-medium transition-all ${
                       userAnswers[question.id] === option
-                        ? 'bg-yellow-500 text-black'
-                        : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                        ? 'bg-yellow-500 text-black shadow-lg scale-105'
+                        : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600 hover:scale-105'
                     }`}
                   >
                     {option}

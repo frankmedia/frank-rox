@@ -1,17 +1,19 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Home, BookOpen, User, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useWorkoutSession } from "@/contexts/WorkoutSessionContext";
 
 const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isWorkoutActive } = useWorkoutSession();
 
   const tabs = [
     {
-      id: "today",
-      label: "Today",
+      id: "plan",
+      label: "Plan",
       icon: Home,
-      path: "/today",
+      path: "/overview",
     },
     {
       id: "history",
@@ -34,15 +36,22 @@ const BottomNav = () => {
   ];
 
   const isActive = (path: string) => {
-    // Today button is active on /today and /exercise pages
-    if (path === "/today") {
-      return location.pathname === "/today" || location.pathname.startsWith("/exercise");
+    // Plan button is active on /overview, /today and /exercise pages
+    if (path === "/overview") {
+      return location.pathname === "/overview" || location.pathname === "/today" || location.pathname.startsWith("/exercise");
     }
     return location.pathname.startsWith(path);
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border safe-area-inset-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border bottom-nav-safe">
+      {/* Global workout session indicator */}
+      {isWorkoutActive && (
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse shadow-lg" />
+        </div>
+      )}
+      
       <div className="container max-w-2xl mx-auto px-4">
         <div className="flex items-center justify-around h-16">
           {tabs.map((tab) => {

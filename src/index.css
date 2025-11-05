@@ -88,11 +88,57 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Prevent bounce/overscroll on iOS */
+    overscroll-behavior: none;
+    /* Ensure solid background fills EVERYTHING */
+    background-color: #14171a;
+    /* Remove any margins */
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Root element gets safe area insets */
+  #root {
+    min-height: 100vh;
+    /* Allow all touch interactions */
+    touch-action: auto;
+    /* Solid dark background fills entire screen */
+    background-color: #14171a;
+    /* NO padding at all */
+  }
+  
+  /* Ensure body and html fill the viewport */
+  html {
+    background-color: #14171a;
+    margin: 0;
+    padding: 0;
   }
 
   /* Touch-friendly sizing */
   button, a {
     @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* CRITICAL: Make headers FIXED like bottom nav - extend BEHIND status bar */
+  header.sticky {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    /* Solid background fills behind status bar */
+    background-color: #14171a !important;
+    /* NO padding on header itself - it extends behind status bar */
+    /* Content inside will have padding */
+  }
+  
+  /* Header inner content gets the safe area padding */
+  header.sticky > div {
+    padding-top: env(safe-area-inset-top) !important;
+  }
+  
+  /* ONLY safe area inset - NO extra padding */
+  .min-h-screen {
+    padding-top: env(safe-area-inset-top) !important;
   }
 
   /* Hide number input spinners - we have custom +/- buttons */
@@ -110,5 +156,40 @@ All colors MUST be HSL.
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Safe area inset utilities for Android/iOS navigation bars and notches */
+  .safe-area-inset-top {
+    padding-top: max(env(safe-area-inset-top), 1rem);
+  }
+  
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-inset-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-area-inset-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Main content area that respects bottom navigation */
+  .main-content-safe {
+    padding-top: max(env(safe-area-inset-top), 1.5rem);
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom)); /* 4rem = h-16 nav height */
+  }
+
+  /* Bottom navigation with safe area */
+  .bottom-nav-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Swipe-enabled container - allows vertical scroll but enables horizontal swipe detection */
+  .swipe-container {
+    touch-action: pan-y;
   }
 }

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { Video, CheckCircle2, Calendar } from "lucide-react";
+import { Video, CheckCircle2, Calendar, Flame } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabaseClient";
@@ -160,17 +160,17 @@ const PTCheckIn = () => {
   // Success Screen
   if (showSuccess) {
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-screen bg-background pb-24" style={{ paddingTop: 0 }}>
         <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
           <div className="container max-w-2xl mx-auto px-4 py-4">
-            <div className="flex items-center gap-3">
-              <Video className="w-8 h-8" style={{ color: '#FFCC00' }} />
-              <h1 className="text-2xl font-bold text-foreground">PT Check-In</h1>
+            <div className="flex items-center justify-center gap-3">
+              <Video className="w-6 h-6" style={{ color: '#FFCC00' }} />
+              <h1 className="text-xl font-bold text-foreground">PT Check-In</h1>
             </div>
           </div>
         </header>
 
-        <main className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
+        <main className="container max-w-2xl mx-auto px-4 pt-20 pb-6 space-y-6">
           <Card className="p-8 border-2 text-center" style={{ borderColor: '#FFCC00' }}>
             <CheckCircle2 className="w-20 h-20 mx-auto mb-4" style={{ color: '#FFCC00' }} />
             <h2 className="text-3xl font-bold text-foreground mb-4">
@@ -196,19 +196,19 @@ const PTCheckIn = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-24" style={{ paddingTop: 0 }}>
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="container max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Video className="w-8 h-8" style={{ color: '#FFCC00' }} />
-            <h1 className="text-2xl font-bold text-foreground">PT Check-In</h1>
+          <div className="flex items-center justify-center gap-3">
+            <Video className="w-6 h-6" style={{ color: '#FFCC00' }} />
+            <h1 className="text-xl font-bold text-foreground">PT Check-In</h1>
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <main className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <main className="container max-w-2xl mx-auto px-4 pt-20 pb-6 space-y-6">
         
         {/* Progress Bar */}
         <Card className="p-6 border-2" style={{ borderColor: canCheckIn ? '#FFCC00' : '#666' }}>

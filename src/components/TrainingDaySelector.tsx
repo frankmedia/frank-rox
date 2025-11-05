@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, RotateCw } from "lucide-react";
+import { RotateCw } from "lucide-react";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -100,10 +100,8 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
       console.error("Error saving training day:", e);
     }
     
+    // Notify parent component to reload exercises (no page refresh)
     onDayChange?.(newDay);
-    
-    // Reload the page to fetch new exercises
-    window.location.reload();
   };
 
   const goToNextDay = () => {

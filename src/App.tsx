@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
+import { WorkoutSessionProvider } from "@/contexts/WorkoutSessionContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import BottomNav from "@/components/BottomNav";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -39,7 +40,7 @@ const queryClient = new QueryClient();
 
 // Layout wrapper for authenticated pages with bottom nav
 const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => (
-  <div className="pb-16">
+  <div className="min-h-screen pb-[calc(4rem+env(safe-area-inset-bottom))]">
     {children}
     <BottomNav />
     <PWAInstallPrompt />
@@ -53,9 +54,10 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <ScrollToTop />
-          <TopProgressBar />
-          <Routes>
+          <WorkoutSessionProvider>
+            <ScrollToTop />
+            <TopProgressBar />
+            <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/access-denied" element={<AccessDenied />} />
@@ -64,6 +66,18 @@ const App = () => (
             {/* Protected routes with bottom navigation - wrapped in DataProvider */}
             <Route
               path="/"
+              element={
+                <ProtectedRoute>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <Overview />
+                    </AuthenticatedLayout>
+                  </DataProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/overview"
               element={
                 <ProtectedRoute>
                   <DataProvider>
@@ -184,7 +198,8 @@ const App = () => (
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
-          </Routes>
+            </Routes>
+          </WorkoutSessionProvider>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

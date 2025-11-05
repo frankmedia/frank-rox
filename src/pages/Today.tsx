@@ -5,7 +5,7 @@ import { ExerciseMedia } from "@/components/ExerciseMedia";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Trophy, ClipboardList, Flame, Info, Share2, Loader2, CheckCircle2, SkipForward } from "lucide-react";
+import { Trophy, ClipboardList, Flame, Info, Share2, Loader2, CheckCircle2, SkipForward, Activity, Heart } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingDaySelector } from "@/components/TrainingDaySelector";
 import { useData } from "@/contexts/DataContext";
@@ -16,17 +16,75 @@ import { ExerciseListSkeleton } from "@/components/ExerciseCardSkeleton";
 import { shareWorkout } from "@/utils/share";
 import { supabase } from "@/utils/supabaseClient";
 import { isExerciseComplete, getCompletionStats } from "@/services/workoutCache";
+import confetti from "canvas-confetti";
+import { Capacitor } from "@capacitor/core";
+import { AppHealth } from "@/services/appHealth";
 
 const Today = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
   const { exercises, loading, error, refresh } = useData();
   const [syncing, setSyncing] = useState(false);
+  const [healthData, setHealthData] = useState<{
+    steps: number;
+    heartRate: { average: number; max: number; min: number } | null;
+  } | null>(null);
+  const [healthConnected, setHealthConnected] = useState(false);
   
   // Debug: Log exercises whenever they change
   useEffect(() => {
     console.log(`📋 Today page: Received ${exercises.length} exercises from DataContext:`, exercises.map(e => `${e.name} (${e.type})`));
   }, [exercises]);
+  
+  // Check if health is connected and fetch data
+  useEffect(() => {
+    const checkHealth = async () => {
+      if (!Capacitor.isNativePlatform()) return;
+      
+      try {
+        const flag = localStorage.getItem("health_connected");
+        const connected = flag === "true";
+        setHealthConnected(connected);
+        
+        if (connected) {
+          await fetchHealthData();
+        }
+      } catch (e) {
+        console.error('Error checking health:', e);
+      }
+    };
+    
+    checkHealth();
+  }, []);
+  
+  // Fetch health data
+  const fetchHealthData = async () => {
+    try {
+      // Get today's data from midnight to now
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const start = startOfToday.toISOString();
+      const end = now.toISOString();
+      
+      console.log('📊 [Today] Fetching health data from:', start, 'to:', end);
+      
+      const [stepsResult, heartRateResult] = await Promise.all([
+        AppHealth.getSteps({ start, end }).catch(() => ({ total: 0, platform: 'android' as const })),
+        AppHealth.getHeartRate({ start, end }).catch(() => null)
+      ]);
+      
+      setHealthData({
+        steps: stepsResult.total,
+        heartRate: heartRateResult && heartRateResult.samples > 0 ? {
+          average: heartRateResult.average,
+          max: heartRateResult.max,
+          min: heartRateResult.min
+        } : null
+      });
+    } catch (e) {
+      console.error('Error fetching health data:', e);
+    }
+  };
   
   // Function to find the next incomplete training day
   const findNextIncompleteDay = () => {
@@ -83,14 +141,22 @@ const Today = () => {
     return "1";
   });
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
-  const [headerVisible, setHeaderVisible] = useState(true);
-  const lastScrollY = useRef(0);
+
+  // Refresh exercises when training day changes
+  useEffect(() => {
+    console.log(`🔄 Training day changed to ${currentTrainingDay}, refreshing exercises...`);
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrainingDay]);
 
   // Pull-to-refresh with MUCH bigger threshold
   const { containerRef, pullDistance, isRefreshing } = usePullToRefresh({
     onRefresh: async () => {
-      await refresh();
-      toast.success("Workouts refreshed!", { duration: 2000 });
+      await Promise.all([
+        refresh(),
+        healthConnected ? fetchHealthData() : Promise.resolve()
+      ]);
+      toast.success("Refreshed!", { duration: 2000 });
     },
     threshold: 150, // Much bigger pull required
   });
@@ -182,35 +248,7 @@ const Today = () => {
     checkAndUpdateToNextDay();
   }, [currentTrainingDay]);
   
-  // Collapsing header on scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      const container = containerRef.current;
-      if (!container) return;
-      
-      const currentScrollY = container.scrollTop;
-      
-      // Only hide header if scrolling down and past a threshold
-      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        setHeaderVisible(false);
-      } else if (currentScrollY < lastScrollY.current) {
-        setHeaderVisible(true);
-      }
-      
-      lastScrollY.current = currentScrollY;
-    };
-
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener("scroll", handleScroll, { passive: true });
-    }
-
-    return () => {
-      if (container) {
-        container.removeEventListener("scroll", handleScroll);
-      }
-    };
-  }, []);
+  // Header is now fixed - no scroll hiding needed
 
   // Sync today's workout logs to Supabase
   const syncLogsToSupabase = async (status: 'completed' | 'skipped') => {
@@ -371,8 +409,41 @@ const Today = () => {
   const handleCompleteDay = async () => {
     const success = await syncLogsToSupabase('completed');
     if (success) {
+      // 🎉 CONFETTI CELEBRATION!
+      const duration = 3000;
+      const animationEnd = Date.now() + duration;
+      
+      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+      
+      const interval: any = setInterval(() => {
+        const timeLeft = animationEnd - Date.now();
+        
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+        
+        const particleCount = 50 * (timeLeft / duration);
+        
+        // Fire confetti from both sides
+        confetti({
+          particleCount,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0, y: 0.6 },
+          colors: ['#FFCC00', '#FFB74D', '#FFA000', '#FF6F00']
+        });
+        confetti({
+          particleCount,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1, y: 0.6 },
+          colors: ['#FFCC00', '#FFB74D', '#FFA000', '#FF6F00']
+        });
+      }, 250);
+      
       toast.success("Day completed! 🎉", {
-        description: "Your workout has been synced"
+        description: "Your workout has been synced",
+        duration: 3000
       });
       
       // Advance to next day
@@ -385,8 +456,10 @@ const Today = () => {
         setCurrentTrainingDay(nextDay);
       }
       
-      // Refresh exercises for next day
-      await refresh();
+      // Refresh exercises for next day after confetti
+      setTimeout(async () => {
+        await refresh();
+      }, 3000);
     }
   };
 
@@ -418,9 +491,8 @@ const Today = () => {
         description: error,
       });
     } else if (!loading && exercises.length === 0) {
-      toast.info("No exercises found", {
-        description: "Check your Google Sheets configuration",
-      });
+      console.log("⚠️ No exercises found - check if plan/day exists in database");
+      // Don't show toast immediately - user might be navigating or refreshing
     }
   }, [error, loading, exercises]);
 
@@ -441,10 +513,10 @@ const Today = () => {
   };
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-background pb-24 overflow-y-auto relative">
+    <div ref={containerRef} className="min-h-screen bg-background pb-20 overflow-y-auto relative" style={{ paddingTop: 0 }}>
       {/* Pull-to-Refresh Indicator */}
       <div 
-        className="absolute top-0 left-0 right-0 flex items-center justify-center transition-all z-50"
+        className="absolute top-0 left-0 right-0 flex items-center justify-center transition-all z-50 pointer-events-none"
         style={{
           height: `${pullDistance}px`,
           opacity: Math.min(pullDistance / 150, 1),
@@ -464,22 +536,19 @@ const Today = () => {
 
       {/* Header */}
       <header 
-        className="sticky z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border transition-transform duration-300 ease-in-out pt-safe"
-        style={{
-          top: 0,
-          transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
-          paddingTop: 'env(safe-area-inset-top)',
-        }}
+        className="sticky z-10 bg-background border-b border-border"
       >
-        <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-2 sm:py-3">
+        <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-2">
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Logo - Left Side */}
             <div 
               className="flex items-center gap-1 sm:gap-2 cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/overview")}
             >
               <Flame className="w-6 h-6 sm:w-8 sm:h-8" style={{ color: '#FFCC00' }} />
-              <h1 className="text-lg sm:text-2xl font-bold text-foreground">RoxPT</h1>
+              <h1 className="text-lg sm:text-2xl font-bold text-primary">
+                Rox<span className="text-foreground">PT</span>
+              </h1>
             </div>
             
             {/* Training Day Selector - Right */}
@@ -489,7 +558,7 @@ const Today = () => {
       </header>
 
       {/* Today's Workout */}
-      <main className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
+      <main className="container max-w-2xl mx-auto px-2 sm:px-4 pt-16 pb-6">
         <div className="flex items-center justify-between mb-3 sm:mb-6">
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Training Day {currentTrainingDay}</h2>
           
@@ -853,6 +922,45 @@ const Today = () => {
           </Dialog>
           </div>
         </div>
+
+        {/* Health Stats Card (Native Only) */}
+        {healthConnected && healthData && (
+          <Card className="p-4 mb-4 bg-gradient-to-r from-primary/10 to-red-500/10 border-primary/20">
+            <button 
+              onClick={fetchHealthData}
+              className="absolute top-3 right-3 p-1.5 hover:bg-background/50 rounded-full transition-colors"
+            >
+              <Activity className="w-4 h-4 text-primary" />
+            </button>
+            
+            <div className="grid grid-cols-2 gap-3">
+              {/* Steps */}
+              <div className="flex items-center gap-3 p-3 bg-background/50 rounded-lg">
+                <div className="p-2 bg-primary/20 rounded-full">
+                  <Activity className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Steps</p>
+                  <p className="text-lg font-bold text-primary">{healthData.steps.toLocaleString()}</p>
+                </div>
+              </div>
+              
+              {/* Heart Rate */}
+              {healthData.heartRate && (
+                <div className="flex items-center gap-3 p-3 bg-background/50 rounded-lg">
+                  <div className="p-2 bg-red-500/20 rounded-full">
+                    <Heart className="w-5 h-5 text-red-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Avg HR</p>
+                    <p className="text-lg font-bold text-red-500">{healthData.heartRate.average}</p>
+                    <p className="text-xs text-muted-foreground">{healthData.heartRate.min}-{healthData.heartRate.max} bpm</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
 
         {loading ? (
           <ExerciseListSkeleton count={6} />

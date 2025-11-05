@@ -156,10 +156,14 @@ STRICT PARSING RULES:
    - "2 minutes" = 120 (seconds)
    - Default to 60 if not specified
 
-10. SUPERSETS/CIRCUITS:
-    - If text says "Superset:" combine exercises with notes: "Superset with [other exercise]"
-    - If "Circuit:" or "3 rounds:" group exercises with notes: "Circuit - 3 rounds"
-    - Example: "Superset: 3 x 10 Bench + 3 x 10 Rows" = 2 exercises, both with notes "Superset"
+10. SUPERSETS/CIRCUITS (IMPORTANT):
+    - If text says "Superset:" mark ALL exercises in the superset with notes: "Superset"
+    - If "Circuit:" or "3 rounds:" or "EMOM" mark ALL exercises in the circuit with notes: "Circuit"
+    - ALL exercises in the same circuit/superset MUST have the same keyword in notes
+    - Example inputs:
+      * "Superset: 3 x 10 Bench + 3 x 10 Rows" = 2 exercises, BOTH with notes "Superset"
+      * "Circuit: Push-ups, Squats, Burpees" = 3 exercises, ALL with notes "Circuit"
+      * "3 rounds: 10 Pull-ups, 20 Lunges, 30 Sit-ups" = 3 exercises, ALL with notes "Circuit"
 
 11. SWIMMING/CARDIO WORKOUTS:
     - Extract each set as separate exercise
@@ -450,16 +454,18 @@ Rules:
 }
 
 async function handleCreateWorkout(req: any, res: any, data: any) {
-  const { planId, clientId, workout } = data;
+  const { planId, clientId, dayId, workout } = data;
   
   if (!planId || !workout || !workout.days) {
     return res.status(400).json({ error: 'planId and workout.days are required' });
   }
 
   console.log('Creating workout for plan:', planId);
+  console.log('Target dayId:', dayId || 'None (will create new days)');
   console.log('Days to create:', workout.days.length);
 
   let sessionsCreated = 0;
+  let blocksCreated = 0;
   const errors = [];
 
   try {
@@ -470,52 +476,140 @@ async function handleCreateWorkout(req: any, res: any, data: any) {
         continue;
       }
 
-      // Create session
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('sessions')
-        .insert({
-          plan_id: planId,
-          name: name || `Day ${sessionsCreated + 1}`,
-          order_index: sessionsCreated,
-        })
-        .select()
-        .single();
-
-      if (sessionError || !sessionData) {
-        console.error('Failed to create session:', sessionError);
-        errors.push(`Failed to create session for ${name}: ${sessionError?.message}`);
-        continue;
-      }
-
-      console.log('Created session:', sessionData.id);
-
-      // Create blocks for each exercise
-      for (let i = 0; i < exercises.length; i++) {
-        const exercise = exercises[i];
+      let sessionData;
+      
+      // If dayId provided, use existing day; otherwise create new session
+      if (dayId) {
+        console.log('🔍 Looking up dayId:', dayId);
         
-        // Match exercise to database
-        const { data: dbExercise } = await supabase
-          .from('exercises')
-          .select('id, modality')
-          .ilike('name', `%${exercise.name}%`)
-          .limit(1)
+        // Get existing session by day ID
+        const { data: existingSession, error: fetchError } = await supabase
+          .from('plan_days')
+          .select('session_id, day_index, label')
+          .eq('id', dayId)
+          .single();
+        
+        console.log('📋 plan_days query result:', { existingSession, error: fetchError });
+        
+        if (fetchError || !existingSession?.session_id) {
+          console.error('❌ Failed to find day:', fetchError);
+          errors.push(`Failed to find day ${dayId}: ${fetchError?.message}`);
+          continue;
+        }
+        
+        console.log('🎯 Found day:', {
+          day_index: existingSession.day_index,
+          label: existingSession.label,
+          session_id: existingSession.session_id
+        });
+        
+        // Get the session details
+        const { data: session, error: sessionError } = await supabase
+          .from('sessions')
+          .select('id, name, order_index, plan_id')
+          .eq('id', existingSession.session_id)
+          .single();
+        
+        console.log('📋 sessions query result:', { session, error: sessionError });
+        
+        if (sessionError || !session) {
+          console.error('❌ Failed to get session:', sessionError);
+          errors.push(`Failed to get session: ${sessionError?.message}`);
+          continue;
+        }
+        
+        sessionData = session;
+        console.log('✅ Using existing session:', {
+          session_id: sessionData.id,
+          session_name: sessionData.name,
+          order_index: sessionData.order_index,
+          dayId: dayId
+        });
+      } else {
+        // Create new session (original behavior)
+        const { data: newSession, error: sessionError } = await supabase
+          .from('sessions')
+          .insert({
+            plan_id: planId,
+            name: name || `Day ${sessionsCreated + 1}`,
+            order_index: sessionsCreated,
+          })
+          .select()
           .single();
 
-        if (!dbExercise) {
-          console.warn(`Exercise not found: ${exercise.name}`);
-          errors.push(`Exercise not found: ${exercise.name}`);
+        if (sessionError || !newSession) {
+          console.error('Failed to create session:', sessionError);
+          errors.push(`Failed to create session for ${name}: ${sessionError?.message}`);
           continue;
         }
 
+        sessionData = newSession;
+        console.log('✅ Created new session:', sessionData.id);
+      }
+
+      sessionsCreated++;
+
+      // Group exercises by circuit/superset based on notes
+      const exerciseGroups: any[] = [];
+      let currentGroup: any[] = [];
+      let currentGroupType = 'single';
+      
+      for (let i = 0; i < exercises.length; i++) {
+        const exercise = exercises[i];
+        const notes = exercise.notes?.toLowerCase() || '';
+        
+        // Check if this is part of a circuit or superset
+        const isCircuit = notes.includes('circuit');
+        const isSuperset = notes.includes('superset');
+        const isGrouped = isCircuit || isSuperset;
+        
+        if (isGrouped) {
+          // Start or continue a group
+          if (currentGroup.length === 0) {
+            currentGroupType = isCircuit ? 'circuit' : 'superset';
+          }
+          currentGroup.push(exercise);
+        } else {
+          // Not grouped - save any existing group first
+          if (currentGroup.length > 0) {
+            exerciseGroups.push({ type: currentGroupType, exercises: currentGroup });
+            currentGroup = [];
+          }
+          // Add as single exercise
+          exerciseGroups.push({ type: 'single', exercises: [exercise] });
+        }
+      }
+      
+      // Don't forget the last group
+      if (currentGroup.length > 0) {
+        exerciseGroups.push({ type: currentGroupType, exercises: currentGroup });
+      }
+      
+      console.log(`📦 Grouped ${exercises.length} exercises into ${exerciseGroups.length} blocks`);
+      
+      // Create blocks for each group
+      for (let groupIndex = 0; groupIndex < exerciseGroups.length; groupIndex++) {
+        const group = exerciseGroups[groupIndex];
+        const isGrouped = group.type !== 'single';
+        
+        // Get block title
+        const blockTitle = isGrouped 
+          ? `${group.type === 'circuit' ? 'Circuit' : 'Superset'} - ${group.exercises.map((e: any) => e.name).join(' + ')}`
+          : group.exercises[0].name;
+        
+        // Determine block type based on first exercise
+        const firstExercise = group.exercises[0];
+        const blockType = isGrouped ? 'circuit' : 'strength';
+        
         // Create session_block
         const { data: blockData, error: blockError } = await supabase
           .from('session_blocks')
           .insert({
             session_id: sessionData.id,
-            title: exercise.name,
-            block_type: 'strength', // Default to strength
-            order_index: i,
-            rounds: 1,
+            title: blockTitle,
+            block_type: blockType,
+            order_index: groupIndex,
+            rounds: firstExercise.sets || 1,
             parameters: {},
           })
           .select()
@@ -523,41 +617,64 @@ async function handleCreateWorkout(req: any, res: any, data: any) {
 
         if (blockError || !blockData) {
           console.error('Failed to create block:', blockError);
-          errors.push(`Failed to create block for ${exercise.name}: ${blockError?.message}`);
+          errors.push(`Failed to create block for ${blockTitle}: ${blockError?.message}`);
           continue;
         }
+        
+        console.log(`✅ Created block: ${blockTitle} (${group.exercises.length} exercises)`);
+        blocksCreated++;
 
-        // Create session_block_item
-        const extra: any = {};
-        if (exercise.sets) extra.sets = exercise.sets;
-        if (exercise.reps) extra.reps = exercise.reps;
-        if (exercise.weight) extra.weight = exercise.weight;
-        if (exercise.duration) extra.duration = exercise.duration;
-        if (exercise.distance) extra.distance = exercise.distance;
+        // Create session_block_items for each exercise in the group
+        for (let itemIndex = 0; itemIndex < group.exercises.length; itemIndex++) {
+          const exercise = group.exercises[itemIndex];
+          
+          // Match exercise to database
+          const { data: dbExercise } = await supabase
+            .from('exercises')
+            .select('id, modality')
+            .ilike('name', `%${exercise.name}%`)
+            .limit(1)
+            .single();
 
-        const { error: itemError } = await supabase
-          .from('session_block_items')
-          .insert({
-            block_id: blockData.id,
-            exercise_id: dbExercise.id,
-            item_order: 0,
-            status: 'draft',
-            extra,
-          });
+          if (!dbExercise) {
+            console.warn(`Exercise not found: ${exercise.name}`);
+            errors.push(`Exercise not found: ${exercise.name}`);
+            continue;
+          }
 
-        if (itemError) {
-          console.error('Failed to create item:', itemError);
-          errors.push(`Failed to create item for ${exercise.name}: ${itemError.message}`);
+          // Create session_block_item
+          const extra: any = {};
+          if (exercise.sets) extra.sets = exercise.sets;
+          if (exercise.reps) extra.reps = exercise.reps;
+          if (exercise.weight) extra.weight = exercise.weight;
+          if (exercise.duration) extra.duration = exercise.duration;
+          if (exercise.distance) extra.distance = exercise.distance;
+
+          const { error: itemError } = await supabase
+            .from('session_block_items')
+            .insert({
+              block_id: blockData.id,
+              exercise_id: dbExercise.id,
+              item_order: itemIndex,
+              status: 'draft',
+              extra,
+            });
+
+          if (itemError) {
+            console.error('Failed to create item:', itemError);
+            errors.push(`Failed to create item for ${exercise.name}: ${itemError.message}`);
+          } else {
+            console.log(`  ✓ Added exercise ${itemIndex + 1}: ${exercise.name}`);
+          }
         }
       }
-
-      sessionsCreated++;
     }
 
     return res.status(200).json({
       success: true,
       data: {
         sessionsCreated,
+        blocksCreated,
         errors: errors.length > 0 ? errors : undefined,
       }
     });

@@ -5,12 +5,12 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Check, Activity } from "lucide-react";
+import { ArrowLeft, Check, Activity, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { AssessmentData } from "@/types/assessment";
 import { calculateHyroxResults } from "@/utils/hyroxModel";
-import { getHealthDataForAssessment, isHealthAvailable } from "@/services/healthKit";
+// import { getHealthDataForAssessment, isHealthAvailable } from "@/services/healthKit";
 
 const Assessment = () => {
   const navigate = useNavigate();
@@ -63,8 +63,8 @@ const Assessment = () => {
   // Check if health data is available
   useEffect(() => {
     const checkHealth = async () => {
-      const { available } = await isHealthAvailable();
-      setHealthAvailable(available);
+      // const { available } = await isHealthAvailable();
+      setHealthAvailable(false); // Temporarily disabled
     };
     checkHealth();
   }, []);
@@ -86,7 +86,8 @@ const Assessment = () => {
   const fetchHealthData = async () => {
     setLoadingHealthData(true);
     try {
-      const healthData = await getHealthDataForAssessment();
+      // const healthData = await getHealthDataForAssessment();
+      const healthData = {}; // Temporarily disabled
       
       // Auto-populate fields with health data
       const updates: Partial<AssessmentData> = {};
@@ -256,10 +257,10 @@ const Assessment = () => {
                   key={option}
                   variant={formData.mainGoal === option ? "default" : "outline"}
                   onClick={() => updateField("mainGoal", option)}
-                  className={`h-14 text-base font-semibold ${formData.mainGoal === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
+                  className={`h-auto min-h-14 py-3 text-base font-semibold whitespace-normal ${formData.mainGoal === option ? "bg-yellow-500 text-black hover:bg-yellow-600" : ""}`}
                 >
-                  {formData.mainGoal === option && <Check className="w-4 h-4 mr-2" />}
-                  {option}
+                  {formData.mainGoal === option && <Check className="w-4 h-4 mr-2 flex-shrink-0" />}
+                  <span className="text-center">{option}</span>
                 </Button>
               ))}
             </div>
@@ -987,17 +988,22 @@ const Assessment = () => {
   const progress = ((currentSection + 1) / sections.length) * 100;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-24" style={{ paddingTop: 0 }}>
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="container max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/profile")}>
+          <div className="flex items-center justify-center gap-3 relative">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate("/profile")}
+              className="absolute left-0"
+            >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold">HYROX Athlete Assessment</h1>
-              <p className="text-sm text-muted-foreground">
+            <div className="text-center">
+              <h1 className="text-xl font-bold text-foreground">HYROX Assessment</h1>
+              <p className="text-xs text-muted-foreground">
                 Section {currentSection + 1} of {sections.length}
               </p>
             </div>
@@ -1005,13 +1011,16 @@ const Assessment = () => {
             {healthAvailable && (
               <Button
                 variant="outline"
-                size="sm"
+                size="icon"
                 onClick={fetchHealthData}
                 disabled={loadingHealthData}
-                className="gap-2"
+                className="absolute right-0"
               >
-                <Activity className="w-4 h-4" />
-                {loadingHealthData ? "Loading..." : "Import Health"}
+                {loadingHealthData ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Activity className="w-4 h-4" />
+                )}
               </Button>
             )}
           </div>
@@ -1028,7 +1037,7 @@ const Assessment = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container max-w-2xl mx-auto px-4 py-4">
+      <main className="container max-w-2xl mx-auto px-4 pt-20 pb-6">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSection}

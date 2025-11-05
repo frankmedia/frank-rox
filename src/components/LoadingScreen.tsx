@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 
 const getMotivationalQuotes = () => {
   // Get username from localStorage
@@ -59,9 +58,15 @@ export function LoadingScreen() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8">
-      <Loader2 className="w-16 h-16 sm:w-20 sm:h-20 animate-spin text-primary" />
-      <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground min-h-[3rem] px-4 text-center max-w-2xl">
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-black space-y-8 z-50">
+      <div className="w-32 h-32 sm:w-40 sm:h-40 animate-pulse">
+        <img 
+          src="/animations/flame-loader.svg" 
+          alt="Loading..." 
+          className="w-full h-full"
+        />
+      </div>
+      <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary min-h-[3rem] px-4 text-center max-w-2xl">
         {displayedText}
         <span className="animate-pulse">|</span>
       </p>

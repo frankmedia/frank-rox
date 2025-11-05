@@ -1,16 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Flame, ChevronRight, Dumbbell, PersonStanding, Info, Zap, Repeat, Target, Footprints, User, Heart, HandMetal, CheckCircle2, Trophy } from "lucide-react";
+import { Flame, ChevronRight, Dumbbell, PersonStanding, Info, Zap, Repeat, Target, Footprints, User, Heart, HandMetal, CheckCircle2, Trophy, Activity, Moon, Gauge, MapPin, TrendingUp, Loader2 } from "lucide-react";
 import { getTodayExercises } from "@/services/supabasePlans";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { TrainingDayGridSkeleton } from "@/components/TrainingDayGridSkeleton";
 import type { Exercise } from "@/types/workout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/utils/supabaseClient";
+import { Capacitor } from "@capacitor/core";
+import { AppHealth } from "@/services/appHealth";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 interface DaySummary {
   day: number;
@@ -35,6 +40,23 @@ const Overview = () => {
   const [daySummaries, setDaySummaries] = useState<DaySummary[]>([]);
   const [maxDay, setMaxDay] = useState(14);
   const [allRaces, setAllRaces] = useState<Array<{ id: number; race_name: string; race_date: string }>>([]);
+  const [healthConnected, setHealthConnected] = useState(false);
+  const [healthData, setHealthData] = useState<{
+    steps: number;
+    heartRate: { average: number; max: number; min: number } | null;
+    distance: number;
+    calories: number;
+    sleep: number;
+  } | null>(null);
+
+  // Pull-to-refresh
+  const { containerRef, pullDistance, isRefreshing } = usePullToRefresh({
+    onRefresh: async () => {
+      await fetchHealthData();
+      toast.success("Refreshed!", { duration: 2000 });
+    },
+    threshold: 150,
+  });
 
   useEffect(() => {
     const loadDays = async () => {
@@ -95,56 +117,63 @@ const Overview = () => {
           localStorage.setItem(lastPlanIdKey, currentPlanId);
         }
 
-        // Get all plan days to determine max day and rest days
-        const { data: planDays } = await supabase
+        // 🚀 PERFORMANCE FIX: Fetch ALL plan days with exercises in ONE query
+        const { data: planDaysWithExercises, error: planDaysError } = await supabase
           .from('plan_days')
-          .select('day_index, is_rest, id')
+          .select(`
+            day_index,
+            is_rest,
+            exercises (
+              id, name, type, sets, reps, suggestedKg, durationMin, targetDistanceKm, notes, mediaUrl, child_exercises
+            )
+          `)
           .eq('plan_id', plan.id)
           .order('day_index', { ascending: true });
 
-        if (!planDays || planDays.length === 0) {
-          console.log("No plan days found");
+        if (planDaysError || !planDaysWithExercises || planDaysWithExercises.length === 0) {
+          console.error("Error loading plan days:", planDaysError);
           setLoading(false);
           return;
         }
 
-        // Calculate max day from plan_days
-        const maxDayIndex = Math.max(...planDays.map(pd => pd.day_index));
+        console.log(`⚡ Loaded ${planDaysWithExercises.length} days in ONE query (fast!)`);
+
+        // Calculate max day
+        const maxDayIndex = Math.max(...planDaysWithExercises.map(pd => pd.day_index));
         const max = maxDayIndex + 1; // day_index is 0-based
         setMaxDay(max);
 
-        // Create rest days map
-        const restDaysMap: Record<number, boolean> = {};
-        planDays.forEach(pd => {
-          restDaysMap[pd.day_index] = pd.is_rest || false;
-        });
-
-        // Load exercises for each day
-        const summaries: DaySummary[] = [];
-
-        // Store original training day (reuse userStr from above)
+        // Get completed days from BOTH localStorage AND Supabase
         if (!userStr) {
           setLoading(false);
           return;
         }
         const userData = JSON.parse(userStr);
-        const userKey = `currentTrainingDay_${userData.username}`;
-        const originalDay = localStorage.getItem(userKey);
+        
+        // Load from Supabase first (source of truth)
+        const { data: completedDaysData } = await supabase
+          .from('completed_days')
+          .select('day_number')
+          .eq('client_id', authUser.clientId)
+          .eq('plan_id', plan.id);
+        
+        const completedDaysFromDB = completedDaysData?.map(cd => cd.day_number) || [];
+        
+        // Also check localStorage as backup
+        const completedDaysKey = `completedDays_${userData.username}`;
+        const completedDaysStr = localStorage.getItem(completedDaysKey);
+        const completedDaysFromLS: number[] = completedDaysStr ? JSON.parse(completedDaysStr) : [];
+        
+        // Merge both sources (union)
+        const completedDays: number[] = [...new Set([...completedDaysFromDB, ...completedDaysFromLS])];
+        
+        console.log(`✅ Found ${completedDays.length} completed days:`, completedDays);
 
-        for (let day = 1; day <= max; day++) {
-          // Check if this is a rest day from Supabase
-          const isRestDay = restDaysMap[day - 1] === true; // day_index is 0-based
-
-          // Temporarily set the day in localStorage to fetch exercises
-          localStorage.setItem(userKey, day.toString());
-          
-          // Fetch exercises from Supabase for this day
-          const exercises = await getTodayExercises(authUser.clientId);
-
-          // Restore original day after last iteration
-          if (day === max && originalDay) {
-            localStorage.setItem(userKey, originalDay);
-          }
+        // Process all days in memory (no more database queries!)
+        const summaries: DaySummary[] = planDaysWithExercises.map((planDay) => {
+          const day = planDay.day_index + 1; // Convert to 1-based
+          const exercises = planDay.exercises || [];
+          const isRestDay = planDay.is_rest || false;
 
           // Analyze exercise types
           const hasWeights = exercises.some(e => e.type === "weights");
@@ -156,16 +185,13 @@ const Overview = () => {
           const hasCircuit = exercises.some(e => e.type === "circuit");
           const hasAMRAP = exercises.some(e => e.type === "amrap");
 
-          // Check if this training day is marked as complete
-          const completedDaysKey = `completedDays_${userData.username}`;
-          const completedDaysStr = localStorage.getItem(completedDaysKey);
-          const completedDays: number[] = completedDaysStr ? JSON.parse(completedDaysStr) : [];
+          // Check if completed
           const isCompleted = completedDays.includes(day);
 
           // Filter out intro cards for exercise count
           const workoutExercises = exercises.filter(e => e.type !== "intro");
 
-          summaries.push({
+          return {
             day,
             exercises,
             totalExercises: workoutExercises.length,
@@ -179,8 +205,8 @@ const Overview = () => {
             hasHIIT,
             hasCircuit,
             hasAMRAP,
-          });
-        }
+          };
+        });
 
         setDaySummaries(summaries);
       } catch (error) {
@@ -218,6 +244,75 @@ const Overview = () => {
     loadRaces();
   }, [authUser?.clientId]);
 
+  // Load health data
+  useEffect(() => {
+    const checkAndLoadHealth = async () => {
+      if (!Capacitor.isNativePlatform()) return;
+      
+      try {
+        const flag = localStorage.getItem("health_connected");
+        const connected = flag === "true";
+        setHealthConnected(connected);
+        
+        if (connected) {
+          await fetchHealthData();
+        }
+      } catch (e) {
+        console.error('Error checking health:', e);
+      }
+    };
+    
+    checkAndLoadHealth();
+  }, []);
+
+  const fetchHealthData = async () => {
+    try {
+      // Get today's data from midnight to now
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const start = startOfToday.toISOString();
+      const end = now.toISOString();
+      
+      // For sleep: query from 6 PM yesterday to now (captures last night's sleep)
+      const yesterdayEvening = new Date(now);
+      yesterdayEvening.setDate(yesterdayEvening.getDate() - 1);
+      yesterdayEvening.setHours(18, 0, 0, 0); // 6 PM yesterday
+      const sleepStart = yesterdayEvening.toISOString();
+      
+      console.log('📊 [Overview] Fetching health data from:', start, 'to:', end);
+      console.log('📊 [Overview] Sleep data from:', sleepStart, 'to:', end);
+      console.log('📊 [Overview] Timezone offset:', now.getTimezoneOffset() / 60, 'hours');
+      console.log('📊 [Overview] Current time:', now.toLocaleString());
+      console.log('📊 [Overview] Start of today:', startOfToday.toLocaleString());
+      
+      const [stepsResult, heartRateResult, distanceResult, caloriesResult, sleepResult] = await Promise.all([
+        AppHealth.getSteps({ start, end}).catch(() => ({ total: 0, platform: 'android' as const })),
+        AppHealth.getHeartRate({ start, end }).catch(() => null),
+        AppHealth.getDistance({ start, end }).catch(() => ({ kilometers: 0, meters: 0, platform: 'android' as const })),
+        AppHealth.getCalories({ start, end }).catch(() => ({ calories: 0, platform: 'android' as const })),
+        AppHealth.getSleep({ start: sleepStart, end }).catch(() => ({ hours: 0, minutes: 0, platform: 'android' as const }))
+      ]);
+      
+      const data = {
+        steps: stepsResult.total,
+        heartRate: heartRateResult && heartRateResult.samples > 0 ? {
+          average: heartRateResult.average,
+          max: heartRateResult.max,
+          min: heartRateResult.min
+        } : null,
+        distance: distanceResult.kilometers,
+        calories: caloriesResult.calories,
+        sleep: sleepResult.hours
+      };
+      
+      console.log('📊 [Overview] Received health data:', JSON.stringify(data, null, 2));
+      
+      setHealthData(data);
+    } catch (e) {
+      console.error('Error fetching health data:', e);
+    }
+  };
+
   const calculateDaysUntil = (raceDate: string): number => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -244,12 +339,17 @@ const Overview = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-screen bg-background pb-24" style={{ paddingTop: 0 }}>
         <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-          <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-4">
-            <div className="flex items-center justify-center gap-2">
-              <Flame className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#FFCC00' }} />
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">RoxPT</h1>
+          <div className="container max-w-2xl mx-auto px-4 py-4">
+            <div 
+              className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => navigate("/overview")}
+            >
+              <Flame className="w-8 h-8" style={{ color: "#FFCC00" }} />
+              <h1 className="text-3xl font-black tracking-tight text-primary">
+                Rox<span className="text-foreground">PT</span>
+              </h1>
             </div>
           </div>
         </header>
@@ -262,25 +362,40 @@ const Overview = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div ref={containerRef} className="min-h-screen bg-background pb-24 overflow-y-auto relative" style={{ paddingTop: 0 }}>
+      {/* Pull-to-Refresh Indicator */}
+      <div 
+        className="absolute top-0 left-0 right-0 flex items-center justify-center transition-all z-50 pointer-events-none"
+        style={{
+          height: `${pullDistance}px`,
+          opacity: Math.min(pullDistance / 150, 1),
+        }}
+      >
+        <div className="flex flex-col items-center gap-2 mt-4">
+          {isRefreshing ? (
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#FFCC00' }} />
+          ) : (
+            <Flame className="w-8 h-8" style={{ color: '#FFCC00', transform: `rotate(${pullDistance * 2.4}deg)` }} />
+          )}
+          <span className="text-sm font-semibold text-muted-foreground">
+            {isRefreshing ? "Refreshing..." : "Pull down to refresh"}
+          </span>
+        </div>
+      </div>
+
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-4">
-          <div className="flex items-center justify-center gap-2">
-            <Flame className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#FFCC00' }} />
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">RoxPT</h1>
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
-      <main className="container max-w-2xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
-        <div className="mb-6">
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground flex-1">
-              Your {maxDay}-Day Training Programme
-            </h2>
-            
+        <div className="container max-w-2xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div 
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity flex-1 justify-center"
+              onClick={() => navigate("/overview")}
+            >
+              <Flame className="w-8 h-8" style={{ color: "#FFCC00" }} />
+              <h1 className="text-3xl font-black tracking-tight text-primary">
+                Rox<span className="text-foreground">PT</span>
+              </h1>
+            </div>
             <Dialog>
               <DialogTrigger asChild>
                 <Button
@@ -630,7 +745,10 @@ const Overview = () => {
             </Dialog>
           </div>
         </div>
+      </header>
 
+      {/* Content */}
+      <main className="container max-w-2xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
         {/* Race Schedule */}
         {allRaces.length > 0 && (
           <div className="mb-6">
@@ -689,6 +807,55 @@ const Overview = () => {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Health Stats - Compact Inline */}
+        {healthConnected && healthData && (
+          <div className="mb-4">
+            <Card className="p-3 bg-gradient-to-r from-primary/5 to-red-500/5 border-primary/10">
+              <div className="flex items-center justify-around gap-3 flex-wrap">
+                {/* Steps */}
+                {healthData.steps > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Footprints className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                    <span className="text-lg font-bold text-foreground">{healthData.steps.toLocaleString()}</span>
+                  </div>
+                )}
+
+                {/* Heart Rate - Pulsing */}
+                {healthData.heartRate && healthData.heartRate.average > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Heart className="w-4 h-4 text-red-500 flex-shrink-0 animate-pulse" />
+                    <span className="text-lg font-bold text-foreground">{healthData.heartRate.average}</span>
+                  </div>
+                )}
+
+                {/* Distance */}
+                {healthData.distance > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-lg font-bold text-foreground">{healthData.distance.toFixed(1)}km</span>
+                  </div>
+                )}
+
+                {/* Calories */}
+                {healthData.calories > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Flame className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                    <span className="text-lg font-bold text-foreground">{healthData.calories}</span>
+                  </div>
+                )}
+
+                {/* Sleep */}
+                {healthData.sleep > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Moon className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                    <span className="text-lg font-bold text-foreground">{healthData.sleep.toFixed(1)}h</span>
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
         )}
 

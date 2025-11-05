@@ -2639,7 +2639,14 @@ const PlanDetail = () => {
             <Save className="w-5 h-5" />
           </button>
           <button
-            onClick={() => setShowAIAssistant(true)}
+            onClick={() => {
+              console.log('🤖 Opening AI Assistant with:', {
+                selectedDayId,
+                firstDayId: filteredDays[0]?.id,
+                dayLabel: filteredDays.find(d => d.id === selectedDayId)?.label || 'Unknown'
+              });
+              setShowAIAssistant(true);
+            }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-400 hover:to-yellow-500 transition-all font-semibold shadow-lg shadow-yellow-500/20"
             title="AI Workout Builder"
           >
@@ -3667,6 +3674,11 @@ const PlanDetail = () => {
           planId={plan.id}
           dayId={selectedDayId || filteredDays[0]?.id || ''}
           clientId={plan.client_id}
+          availableDays={filteredDays.map(day => ({
+            id: day.id,
+            label: day.label || `Day ${day.day_index + 1}`,
+            dayIndex: day.day_index
+          }))}
           onClose={() => setShowAIAssistant(false)}
           onWorkoutCreated={async () => {
             // Refresh the plan data after AI creates workout

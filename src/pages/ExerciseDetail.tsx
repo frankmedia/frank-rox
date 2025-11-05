@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Timer } from "@/components/Timer";
 import { RestTimer } from "@/components/RestTimer";
 import { Card } from "@/components/ui/card";
-import { CheckCircle2, Loader2, List } from "lucide-react";
+import { CheckCircle2, Loader2, List, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Exercise } from "@/types/workout";
 import { ExerciseMedia } from "@/components/ExerciseMedia";
@@ -19,6 +19,7 @@ import { triggerSuccessHaptic } from "@/utils/haptics";
 import { FlameRating } from "@/components/FlameRating";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWorkoutSession } from "@/contexts/WorkoutSessionContext";
 import { 
   markExerciseComplete,
   syncWorkoutLogToSupabase,
@@ -31,6 +32,7 @@ const ExerciseDetail = () => {
   const navigate = useNavigate();
   const { exercises: contextExercises } = useData(); // Get exercises from DataContext
   const { user: authUser } = useAuth();
+  const { endWorkoutSession } = useWorkoutSession();
   
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -42,13 +44,38 @@ const ExerciseDetail = () => {
   const [todaysDistance, setTodaysDistance] = useState("");
   const [todaysDuration, setTodaysDuration] = useState("");
   const [rating, setRating] = useState(0); // 0-5 flame rating
+  
+  // Save in-progress weights and completions to localStorage
+  const saveInProgressData = useCallback((weights: string[], completed: boolean[]) => {
+    if (!exercise) return;
+    
+    try {
+      const userStr = localStorage.getItem("frank_rock_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userKey = `currentTrainingDay_${user.username}`;
+        const day = parseInt(localStorage.getItem(userKey) || "1");
+        const cacheKey = `inProgressExercise_${user.username}_day${day}_${exercise.id}`;
+        
+        const data = {
+          weights,
+          completed,
+          timestamp: Date.now()
+        };
+        
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+        console.log('💾 Saved in-progress data:', data);
+      }
+    } catch (e) {
+      console.error('Error saving in-progress data:', e);
+    }
+  }, [exercise]);
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(60);
   const [showWorkoutTimer, setShowWorkoutTimer] = useState(false);
   const [workoutDuration, setWorkoutDuration] = useState(0);
   const [currentSet, setCurrentSet] = useState(1); // Track current set for rehab
   const [rehabTimerActive, setRehabTimerActive] = useState(false);
-  const [isCompleting, setIsCompleting] = useState(false); // Prevent duplicate ratings after countdown
   const [existingLogId, setExistingLogId] = useState<string | null>(null); // Track if exercise was already logged today
   
   // Edit mode for exercise plan
@@ -59,6 +86,13 @@ const ExerciseDetail = () => {
   const [editSuggestedKg, setEditSuggestedKg] = useState<number>(0);
   const [editDuration, setEditDuration] = useState<number>(0);
   const [editDistance, setEditDistance] = useState<number>(0);
+  
+  // Auto-save in-progress weights and completions whenever they change
+  useEffect(() => {
+    if (setWeights.length > 0 && setCompleted.length > 0 && exercise) {
+      saveInProgressData(setWeights, setCompleted);
+    }
+  }, [setWeights, setCompleted, exercise, saveInProgressData]);
   
   // Swipe gesture detection
   const [touchStart, setTouchStart] = useState(0);
@@ -141,11 +175,51 @@ const ExerciseDetail = () => {
             
             // Pre-populate fields based on exercise data
             if (ex.type === "weights" && ex.sets) {
-              // Initialize array with suggested weight for each set
-              const initialWeights = Array(ex.sets).fill(ex.suggestedKg?.toString() || "");
-              setSetWeights(initialWeights);
-              // Initialize all sets as not completed
-              setSetCompleted(Array(ex.sets).fill(false));
+              // Try to load in-progress data from localStorage first
+              const userStr = localStorage.getItem("frank_rock_user");
+              if (userStr) {
+                const user = JSON.parse(userStr);
+                const userKey = `currentTrainingDay_${user.username}`;
+                const day = parseInt(localStorage.getItem(userKey) || "1");
+                const cacheKey = `inProgressExercise_${user.username}_day${day}_${ex.id}`;
+                const cached = localStorage.getItem(cacheKey);
+                
+                if (cached) {
+                  try {
+                    const { weights, completed, timestamp } = JSON.parse(cached);
+                    const cacheAge = Date.now() - timestamp;
+                    
+                    // Use cached data if less than 24 hours old
+                    if (cacheAge < 24 * 60 * 60 * 1000 && weights.length === ex.sets) {
+                      console.log('💾 Restored in-progress data from cache:');
+                      console.log('  - Weights:', weights);
+                      console.log('  - Completed ticks:', completed);
+                      setSetWeights(weights);
+                      setSetCompleted(completed);
+                    } else {
+                      // Cache too old or sets count changed, use defaults
+                      const initialWeights = Array(ex.sets).fill(ex.suggestedKg?.toString() || "");
+                      setSetWeights(initialWeights);
+                      setSetCompleted(Array(ex.sets).fill(false));
+                    }
+                  } catch (e) {
+                    console.error('Error loading cached weights:', e);
+                    const initialWeights = Array(ex.sets).fill(ex.suggestedKg?.toString() || "");
+                    setSetWeights(initialWeights);
+                    setSetCompleted(Array(ex.sets).fill(false));
+                  }
+                } else {
+                  // No cache, use default suggested weight
+                  const initialWeights = Array(ex.sets).fill(ex.suggestedKg?.toString() || "");
+                  setSetWeights(initialWeights);
+                  setSetCompleted(Array(ex.sets).fill(false));
+                }
+              } else {
+                // No user, use defaults
+                const initialWeights = Array(ex.sets).fill(ex.suggestedKg?.toString() || "");
+                setSetWeights(initialWeights);
+                setSetCompleted(Array(ex.sets).fill(false));
+              }
             }
             if (ex.targetDistanceKm) {
               setTodaysDistance(ex.targetDistanceKm.toString());
@@ -343,7 +417,7 @@ const ExerciseDetail = () => {
                 duration: 2000,
               });
               
-              // Navigate back
+              // Navigate back (don't end session - user might do more exercises)
               navigate("/today");
               return;
             }
@@ -388,6 +462,11 @@ const ExerciseDetail = () => {
       
       // Mark exercise as complete in cache
       markExerciseComplete(username, trainingDay, exercise.id, authUser?.clientId);
+      
+      // Clear in-progress data since exercise is now complete
+      const cacheKey = `inProgressExercise_${username}_day${trainingDay}_${exercise.id}`;
+      localStorage.removeItem(cacheKey);
+      console.log('🧹 Cleared in-progress data for completed exercise');
       
       // Check for Personal Best and sync to Supabase if logged in
       if (authUser?.clientId) {
@@ -501,6 +580,7 @@ const ExerciseDetail = () => {
         });
       }
       setTimeout(() => {
+        endWorkoutSession(); // End session when all exercises complete
         navigate("/");
       }, isPB ? 2500 : 1000);
     }
@@ -533,7 +613,11 @@ const ExerciseDetail = () => {
   };
 
   const handlePrevious = () => {
-    let prevIndex = currentIndex - 1;
+    // Find current index based on the exercise ID to ensure it's up to date
+    const currentIdx = exercises.findIndex(ex => ex.id === id);
+    if (currentIdx === -1) return;
+    
+    let prevIndex = currentIdx - 1;
     // Skip intro exercises
     while (prevIndex >= 0 && exercises[prevIndex].type === 'intro') {
       prevIndex--;
@@ -545,7 +629,11 @@ const ExerciseDetail = () => {
   };
 
   const handleNext = () => {
-    let nextIndex = currentIndex + 1;
+    // Find current index based on the exercise ID to ensure it's up to date
+    const currentIdx = exercises.findIndex(ex => ex.id === id);
+    if (currentIdx === -1) return;
+    
+    let nextIndex = currentIdx + 1;
     // Skip intro exercises
     while (nextIndex < exercises.length && exercises[nextIndex].type === 'intro') {
       nextIndex++;
@@ -602,6 +690,7 @@ const ExerciseDetail = () => {
       navigate(`/exercise/${nextExercise.id}`);
       toast.success("✅ Moving to next exercise!");
     } else {
+      endWorkoutSession(); // End session when all exercises complete
       navigate("/");
       toast.success("🎉 All exercises complete!");
     }
@@ -656,28 +745,68 @@ const ExerciseDetail = () => {
   return (
     <div 
       className="min-h-screen bg-background"
+      style={{ touchAction: 'pan-y', paddingTop: 0 }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-4">
-          <div className="flex items-center gap-3 sm:gap-4">
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+        <div className="container max-w-2xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between gap-2">
+            {/* Back button - Left */}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate("/today")}
+              onClick={() => {
+                endWorkoutSession();
+                navigate("/today");
+              }}
               className="h-12 w-12 sm:h-14 sm:w-14 p-0 [&_svg]:!w-6 [&_svg]:!h-6 sm:[&_svg]:!w-8 sm:[&_svg]:!h-8 flex-shrink-0"
               title="Back to today's exercises"
             >
               <List strokeWidth={3} />
             </Button>
+
+            {/* Navigation arrows - Right */}
+            <div className="flex items-center gap-2">
+              {/* Previous Exercise Arrow */}
+              {(() => {
+                const currentIdx = exercises.findIndex(ex => ex.id === id);
+                return currentIdx > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrevious}
+                    className="h-12 w-12 sm:h-14 sm:w-14 p-0 flex-shrink-0"
+                    title="Previous exercise"
+                  >
+                    <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={3} />
+                  </Button>
+                );
+              })()}
+
+              {/* Next Exercise Arrow */}
+              {(() => {
+                const currentIdx = exercises.findIndex(ex => ex.id === id);
+                return currentIdx >= 0 && currentIdx < exercises.length - 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNext}
+                    className="h-12 w-12 sm:h-14 sm:w-14 p-0 flex-shrink-0"
+                    title="Next exercise"
+                  >
+                    <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={3} />
+                  </Button>
+                );
+              })()}
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="container max-w-2xl mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6 pb-24">
+      <main className="container max-w-2xl mx-auto px-2 sm:px-4 pt-20 pb-24 space-y-4 sm:space-y-6">
         {/* Static Header: Exercise Title + Notes + Media - Always visible for ALL exercise types */}
         <div className="space-y-4">
           {/* Exercise Title with Border */}
@@ -687,12 +816,12 @@ const ExerciseDetail = () => {
                 {exercise.name}
               </h2>
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => setEditMode(!editMode)}
-                className="ml-4"
+                className="ml-2"
               >
-                {editMode ? "Cancel" : "Edit"}
+                {editMode ? "×" : <Pencil className="w-4 h-4" />}
               </Button>
             </div>
           </Card>
@@ -1089,19 +1218,23 @@ const ExerciseDetail = () => {
                       initialSeconds={workoutDuration}
                       autoStart={true}
                       onComplete={() => {
-                        setIsCompleting(true); // Prevent further interactions
                         const completedDuration = Math.round(workoutDuration / 60);
                         setTodaysDuration(completedDuration.toString());
                         setShowWorkoutTimer(false);
                         
-                        // Auto-save the workout when timer completes
-                        toast.success("🎉 Workout Complete!", {
-                          description: `${completedDuration} minutes completed! Moving to next exercise...`,
-                          duration: 2000,
+                        // Show completion message and let user rate
+                        toast.success("🎉 Countdown Complete!", {
+                          description: "Tap a flame below to rate and continue",
+                          duration: 4000,
                         });
                         
-                        // Save automatically and advance immediately
-                        setTimeout(() => handleMarkAsDone(), 500);
+                        // Scroll to rating section after brief delay
+                        setTimeout(() => {
+                          const ratingElement = document.querySelector('.rating-section');
+                          if (ratingElement) {
+                            ratingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                        }, 500);
                       }}
                     />
                 </div>
@@ -1139,19 +1272,23 @@ const ExerciseDetail = () => {
                       initialSeconds={workoutDuration}
                       autoStart={true}
                       onComplete={() => {
-                        setIsCompleting(true); // Prevent further interactions
                         const completedDuration = Math.round(workoutDuration / 60);
                         setTodaysDuration(completedDuration.toString());
                         setShowWorkoutTimer(false);
                         
-                        // Auto-save the workout when timer completes
-                        toast.success("🎉 Workout Complete!", {
-                          description: `${completedDuration} minutes completed! Moving to next exercise...`,
-                          duration: 2000,
+                        // Show completion message and let user rate
+                        toast.success("🎉 Countdown Complete!", {
+                          description: "Tap a flame below to rate and continue",
+                          duration: 4000,
                         });
                         
-                        // Save automatically and advance immediately
-                        setTimeout(() => handleMarkAsDone(), 500);
+                        // Scroll to rating section after brief delay
+                        setTimeout(() => {
+                          const ratingElement = document.querySelector('.rating-section');
+                          if (ratingElement) {
+                            ratingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                        }, 500);
                       }}
                     />
                 </div>
@@ -1340,6 +1477,8 @@ const ExerciseDetail = () => {
                       onClick={() => {
                         const newCompleted = [...setCompleted];
                         newCompleted[index] = !newCompleted[index];
+                        console.log(`✓ Tick clicked - Set ${index + 1}:`, newCompleted[index] ? 'COMPLETE' : 'INCOMPLETE');
+                        console.log('📊 All sets status:', newCompleted);
                         setSetCompleted(newCompleted);
                         if (!newCompleted[index]) {
                           toast.success("Set marked as incomplete");
@@ -1498,7 +1637,7 @@ const ExerciseDetail = () => {
         )}
 
         {/* Flame Rating - Click to Rate & Complete */}
-        <Card className="p-6 bg-yellow-500/10 border-4 border-yellow-500">
+        <Card className="rating-section p-6 bg-yellow-500/10 border-4 border-yellow-500">
           <div className="flex flex-col items-center gap-4">
             <Label className="text-3xl font-bold text-foreground text-center">
               {existingLogId ? "Update & Rate" : "Rate to Continue"}
@@ -1507,12 +1646,10 @@ const ExerciseDetail = () => {
             <FlameRating 
               value={rating} 
               onChange={(selectedRating) => {
-                if (isCompleting) return; // Prevent rating after countdown completes
                 setRating(selectedRating);
                 // Auto-complete when flame is clicked, passing the rating directly
                 setTimeout(() => handleMarkAsDone(selectedRating), 100);
               }} 
-              readonly={isCompleting}
               size="lg" 
             />
             

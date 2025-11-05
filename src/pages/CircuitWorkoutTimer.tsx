@@ -13,6 +13,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/utils/supabaseClient";
 import { FlameRating } from "@/components/FlameRating";
+import { useWorkoutSession } from "@/contexts/WorkoutSessionContext";
 
 interface CircuitWorkoutTimerProps {
   exercise: Exercise;
@@ -59,6 +60,16 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // Use global workout session to keep screen awake
+  const { startWorkoutSession, isWakeLockActive } = useWorkoutSession();
+  
+  // Start global session when circuit starts
+  useEffect(() => {
+    if (isRunning && !isPaused && phase !== "COMPLETE") {
+      startWorkoutSession();
+    }
+  }, [isRunning, isPaused, phase, startWorkoutSession]);
   
   // Create beep sound
   useEffect(() => {
@@ -328,6 +339,13 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
 
       {/* Main Timer Display */}
       <div className="container max-w-2xl mx-auto px-4 py-4">
+        {/* Wake Lock Status Indicator */}
+        {isRunning && !isPaused && phase !== "COMPLETE" && (
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+          </div>
+        )}
+        
         <Card 
           onClick={isRunning && phase !== "COMPLETE" ? handlePause : undefined}
           className={`p-4 text-center ${getPhaseColor()} transition-colors duration-300 ${isRunning && phase !== "COMPLETE" ? 'cursor-pointer' : ''}`}
@@ -345,9 +363,9 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
               {getPhaseDisplay()}
             </div>
             
-            {/* Timer - Click to pause/resume */}
+            {/* Timer - Click to pause/resume with subtle breathing animation */}
             {phase !== "COMPLETE" && (
-              <div className={`text-[12rem] md:text-[14rem] leading-none font-bold ${isRedZone ? 'text-white' : 'text-black'} tabular-nums ${timeRemaining <= 3 && timeRemaining > 0 ? 'animate-pulse' : ''}`}>
+              <div className={`text-[12rem] md:text-[14rem] leading-none font-bold ${isRedZone ? 'text-white' : 'text-black'} tabular-nums ${timeRemaining <= 3 && timeRemaining > 0 ? 'animate-pulse' : isRunning && !isPaused ? 'animate-breathe' : ''}`}>
                 {timeRemaining}
               </div>
             )}
@@ -460,6 +478,17 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
           </Card>
         )}
       </div>
+      
+      {/* CSS animation for subtle breathing effect */}
+      <style>{`
+        @keyframes breathe {
+          0%, 95%, 100% { opacity: 1; transform: scale(1); }
+          97.5% { opacity: 0.97; transform: scale(1.003); }
+        }
+        .animate-breathe {
+          animation: breathe 10s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }
