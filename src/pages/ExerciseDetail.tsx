@@ -29,6 +29,8 @@ import { supabase } from "@/utils/supabaseClient";
 
 const ExerciseDetail = () => {
   const { id } = useParams();
+  console.log("🏋️ ExerciseDetail component mounted/re-rendered, id:", id);
+  
   const navigate = useNavigate();
   const { exercises: contextExercises, refresh: refreshDataContext } = useData(); // Get exercises and refresh from DataContext
   const { user: authUser } = useAuth();
@@ -308,7 +310,8 @@ const ExerciseDetail = () => {
             }
           } else {
             // ID not found - redirect to today page
-            console.warn("Exercise ID not found:", id, "- Redirecting to Today page");
+            console.error("❌ Exercise ID not found:", id, "- Redirecting to Today page");
+            console.error("❌ Available exercise IDs:", data.map(e => e.id));
             toast.error("Exercise not found", {
               description: "Redirecting to today's workout..."
             });
