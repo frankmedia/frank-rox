@@ -29,7 +29,10 @@ export function FlameRating({ value, onChange, readonly = false, size = "md" }: 
     lg: "",
   };
 
-  const handleClick = (rating: number) => {
+  const handleClick = (rating: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent click from bubbling to parent elements
+    e.preventDefault(); // Prevent any default behavior
+    
     if (readonly || !onChange) return;
     // If clicking the same rating, clear it (set to 0)
     onChange(rating === value ? 0 : rating);
@@ -41,7 +44,7 @@ export function FlameRating({ value, onChange, readonly = false, size = "md" }: 
         <button
           key={flame}
           type="button"
-          onClick={() => handleClick(flame)}
+          onClick={(e) => handleClick(flame, e)}
           disabled={readonly}
           className={cn(
             "transition-all p-0 border-0 bg-transparent m-0 leading-none",
