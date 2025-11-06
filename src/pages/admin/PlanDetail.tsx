@@ -52,6 +52,55 @@ function getDefaultExtraForModality(modality?: string): any {
   }
 }
 
+async function findExerciseIdByTerms(terms: string[], excludedSubstrings: string[] = []): Promise<{ id: string; name: string } | null> {
+  const sanitizedTerms = terms.map((t) => t.trim()).filter(Boolean);
+
+  const bannedFragments = ['hold', 'assisted', 'trx', 'knee', 'knees', 'broad', 'incline', 'decline', 'band', 'tempo', 'interval'];
+  const userExcluded = excludedSubstrings.map((frag) => frag.toLowerCase());
+
+  // Try exact matches first to bypass ambiguous fuzzy results
+  for (const term of sanitizedTerms) {
+    const { data, error } = await supabase
+      .from('exercises')
+      .select('id,name')
+      .eq('name', term)
+      .limit(1);
+    if (error) throw error;
+    if (data && data.length > 0) {
+      const nameLower = data[0].name?.toLowerCase() || '';
+      if (![...bannedFragments, ...userExcluded].some((frag) => nameLower.includes(frag))) {
+        return data[0] as { id: string; name: string };
+      }
+    }
+  }
+
+  // Fallback to fuzzy search with filters
+  for (const term of sanitizedTerms) {
+    const { data, error } = await supabase
+      .from('exercises')
+      .select('id,name')
+      .ilike('name', `%${term}%`)
+      .order('name', { ascending: true })
+      .limit(20);
+    if (error) throw error;
+    if (!data || data.length === 0) continue;
+
+    const filtered = data.find((ex: any) => {
+      const nameLower = ex.name?.toLowerCase() || '';
+      if (![...sanitizedTerms].some((base) => nameLower.includes(base.toLowerCase()))) {
+        return false;
+      }
+      return ![...bannedFragments, ...userExcluded].some((frag) => nameLower.includes(frag));
+    });
+
+    if (filtered) {
+      return filtered as { id: string; name: string };
+    }
+  }
+
+  return null;
+}
+
 const PlanDetail = () => {
   const { id } = useParams();
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -1695,6 +1744,12 @@ const PlanDetail = () => {
       await createFormatGroupInDay(format, dayId);
       return;
     }
+    // Strength 5x5 → drop zone
+    if (activeId === 'strength:premade' && overId.startsWith('drop:')) {
+      const [, dayId] = overId.split(':');
+      await createStrengthPlanInDay(dayId);
+      return;
+    }
     // Hyrox Sim → drop zone
     if (activeId === 'hyrox:sim' && overId.startsWith('drop:')) {
       const [, dayId] = overId.split(':');
@@ -1705,6 +1760,21 @@ const PlanDetail = () => {
     if (activeId === 'george:workout' && overId.startsWith('drop:')) {
       const [, dayId] = overId.split(':');
       await createGeorgeWorkoutInDay(dayId);
+      return;
+    }
+    if (activeId === 'domino:workout' && overId.startsWith('drop:')) {
+      const [, dayId] = overId.split(':');
+      await createDominoWorkoutInDay(dayId);
+      return;
+    }
+    if (activeId === 'combs:workout' && overId.startsWith('drop:')) {
+      const [, dayId] = overId.split(':');
+      await createCombsWorkoutInDay(dayId);
+      return;
+    }
+    if (activeId === 'bennigton:workout' && overId.startsWith('drop:')) {
+      const [, dayId] = overId.split(':');
+      await createBennigtonWorkoutInDay(dayId);
       return;
     }
   }
@@ -1922,6 +1992,54 @@ const PlanDetail = () => {
     }
   }
 
+  async function findRunExerciseId(preferredExact: string[] = ['Run']) {
+    try {
+      for (const exactName of preferredExact) {
+        const exact = await supabase
+          .from('exercises')
+          .select('id,name')
+          .eq('name', exactName)
+          .limit(1);
+        if (!exact.error && exact.data && exact.data.length > 0) {
+          return exact.data[0].id as string;
+        }
+      }
+
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('id,name')
+        .ilike('name', '%run%')
+        .limit(20);
+
+      if (!error && data && data.length > 0) {
+        const withExactRun = data.find((ex: any) => ex.name?.trim().toLowerCase() === 'run');
+        if (withExactRun) return withExactRun.id as string;
+
+        const sanitized = data.filter((ex: any) => {
+          const lower = ex.name?.trim().toLowerCase() || '';
+          return (
+            lower.includes('run') &&
+            !lower.includes('interval') &&
+            !lower.includes('tempo') &&
+            !lower.includes('pace') &&
+            !lower.includes('hyrox') &&
+            !lower.includes('1km') &&
+            !lower.includes('400m') &&
+            !lower.includes('800m') &&
+            !lower.includes('1600m')
+          );
+        });
+
+        if (sanitized.length > 0) {
+          return sanitized[0].id as string;
+        }
+      }
+    } catch (err) {
+      console.error('❌ Failed to locate run exercise:', err);
+    }
+    return null;
+  }
+
   async function createHyroxSimInDay(explicitDayId?: string) {
     try {
       const target = explicitDayId || selectedDayId || filteredDays[0]?.id;
@@ -2115,6 +2233,518 @@ const PlanDetail = () => {
       toast({ description: err?.message || 'Failed to create Hyrox Sim', variant: 'destructive' as any });
     }
   }
+
+  async function createDominoWorkoutInDay(explicitDayId?: string) {
+    try {
+      const target = explicitDayId || selectedDayId || filteredDays[0]?.id;
+      if (!target) {
+        toast({ description: 'Select a day first', variant: 'default' as any });
+        return;
+      }
+
+      const dominoExercises = [
+        { key: 'Squats', reps: 50, searchTerms: ['Air Squat', 'Bodyweight Squat', 'BW Squat'] },
+        { key: 'Burpees', reps: 50, searchTerms: ['Burpee', 'Burpees'] },
+        { key: 'Push-ups', reps: 50, searchTerms: ['Push-up', 'Pushup', 'Push Up', 'Pushups', 'Push Ups', 'Standard Push'] },
+        { key: 'Sit-ups', reps: 50, searchTerms: ['Sit-up', 'Situp', 'Sit Up', 'Abmat Sit-up'] },
+      ];
+
+      const sessionName = 'Domino (For Time)';
+      const { data: existingSessions } = await supabase
+        .from('sessions')
+        .select('order_index')
+        .eq('plan_day_id', target)
+        .order('order_index', { ascending: false })
+        .limit(1);
+      const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+      const sIns = await supabase
+        .from('sessions')
+        .insert({ plan_day_id: target, name: sessionName, order_index: maxOrder + 1 })
+        .select('id')
+        .single();
+      if (sIns.error) throw sIns.error;
+      const sessionId = String((sIns.data as any).id);
+
+      const blockTitle = 'Domino - For Time';
+      const bIns = await supabase
+        .from('session_blocks')
+        .insert({
+          session_id: sessionId,
+          block_type: 'simulation',
+          title: blockTitle,
+          rounds: 1,
+          parameters: {
+            format: 'simulation',
+            race_type: 'domino',
+            sequential: true,
+            track_splits: false,
+          },
+        })
+        .select('id')
+        .single();
+      if (bIns.error) throw bIns.error;
+      const blockId = String((bIns.data as any).id);
+
+      const runExerciseId = await findRunExerciseId();
+      if (!runExerciseId) {
+        toast({ description: 'No generic Run exercise found for Domino workout', variant: 'default' as any });
+      }
+
+      const exerciseIds: Record<string, string> = {};
+      const failedExercises: string[] = [];
+
+      for (const exercise of dominoExercises) {
+        const exerciseData = await findExerciseIdByTerms(exercise.searchTerms, ['hold', 'assisted', 'trx', 'knee', 'broad']);
+        if (exerciseData) {
+          exerciseIds[exercise.key] = exerciseData.id;
+        } else {
+          failedExercises.push(exercise.key);
+        }
+      }
+
+      let itemOrder = 0;
+
+      if (runExerciseId) {
+        await supabase
+          .from('session_block_items')
+          .insert({
+            block_id: blockId,
+            exercise_id: runExerciseId,
+            status: 'draft',
+            item_order: itemOrder++,
+            extra: { distance: 1 },
+          });
+      }
+
+      const sequence = ['Squats', 'Burpees', 'Push-ups', 'Sit-ups'];
+
+      for (let i = 0; i < sequence.length; i++) {
+        const exerciseKey = sequence[i];
+        const exerciseId = exerciseIds[exerciseKey];
+        if (exerciseId) {
+          await supabase
+            .from('session_block_items')
+            .insert({
+              block_id: blockId,
+              exercise_id: exerciseId,
+              status: 'draft',
+              item_order: itemOrder++,
+              extra: { reps: dominoExercises.find((ex) => ex.key === exerciseKey)?.reps || 50, sets: 1 },
+            });
+        } else {
+          failedExercises.push(exerciseKey);
+        }
+
+        // Add 1km run between each block, including before last sit-ups as described
+        if (runExerciseId && (i < sequence.length - 1)) {
+          await supabase
+            .from('session_block_items')
+            .insert({
+              block_id: blockId,
+              exercise_id: runExerciseId,
+              status: 'draft',
+              item_order: itemOrder++,
+              extra: { distance: 1 },
+            });
+        }
+      }
+
+      await supabase
+        .from('plan_days')
+        .update({ description: 'Domino: 1km Run between 50 Squats, 50 Burpees, 50 Push-Ups, 50 Sit-Ups (For Time)' })
+        .eq('id', target);
+
+      await loadDayGroups(target);
+
+      if (failedExercises.length > 0) {
+        toast({ description: `Domino created but missing: ${failedExercises.join(', ')}`, variant: 'default' as any });
+      } else {
+        toast({ description: 'Domino workout created successfully!' });
+      }
+    } catch (err: any) {
+      console.error('❌ Domino workout creation failed:', err);
+      toast({ description: err?.message || 'Failed to create Domino workout', variant: 'destructive' as any });
+    }
+  }
+
+  async function createCombsWorkoutInDay(explicitDayId?: string) {
+    try {
+      const target = explicitDayId || selectedDayId || filteredDays[0]?.id;
+      if (!target) {
+        toast({ description: 'Select a day first', variant: 'default' as any });
+        return;
+      }
+
+      const sessionName = 'Combs (For Time)';
+      const { data: existingSessions } = await supabase
+        .from('sessions')
+        .select('order_index')
+        .eq('plan_day_id', target)
+        .order('order_index', { ascending: false })
+        .limit(1);
+      const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+      const sIns = await supabase
+        .from('sessions')
+        .insert({ plan_day_id: target, name: sessionName, order_index: maxOrder + 1 })
+        .select('id')
+        .single();
+      if (sIns.error) throw sIns.error;
+      const sessionId = String((sIns.data as any).id);
+
+      const blockTitle = 'Combs - For Time';
+      const bIns = await supabase
+        .from('session_blocks')
+        .insert({
+          session_id: sessionId,
+          block_type: 'simulation',
+          title: blockTitle,
+          rounds: 1,
+          parameters: {
+            format: 'simulation',
+            race_type: 'combs',
+            sequential: true,
+            track_splits: false,
+          },
+        })
+        .select('id')
+        .single();
+      if (bIns.error) throw bIns.error;
+      const blockId = String((bIns.data as any).id);
+
+      const runExerciseId = await findRunExerciseId();
+      if (!runExerciseId) {
+        toast({ description: 'No generic Run exercise found for Combs workout', variant: 'default' as any });
+      }
+
+      const squatSearchTerms = ['Air Squat', 'Bodyweight Squat', 'BW Squat'];
+      const squatResult = await findExerciseIdByTerms(squatSearchTerms, ['hold', 'assisted', 'trx']);
+      const squatExerciseId = squatResult?.id || null;
+      if (!squatExerciseId) {
+        toast({ description: 'Could not find Squats exercise for Combs workout', variant: 'default' as any });
+      }
+
+      const steps: Array<{ kind: 'run'; distance: number } | { kind: 'exercise'; reps: number }> = [
+        { kind: 'exercise', reps: 60 },
+        { kind: 'run', distance: 0.4 },
+        { kind: 'exercise', reps: 40 },
+        { kind: 'run', distance: 0.8 },
+        { kind: 'exercise', reps: 20 },
+        { kind: 'run', distance: 1.6 },
+      ];
+
+      let itemOrder = 0;
+      const missing: string[] = [];
+
+      for (const step of steps) {
+        if (step.kind === 'exercise') {
+          if (!squatExerciseId) {
+            missing.push('Squats');
+            continue;
+          }
+          await supabase
+            .from('session_block_items')
+            .insert({
+              block_id: blockId,
+              exercise_id: squatExerciseId,
+              status: 'draft',
+              item_order: itemOrder++,
+              extra: { reps: step.reps, sets: 1 },
+            });
+        } else if (step.kind === 'run') {
+          if (!runExerciseId) {
+            missing.push('Run');
+            continue;
+          }
+          await supabase
+            .from('session_block_items')
+            .insert({
+              block_id: blockId,
+              exercise_id: runExerciseId,
+              status: 'draft',
+              item_order: itemOrder++,
+              extra: { distance: step.distance },
+            });
+        }
+      }
+
+      await supabase
+        .from('plan_days')
+        .update({ description: 'Combs: 60-40-20 Squats with 400m/800m/1600m runs between (For Time)' })
+        .eq('id', target);
+
+      await loadDayGroups(target);
+
+      if (missing.length > 0) {
+        toast({ description: `Combs created but missing: ${[...new Set(missing)].join(', ')}`, variant: 'default' as any });
+      } else {
+        toast({ description: 'Combs workout created successfully!' });
+      }
+    } catch (err: any) {
+      console.error('❌ Combs workout creation failed:', err);
+      toast({ description: err?.message || 'Failed to create Combs workout', variant: 'destructive' as any });
+    }
+  }
+
+  async function createBennigtonWorkoutInDay(explicitDayId?: string) {
+    try {
+      const target = explicitDayId || selectedDayId || filteredDays[0]?.id;
+      if (!target) {
+        toast({ description: 'Select a day first', variant: 'default' as any });
+        return;
+      }
+
+      const workoutExercises = [
+        { name: 'Push-ups', searchTerms: ['Push-ups', 'Push-ups (Standard)', 'Push-ups (Standard Form)', 'Push-up', 'Pushup', 'Push Ups', 'Pushups', 'Standard Push'] },
+        { name: 'Squats', searchTerms: ['Air Squat', 'Bodyweight Squat', 'BW Squat'] },
+      ];
+
+      const sessionName = 'Bennigton (For Time)';
+      const { data: existingSessions } = await supabase
+        .from('sessions')
+        .select('order_index')
+        .eq('plan_day_id', target)
+        .order('order_index', { ascending: false })
+        .limit(1);
+      const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+      const sIns = await supabase
+        .from('sessions')
+        .insert({ plan_day_id: target, name: sessionName, order_index: maxOrder + 1 })
+        .select('id')
+        .single();
+      if (sIns.error) throw sIns.error;
+      const sessionId = String((sIns.data as any).id);
+
+      const blockTitle = 'Bennigton - For Time';
+      const bIns = await supabase
+        .from('session_blocks')
+        .insert({
+          session_id: sessionId,
+          block_type: 'simulation',
+          title: blockTitle,
+          rounds: 1,
+          parameters: {
+            format: 'simulation',
+            race_type: 'bennigton',
+            sequential: true,
+            track_splits: false,
+          },
+        })
+        .select('id')
+        .single();
+      if (bIns.error) throw bIns.error;
+      const blockId = String((bIns.data as any).id);
+
+      const runExerciseId = await findRunExerciseId();
+      if (!runExerciseId) {
+        toast({ description: 'No running exercise found for Bennigton workout', variant: 'default' as any });
+      }
+
+      const exerciseIds: Record<string, string> = {};
+      const failedExercises: string[] = [];
+
+      for (const exercise of workoutExercises) {
+        const exerciseData = await findExerciseIdByTerms(exercise.searchTerms, ['hold', 'assisted', 'trx']);
+        if (exerciseData) {
+          exerciseIds[exercise.name] = exerciseData.id;
+        } else {
+          failedExercises.push(exercise.name);
+        }
+      }
+
+      let itemOrder = 0;
+
+      if (runExerciseId) {
+        await supabase
+          .from('session_block_items')
+          .insert({
+            block_id: blockId,
+            exercise_id: runExerciseId,
+            status: 'draft',
+            item_order: itemOrder++,
+            extra: { distance: 2 },
+          });
+      }
+
+      if (exerciseIds['Push-ups']) {
+        await supabase
+          .from('session_block_items')
+          .insert({
+            block_id: blockId,
+            exercise_id: exerciseIds['Push-ups'],
+            status: 'draft',
+            item_order: itemOrder++,
+            extra: { reps: 100, sets: 1 },
+          });
+      } else {
+        failedExercises.push('Push-ups');
+      }
+
+      if (exerciseIds['Squats']) {
+        await supabase
+          .from('session_block_items')
+          .insert({
+            block_id: blockId,
+            exercise_id: exerciseIds['Squats'],
+            status: 'draft',
+            item_order: itemOrder++,
+            extra: { reps: 200, sets: 1 },
+          });
+      } else {
+        failedExercises.push('Squats');
+      }
+
+      if (runExerciseId) {
+        await supabase
+          .from('session_block_items')
+          .insert({
+            block_id: blockId,
+            exercise_id: runExerciseId,
+            status: 'draft',
+            item_order: itemOrder++,
+            extra: { distance: 2 },
+          });
+      }
+
+      await supabase
+        .from('plan_days')
+        .update({ description: 'Bennigton: 2km Run, 100 Push-ups, 200 Squats, 2km Run (For Time)' })
+        .eq('id', target);
+
+      await loadDayGroups(target);
+
+      if (failedExercises.length > 0) {
+        toast({ description: `Bennigton created but missing: ${[...new Set(failedExercises)].join(', ')}`, variant: 'default' as any });
+      } else {
+        toast({ description: 'Bennigton workout created successfully!' });
+      }
+    } catch (err: any) {
+      console.error('❌ Bennigton workout creation failed:', err);
+      toast({ description: err?.message || 'Failed to create Bennigton workout', variant: 'destructive' as any });
+    }
+  }
+
+  async function createStrengthPlanInDay(explicitDayId?: string) {
+    try {
+      const target = explicitDayId || selectedDayId || filteredDays[0]?.id;
+      if (!target) {
+        toast({ description: 'Select a day first', variant: 'default' as any });
+        return;
+      }
+
+      const sessionName = 'Strength 5x5';
+      const { data: existingSessions } = await supabase
+        .from('sessions')
+        .select('order_index')
+        .eq('plan_day_id', target)
+        .order('order_index', { ascending: false })
+        .limit(1);
+      const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+      const sIns = await supabase
+        .from('sessions')
+        .insert({ plan_day_id: target, name: sessionName, order_index: maxOrder + 1 })
+        .select('id')
+        .single();
+      if (sIns.error) throw sIns.error;
+      const sessionId = String((sIns.data as any).id);
+
+      const blockTitle = 'Strength 5x5';
+      const bIns = await supabase
+        .from('session_blocks')
+        .insert({
+          session_id: sessionId,
+          block_type: 'strength',
+          title: blockTitle,
+          rounds: 5,
+          parameters: {
+            format: 'strength',
+            notes: 'Classic compound lifts performed 5 sets of 5 reps',
+          },
+        })
+        .select('id')
+        .single();
+      if (bIns.error) throw bIns.error;
+      const blockId = String((bIns.data as any).id);
+
+      const strengthExercises = [
+        { name: 'Squat' },
+        { name: 'Bench Press' },
+        { name: 'Deadlift' },
+        { name: 'DB Overhead Press' },
+        { name: 'Pull Ups' },
+      ];
+
+      const exerciseIds: Record<string, string> = {};
+      const missing: string[] = [];
+
+      for (const exercise of strengthExercises) {
+        const { data: exactMatch, error: exactError } = await supabase
+          .from('exercises')
+          .select('id')
+          .eq('name', exercise.name)
+          .limit(1);
+        if (exactError) throw exactError;
+        if (exactMatch && exactMatch.length > 0) {
+          exerciseIds[exercise.name] = exactMatch[0].id as string;
+        } else {
+          missing.push(exercise.name);
+        }
+      }
+
+      if (missing.length > 0) {
+        await supabase.from('session_blocks').delete().eq('id', blockId);
+        await supabase.from('sessions').delete().eq('id', sessionId);
+        toast({ description: `Missing expected exercises: ${missing.join(', ')}`, variant: 'destructive' as any });
+        return;
+      }
+
+      let itemOrder = 0;
+      const defaultRest = 120;
+
+      for (const exercise of strengthExercises) {
+        const exerciseId = exerciseIds[exercise.name];
+        if (!exerciseId) continue;
+
+        const isPullUps = exercise.name === 'Pull Ups';
+        const extra: any = {
+          sets: 5,
+          reps: 5,
+          rest: defaultRest,
+          weight: null,
+          weight_kg: null,
+        };
+        if (isPullUps) {
+          extra.notes = 'Add weight if desired or leave at bodyweight.';
+        }
+
+        const { error } = await supabase
+          .from('session_block_items')
+          .insert({
+            block_id: blockId,
+            exercise_id: exerciseId,
+            status: 'draft',
+            item_order: itemOrder++,
+            extra,
+          });
+        if (error) {
+          console.error('❌ Failed to insert strength exercise', exercise.name, error);
+          throw error;
+        }
+      }
+
+      await supabase
+        .from('plan_days')
+        .update({ description: `Strength 5x5: ${strengthExercises.map((ex) => ex.name).join(', ')}` })
+        .eq('id', target);
+
+      await loadDayGroups(target);
+
+      toast({ description: 'Strength 5x5 plan created successfully!' });
+    } catch (err: any) {
+      console.error('❌ Strength plan creation failed:', err);
+      toast({ description: err?.message || 'Failed to create Strength plan', variant: 'destructive' as any });
+    }
+  }
+
   const DraggableFormatChip = ({ name }: { name: string }) => {
     const { attributes, listeners, setNodeRef } = useDraggable({ id: `format:${name}`, data: { name } });
     return (
@@ -2130,6 +2760,23 @@ const PlanDetail = () => {
     );
   };
 
+  const DraggableStrengthPlan = () => {
+    const { attributes, listeners, setNodeRef } = useDraggable({ id: 'strength:premade', data: { name: 'Strength 5x5' } });
+    return (
+      <button
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        onClick={async () => {
+          await createStrengthPlanInDay();
+        }}
+        className="text-xs px-3 py-1.5 rounded border border-red-500 bg-red-600 text-white font-semibold hover:bg-red-500 transition-colors"
+        role="button"
+        aria-label="Strength 5x5"
+      >Strength 5x5</button>
+    );
+  };
+
   const DraggableHyroxSim = () => {
     const { attributes, listeners, setNodeRef } = useDraggable({ id: 'hyrox:sim', data: { name: 'Hyrox Sim' } });
     return (
@@ -2137,7 +2784,9 @@ const PlanDetail = () => {
         ref={setNodeRef}
         {...listeners}
         {...attributes}
-        onClick={async ()=>{ await createHyroxSimInDay(); }}
+        onClick={async () => {
+          await createHyroxSimInDay();
+        }}
         className="text-xs px-3 py-1.5 rounded border border-zinc-700 bg-white text-black font-semibold hover:bg-zinc-100 transition-colors"
         role="button"
         aria-label="Hyrox Sim"
@@ -2152,11 +2801,64 @@ const PlanDetail = () => {
         ref={setNodeRef}
         {...listeners}
         {...attributes}
-        onClick={async ()=>{ await createGeorgeWorkoutInDay(); }}
+        onClick={async () => {
+          await createGeorgeWorkoutInDay();
+        }}
         className="text-xs px-3 py-1.5 rounded border border-zinc-700 bg-white text-black font-semibold hover:bg-zinc-100 transition-colors"
         role="button"
         aria-label="George"
       >George</button>
+    );
+  };
+
+  const DraggableDomino = () => {
+    const { attributes, listeners, setNodeRef } = useDraggable({ id: 'domino:workout', data: { name: 'Domino' } });
+    return (
+      <button
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        onClick={async () => {
+          await createDominoWorkoutInDay();
+        }}
+        className="text-xs px-3 py-1.5 rounded border border-zinc-700 bg-white text-black font-semibold hover:bg-zinc-100 transition-colors"
+        role="button"
+        aria-label="Domino"
+      >Domino</button>
+    );
+  };
+
+  const DraggableCombs = () => {
+    const { attributes, listeners, setNodeRef } = useDraggable({ id: 'combs:workout', data: { name: 'Combs' } });
+    return (
+      <button
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        onClick={async () => {
+          await createCombsWorkoutInDay();
+        }}
+        className="text-xs px-3 py-1.5 rounded border border-zinc-700 bg-white text-black font-semibold hover:bg-zinc-100 transition-colors"
+        role="button"
+        aria-label="Combs"
+      >Combs</button>
+    );
+  };
+
+  const DraggableBennigton = () => {
+    const { attributes, listeners, setNodeRef } = useDraggable({ id: 'bennigton:workout', data: { name: 'Bennigton' } });
+    return (
+      <button
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        onClick={async () => {
+          await createBennigtonWorkoutInDay();
+        }}
+        className="text-xs px-3 py-1.5 rounded border border-zinc-700 bg-white text-black font-semibold hover:bg-zinc-100 transition-colors"
+        role="button"
+        aria-label="Bennigton"
+      >Bennigton</button>
     );
   };
 
@@ -2461,11 +3163,11 @@ const PlanDetail = () => {
     // Treat 'circuit', 'amrap', and 'simulation' as group wrappers
     console.log('🔍 Checking blocks for groups:', blocks.map((b:any) => ({ blockType: b.blockType, title: b.title, itemCount: b.itemRows?.length })));
     const groups: Group[] = blocks.filter((b:any)=> (b.blockType === 'circuit' || b.blockType === 'amrap' || b.blockType === 'simulation')).map((b:any)=> {
-      const items = (b.itemRows||[]).sort((a:any,b:any)=>(a.item_order??0)-(b.item_order??0)).map((r:any)=> ({ 
-        id: String(r.id), 
-        name: exMap[String(r.exercise_id)]?.name || 'Exercise', 
-        modality: exMap[String(r.exercise_id)]?.modality, 
-        extra: r.extra 
+      const items = (b.itemRows || []).sort((a: any, b: any) => (a.item_order ?? 0) - (b.item_order ?? 0)).map((r: any) => ({
+        id: String(r.id),
+        name: r.extra?.custom_name || exMap[String(r.exercise_id)]?.name || 'Exercise',
+        modality: exMap[String(r.exercise_id)]?.modality,
+        extra: r.extra,
       }));
       console.log(`🔍 Group "${b.title}" has ${items.length} items:`, items.map(i => ({ name: i.name, reps: i.extra?.reps })));
       return {
@@ -2495,8 +3197,8 @@ const PlanDetail = () => {
     const allRows = blocks.flatMap((b:any)=> (b.itemRows||[]));
 
     const flatItems: RenderedItem[] = nonGroupEntries
-      .flatMap((entry:any)=> (entry.items||[]).map((r:any)=> ({ r, sessionOrderIndex: entry.sessionOrderIndex, blockOrderIndex: entry.blockOrderIndex })))
-      .sort((a:any,b:any)=> {
+      .flatMap((entry: any) => (entry.items || []).map((r: any) => ({ r, sessionOrderIndex: entry.sessionOrderIndex, blockOrderIndex: entry.blockOrderIndex })))
+      .sort((a: any, b: any) => {
         // CRITICAL: Sort by session order first, then block order, then item order
         const sessionDiff = a.sessionOrderIndex - b.sessionOrderIndex;
         if (sessionDiff !== 0) return sessionDiff;
@@ -2504,7 +3206,13 @@ const PlanDetail = () => {
         if (blockDiff !== 0) return blockDiff;
         return (a.r.item_order ?? 0) - (b.r.item_order ?? 0);
       })
-      .map((x:any)=> ({ id: String(x.r.id), name: exMap[String(x.r.exercise_id)]?.name || 'Exercise', modality: exMap[String(x.r.exercise_id)]?.modality, item_order: x.r.item_order, extra: x.r.extra }));
+      .map((x: any) => ({
+        id: String(x.r.id),
+        name: x.r.extra?.custom_name || exMap[String(x.r.exercise_id)]?.name || 'Exercise',
+        modality: exMap[String(x.r.exercise_id)]?.modality,
+        item_order: x.r.item_order,
+        extra: x.r.extra,
+      }));
     
     console.log('🔄 📥 Final flatItems order:', flatItems.map((it, idx) => ({ position: idx + 1, name: it.name })));
     setItemsByDay(prev=> ({ ...prev, [dayId]: flatItems }));
@@ -2518,9 +3226,19 @@ const PlanDetail = () => {
         const g = groupsByBlockId[String(b.blockId)];
         if (g) sequence.push({ kind: 'group', group: g });
       } else {
-        const rows = (b.itemRows||[]).sort((a:any,b:any)=>(a.item_order??0)-(b.item_order??0));
-        const r = rows[0];
-        if (r) sequence.push({ kind: 'item', item: { id: String(r.id), name: exMap[String(r.exercise_id)]?.name || 'Exercise', modality: exMap[String(r.exercise_id)]?.modality, item_order: r.item_order, extra: r.extra } });
+        const rows = (b.itemRows || []).sort((a: any, b: any) => (a.item_order ?? 0) - (b.item_order ?? 0));
+        rows.forEach((r: any) => {
+          sequence.push({
+            kind: 'item',
+            item: {
+              id: String(r.id),
+              name: exMap[String(r.exercise_id)]?.name || 'Exercise',
+              modality: exMap[String(r.exercise_id)]?.modality,
+              item_order: r.item_order,
+              extra: r.extra,
+            },
+          });
+        });
       }
     }
     setSequenceByDay(prev => ({ ...prev, [dayId]: sequence }));
@@ -3002,8 +3720,12 @@ const PlanDetail = () => {
           <div className="mb-4 pb-4 border-b border-zinc-700">
             <h3 className="text-sm uppercase tracking-wide text-yellow-400 font-semibold mb-2">Pre-Made Plans</h3>
             <div className="flex items-center gap-2 flex-wrap">
+              <DraggableStrengthPlan />
               <DraggableHyroxSim />
               <DraggableGeorge />
+              <DraggableDomino />
+              <DraggableCombs />
+              <DraggableBennigton />
             </div>
           </div>
 

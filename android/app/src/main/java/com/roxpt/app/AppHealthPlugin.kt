@@ -33,6 +33,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.Duration
+import kotlin.math.min
+import kotlin.math.max
 
 @CapacitorPlugin(name = "AppHealth")
 class AppHealthPlugin : Plugin() {
@@ -421,25 +424,70 @@ class AppHealthPlugin : Plugin() {
 
         ioScope.launch {
             try {
-                val request = ReadRecordsRequest(
+                val sessionRequest = ReadRecordsRequest(
                     recordType = SleepSessionRecord::class,
                     timeRangeFilter = TimeRangeFilter.between(start, end)
                 )
 
-                val response = client.readRecords(request)
-                val totalMinutes = response.records.sumOf { 
-                    (it.endTime.toEpochMilli() - it.startTime.toEpochMilli()) / (1000 * 60)
-                }
-                val hours = totalMinutes / 60.0
+                val sessionResponse = client.readRecords(sessionRequest)
 
-                Log.d(logTag, "😴 getSleep() - Found ${response.records.size} records, total: ${hours}h")
-                response.records.forEach { record ->
-                    Log.d(logTag, "  - Sleep session from ${record.startTime} to ${record.endTime}")
+                var inBedMinutes = 0L
+                val stageTotals = mutableMapOf(
+                    "awakeMinutes" to 0L,
+                    "lightMinutes" to 0L,
+                    "deepMinutes" to 0L,
+                    "remMinutes" to 0L,
+                    "outOfBedMinutes" to 0L
+                )
+
+                sessionResponse.records.forEach { record ->
+                    inBedMinutes += Duration.between(record.startTime, record.endTime).toMinutes()
+
+                    record.stages.forEach { stage ->
+                        val stageMinutes = Duration.between(stage.startTime, stage.endTime).toMinutes()
+                        when (stage.stage) {
+                            SleepSessionRecord.STAGE_TYPE_AWAKE,
+                            SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED -> stageTotals["awakeMinutes"] = stageTotals.getValue("awakeMinutes") + stageMinutes
+                            SleepSessionRecord.STAGE_TYPE_LIGHT,
+                            SleepSessionRecord.STAGE_TYPE_SLEEPING -> stageTotals["lightMinutes"] = stageTotals.getValue("lightMinutes") + stageMinutes
+                            SleepSessionRecord.STAGE_TYPE_DEEP -> stageTotals["deepMinutes"] = stageTotals.getValue("deepMinutes") + stageMinutes
+                            SleepSessionRecord.STAGE_TYPE_REM -> stageTotals["remMinutes"] = stageTotals.getValue("remMinutes") + stageMinutes
+                            SleepSessionRecord.STAGE_TYPE_OUT_OF_BED -> stageTotals["outOfBedMinutes"] = stageTotals.getValue("outOfBedMinutes") + stageMinutes
+                            else -> {}
+                        }
+                    }
+                }
+
+                val asleepMinutes = stageTotals["lightMinutes"]!! + stageTotals["deepMinutes"]!! + stageTotals["remMinutes"]!!
+                val asleepHours = asleepMinutes / 60.0
+                val inBedHours = inBedMinutes / 60.0
+                val efficiency = if (inBedMinutes > 0) asleepMinutes.toDouble() / inBedMinutes else 0.0
+
+                val targetMinutes = 7.5 * 60 // 7.5h target
+                val quantityRatio = max(0.0, min(asleepMinutes / targetMinutes, 1.2))
+                val quantityScore = (quantityRatio / 1.2) * 70.0
+                val qualityRatio = if (asleepMinutes > 0) (stageTotals["deepMinutes"]!! + stageTotals["remMinutes"]!!).toDouble() / asleepMinutes else 0.0
+                val qualityScore = (max(0.0, min(qualityRatio, 0.5)) / 0.5) * 30.0
+                val sleepScore = max(0, min((quantityScore + qualityScore).toInt(), 100))
+
+                Log.d(logTag, "😴 getSleep() - Sessions=${sessionResponse.records.size}, in-bed=${inBedHours}h, asleep=${asleepHours}h")
+
+                val stagesJson = JSObject().apply {
+                    put("awakeMinutes", stageTotals["awakeMinutes"])
+                    put("lightMinutes", stageTotals["lightMinutes"])
+                    put("deepMinutes", stageTotals["deepMinutes"])
+                    put("remMinutes", stageTotals["remMinutes"])
+                    put("outOfBedMinutes", stageTotals["outOfBedMinutes"])
                 }
 
                 val js = JSObject()
-                js.put("hours", hours)
-                js.put("minutes", totalMinutes)
+                js.put("hours", asleepHours)
+                js.put("minutes", asleepMinutes)
+                js.put("inBedHours", inBedHours)
+                js.put("inBedMinutes", inBedMinutes)
+                js.put("efficiency", efficiency)
+                js.put("sleepScore", sleepScore)
+                js.put("stages", stagesJson)
                 js.put("platform", "android")
                 call.resolve(js)
             } catch (e: Exception) {

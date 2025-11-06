@@ -340,12 +340,11 @@ export async function syncWorkoutLogToSupabase(
   try {
     const timestamp = new Date().toISOString();
 
-    const workoutLog = {
+    const workoutLog: Record<string, any> = {
       client_id: clientId,
       plan_id: planId,
       training_day: trainingDay,
       exercise_name: logData.exerciseName,
-      exercise_id: logData.exerciseId || null,
       logged_at: timestamp,
       weight: logData.weight || null,
       weights: logData.weights || null,
@@ -357,6 +356,10 @@ export async function syncWorkoutLogToSupabase(
       rating: logData.rating || null,
       is_pb: logData.isPB || false,
     };
+
+    if (logData.exerciseId) {
+      workoutLog.exercise_id = logData.exerciseId;
+    }
 
     console.log("💾 Syncing workout log to Supabase:", workoutLog);
 

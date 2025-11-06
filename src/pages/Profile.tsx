@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ExternalLink, LogOut, Mail, User as UserIcon, ClipboardCheck, HeartPulse, Link2, Smartphone, Trophy, Calendar, Save, Loader2, Trash2, Flame, Activity, Heart, Moon, MapPin, Footprints, RefreshCw } from "lucide-react";
+import { ExternalLink, LogOut, Mail, User as UserIcon, ClipboardCheck, HeartPulse, Link2, Smartphone, Trophy, Calendar, Save, Loader2, Trash2, Flame, Activity, Heart, Moon, MapPin, Footprints, RefreshCw, Gauge, Info, Ruler } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
@@ -13,9 +13,12 @@ import { usePWAInstall } from "@/utils/pwaInstall";
 import { AppHealth } from "@/services/appHealth";
 import { importRecentActivities, saveActivitiesToLog } from "@/services/strava";
 import { supabase } from "@/utils/supabaseClient";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
 
 const Profile = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user: authUser, logout } = useAuth();
   const { installable, installed, promptInstall } = usePWAInstall();
   const [loading, setLoading] = useState(false);
@@ -28,13 +31,157 @@ const Profile = () => {
     distance: number;
     calories: number;
     sleep: number;
-  }>({ steps: 0, heartRate: null, distance: 0, calories: 0, sleep: 0 });
+    sleepScore: number;
+    readiness: number;
+    sleepEfficiency: number;
+    recoveryScore: number;
+    sleepStages: {
+      remMinutes: number;
+      deepMinutes: number;
+      lightMinutes: number;
+      awakeMinutes: number;
+      outOfBedMinutes: number;
+    };
+  }>({
+    steps: 0,
+    heartRate: null,
+    distance: 0,
+    calories: 0,
+    sleep: 0,
+    sleepScore: 0,
+    readiness: 0,
+    sleepEfficiency: 0,
+    recoveryScore: 0,
+    sleepStages: {
+      remMinutes: 0,
+      deepMinutes: 0,
+      lightMinutes: 0,
+      awakeMinutes: 0,
+      outOfBedMinutes: 0,
+    },
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [raceName, setRaceName] = useState<string>("");
   const [raceDate, setRaceDate] = useState<string>("");
   const [savingRace, setSavingRace] = useState<boolean>(false);
   const [allRaces, setAllRaces] = useState<Array<{ id: number; race_name: string; race_date: string }>>([]);
   const [showAllRaces, setShowAllRaces] = useState<boolean>(false);
+  const [sleepInsightOpen, setSleepInsightOpen] = useState<boolean>(false);
+
+  const triggerInsightHaptic = useCallback(async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      await Haptics.impact({ style: ImpactStyle.Medium });
+    } catch (error) {
+      console.warn("Haptics not available", error);
+    }
+  }, []);
+
+  const handleSleepSheetChange = useCallback((open: boolean) => {
+    setSleepInsightOpen(open);
+
+    const next = new URLSearchParams(searchParams);
+
+    if (open) {
+      if (searchParams.get("insight") !== "sleep") {
+        next.set("insight", "sleep");
+        setSearchParams(next, { replace: true });
+      }
+      triggerInsightHaptic();
+    } else {
+      if (searchParams.get("insight")) {
+        next.delete("insight");
+        setSearchParams(next, { replace: true });
+      }
+    }
+  }, [searchParams, setSearchParams, triggerInsightHaptic]);
+
+  useEffect(() => {
+    const insight = searchParams.get("insight");
+    if (insight === "sleep" && !sleepInsightOpen) {
+      setSleepInsightOpen(true);
+      triggerInsightHaptic();
+    } else if (insight !== "sleep" && sleepInsightOpen) {
+      setSleepInsightOpen(false);
+    }
+  }, [searchParams, sleepInsightOpen, triggerInsightHaptic]);
+
+  const formatMetric = useCallback((value: number, formatter?: (value: number) => string) => {
+    if (!value || Number.isNaN(value) || value <= 0) return "--";
+    return formatter ? formatter(value) : Math.round(value).toString();
+  }, []);
+
+  const sleepStageTotals = useMemo(() => {
+    const stages = healthData.sleepStages;
+    const base = [
+      {
+        key: 'rem',
+        label: 'REM',
+        minutes: stages.remMinutes,
+        color: '#a855f7',
+        cardClass: 'bg-purple-500/10 border border-purple-500/30',
+        textClass: 'text-purple-300',
+      },
+      {
+        key: 'deep',
+        label: 'Deep',
+        minutes: stages.deepMinutes,
+        color: '#3b82f6',
+        cardClass: 'bg-blue-500/10 border border-blue-500/30',
+        textClass: 'text-blue-300',
+      },
+      {
+        key: 'light',
+        label: 'Light',
+        minutes: stages.lightMinutes,
+        color: '#fbbf24',
+        cardClass: 'bg-amber-500/10 border border-amber-500/30',
+        textClass: 'text-amber-300',
+      },
+      {
+        key: 'awake',
+        label: 'Awake',
+        minutes: stages.awakeMinutes + stages.outOfBedMinutes,
+        color: '#6b7280',
+        cardClass: 'bg-gray-500/10 border border-gray-500/30',
+        textClass: 'text-muted-foreground',
+      },
+    ];
+
+    const totalMinutes = base.reduce((sum, stage) => sum + stage.minutes, 0);
+    const safeTotal = totalMinutes > 0 ? totalMinutes : 1;
+
+    return {
+      totalMinutes,
+      safeTotal,
+      data: base.map((stage) => {
+        const fraction = stage.minutes / safeTotal;
+        return {
+          ...stage,
+          fraction: stage.minutes > 0 ? fraction : 0,
+          percent: stage.minutes > 0 ? Math.round(fraction * 100) : 0,
+        };
+      }),
+    };
+  }, [healthData.sleepStages]);
+
+  const sleepStageGradient = useMemo(() => {
+    let current = 0;
+    const segments = sleepStageTotals.data
+      .filter((stage) => stage.fraction > 0)
+      .map((stage) => {
+        const start = current;
+        const end = start + stage.fraction * 100;
+        current = end;
+        return `${stage.color} ${start}% ${end}%`;
+      });
+
+    if (segments.length === 0) {
+      return '#1f1f2f';
+    }
+
+    return `conic-gradient(${segments.join(', ')})`;
+  }, [sleepStageTotals]);
 
   const user = {
     email: authUser?.email || "frank@example.com",
@@ -102,14 +249,42 @@ const Profile = () => {
       console.log('📊 [Profile] Fetching health data from:', start, 'to:', end);
       console.log('📊 [Profile] Sleep data from:', sleepStart, 'to:', end);
       
+      const emptySleep = {
+        hours: 0,
+        minutes: 0,
+        inBedHours: 0,
+        inBedMinutes: 0,
+        efficiency: 0,
+        sleepScore: 0,
+        stages: {
+          awakeMinutes: 0,
+          lightMinutes: 0,
+          deepMinutes: 0,
+          remMinutes: 0,
+          outOfBedMinutes: 0,
+        },
+        platform: 'android' as const,
+      };
+
       const [stepsResult, heartRateResult, distanceResult, caloriesResult, sleepResult] = await Promise.all([
         AppHealth.getSteps({ start, end }).catch(() => ({ total: 0, platform: 'android' as const })),
         AppHealth.getHeartRate({ start, end }).catch(() => null),
         AppHealth.getDistance({ start, end }).catch(() => ({ kilometers: 0, meters: 0, platform: 'android' as const })),
         AppHealth.getCalories({ start, end }).catch(() => ({ calories: 0, platform: 'android' as const })),
-        AppHealth.getSleep({ start: sleepStart, end }).catch(() => ({ hours: 0, minutes: 0, platform: 'android' as const }))
+        AppHealth.getSleep({ start: sleepStart, end }).catch(() => emptySleep)
       ]);
       
+      const asleepHours = sleepResult.hours || 0;
+      const stages = sleepResult.stages || emptySleep.stages;
+      const calculatedSleepScore = asleepHours > 0
+        ? Math.round(Math.min(asleepHours / 7.5, 1) * 100)
+        : 0;
+      const sleepScore = sleepResult.sleepScore || calculatedSleepScore;
+      const stepGoal = 8000;
+      const stepPenaltyRatio = Math.min(Math.max(stepsResult.total - stepGoal, 0) / stepGoal, 1);
+      const recoveryScore = Math.round((1 - stepPenaltyRatio) * 100);
+      const readiness = Math.round(0.7 * sleepScore + 0.3 * recoveryScore);
+
       setHealthData({
         steps: stepsResult.total,
         heartRate: heartRateResult && heartRateResult.samples > 0 ? {
@@ -120,7 +295,18 @@ const Profile = () => {
         } : null,
         distance: distanceResult.kilometers,
         calories: caloriesResult.calories,
-        sleep: sleepResult.hours
+        sleep: asleepHours,
+        sleepScore,
+        readiness,
+        sleepEfficiency: sleepResult.efficiency || 0,
+        recoveryScore,
+        sleepStages: {
+          remMinutes: stages.remMinutes || 0,
+          deepMinutes: stages.deepMinutes || 0,
+          lightMinutes: stages.lightMinutes || 0,
+          awakeMinutes: stages.awakeMinutes || 0,
+          outOfBedMinutes: stages.outOfBedMinutes || 0,
+        },
       });
     } catch (e) {
       console.error('Error fetching health data:', e);
@@ -170,26 +356,75 @@ const Profile = () => {
   const [editingPassword, setEditingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [clientPassword, setClientPassword] = useState<string>("");
+  const [dateOfBirth, setDateOfBirth] = useState<string>("");
+  const [savingDob, setSavingDob] = useState<boolean>(false);
+  const maxBirthDate = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const age = useMemo(() => {
+    if (!dateOfBirth) return null;
+    const dobDate = new Date(dateOfBirth);
+    if (Number.isNaN(dobDate.getTime())) return null;
+    const today = new Date();
+    let years = today.getFullYear() - dobDate.getFullYear();
+    const hasHadBirthday =
+      today.getMonth() > dobDate.getMonth() ||
+      (today.getMonth() === dobDate.getMonth() && today.getDate() >= dobDate.getDate());
+    if (!hasHadBirthday) years -= 1;
+    return years >= 0 ? years : null;
+  }, [dateOfBirth]);
 
   // Load client password
   useEffect(() => {
-    const loadClientPassword = async () => {
+    const normalizeDateValue = (value: any): string => {
+      if (!value) return "";
+      if (typeof value === "string") {
+        return value.includes("T") ? value.split("T")[0] : value;
+      }
+      if (value instanceof Date) {
+        return value.toISOString().split("T")[0];
+      }
+      return "";
+    };
+
+    const loadClientProfile = async () => {
       if (!authUser?.clientId) return;
       try {
-        const { data, error } = await supabase
+        const primary = await supabase
           .from("clients")
-          .select("password")
+          .select("password, date_of_birth")
           .eq("id", authUser.clientId)
           .single();
-        
-        if (!error && data) {
-          setClientPassword(data.password || "");
+
+        let passwordValue = "";
+        let dobValue = "";
+
+        if (primary.error) {
+          const message = primary.error.message?.toLowerCase() || "";
+          if (message.includes("date_of_birth")) {
+            const fallback = await supabase
+              .from("clients")
+              .select("password, dob")
+              .eq("id", authUser.clientId)
+              .single();
+
+            if (fallback.error) throw fallback.error;
+
+            passwordValue = fallback.data?.password || "";
+            dobValue = normalizeDateValue(fallback.data?.dob);
+          } else {
+            throw primary.error;
+          }
+        } else if (primary.data) {
+          passwordValue = primary.data.password || "";
+          dobValue = normalizeDateValue((primary.data as any).date_of_birth);
         }
+
+        setClientPassword(passwordValue);
+        setDateOfBirth(dobValue);
       } catch (e) {
-        console.error("Failed to load password:", e);
+        console.error("Failed to load client profile:", e);
       }
     };
-    loadClientPassword();
+    loadClientProfile();
   }, [authUser?.clientId]);
 
   const handleSavePassword = async () => {
@@ -219,11 +454,63 @@ const Profile = () => {
     }
   };
 
+  const handleSaveDob = async () => {
+    if (!authUser?.clientId) return;
+    if (!dateOfBirth) {
+      toast.error("Please pick a date of birth");
+      return;
+    }
+
+    try {
+      setSavingDob(true);
+      const { error } = await supabase
+        .from("clients")
+        .update({ date_of_birth: dateOfBirth })
+        .eq("id", authUser.clientId);
+
+      if (error) {
+        const message = error.message?.toLowerCase() || "";
+        if (message.includes("date_of_birth")) {
+          const fallback = await supabase
+            .from("clients")
+            .update({ dob: dateOfBirth })
+            .eq("id", authUser.clientId);
+          if (fallback.error) throw fallback.error;
+        } else {
+          throw error;
+        }
+      }
+
+      toast.success("Date of birth updated");
+    } catch (e: any) {
+      toast.error("Failed to update date of birth", { description: e.message });
+    } finally {
+      setSavingDob(false);
+    }
+  };
+
   const handleDisconnectHealth = () => {
     try {
       localStorage.removeItem("health_connected");
       setHealthConnected(false);
-      setHealthData({ steps: 0, heartRate: null });
+      setHealthData({
+        steps: 0,
+        heartRate: null,
+        distance: 0,
+        calories: 0,
+        sleep: 0,
+        sleepScore: 0,
+        readiness: 0,
+        sleepEfficiency: 0,
+        recoveryScore: 0,
+        sleepStages: {
+          remMinutes: 0,
+          deepMinutes: 0,
+          lightMinutes: 0,
+          awakeMinutes: 0,
+          outOfBedMinutes: 0,
+        },
+      });
       toast.success("Health disconnected", {
         description: "Your health data connection has been removed",
         duration: 3000
@@ -503,52 +790,48 @@ const Profile = () => {
                     {/* Stats Grid - Icons only with values */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {/* Steps */}
-                      {healthData.steps > 0 && (
-                        <div className="flex items-center justify-center gap-2 p-2.5 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                          <Footprints className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                          <span className="text-base font-bold text-blue-500">{healthData.steps.toLocaleString()}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-center gap-2 p-2.5 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                        <Footprints className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        <span className="text-base font-bold text-blue-500">
+                          {healthData.steps > 0 ? healthData.steps.toLocaleString() : "--"}
+                        </span>
+                      </div>
 
                       {/* Avg Heart Rate */}
-                      {healthData.heartRate && healthData.heartRate.average > 0 && (
-                        <div className="flex items-center justify-center gap-2 p-2.5 bg-red-500/10 rounded-lg border border-red-500/20">
-                          <Heart className="w-4 h-4 text-red-500 flex-shrink-0 animate-pulse" />
-                          <span className="text-base font-bold text-red-500">{healthData.heartRate.average}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-center gap-2 p-2.5 bg-red-500/10 rounded-lg border border-red-500/20">
+                        <Heart className="w-4 h-4 text-red-500 flex-shrink-0" />
+                        <span className="text-base font-bold text-red-500">
+                          {healthData.heartRate && healthData.heartRate.average > 0 ? healthData.heartRate.average : "--"}
+                        </span>
+                      </div>
 
                       {/* Distance */}
-                      {healthData.distance > 0 && (
-                        <div className="flex items-center justify-center gap-2 p-2.5 bg-green-500/10 rounded-lg border border-green-500/20">
-                          <MapPin className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span className="text-base font-bold text-green-500">{healthData.distance.toFixed(1)}km</span>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-center gap-2 p-2.5 bg-green-500/10 rounded-lg border border-green-500/20">
+                        <MapPin className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        <span className="text-base font-bold text-green-500">
+                          {healthData.distance > 0 ? `${healthData.distance.toFixed(1)}km` : "--"}
+                        </span>
+                      </div>
 
                       {/* Calories */}
-                      {healthData.calories > 0 && (
-                        <div className="flex items-center justify-center gap-2 p-2.5 bg-orange-500/10 rounded-lg border border-orange-500/20">
-                          <Flame className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                          <span className="text-base font-bold text-orange-500">{healthData.calories}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-center gap-2 p-2.5 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                        <Flame className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                        <span className="text-base font-bold text-orange-500">{formatMetric(healthData.calories)}</span>
+                      </div>
 
-                      {/* Sleep */}
-                      {healthData.sleep > 0 && (
-                        <div className="flex items-center justify-center gap-2 p-2.5 bg-purple-500/10 rounded-lg border border-purple-500/20">
-                          <Moon className="w-4 h-4 text-purple-500 flex-shrink-0" />
-                          <span className="text-base font-bold text-purple-500">{healthData.sleep.toFixed(1)}h</span>
-                        </div>
-                      )}
+                      {/* Sleep (quick glance) */}
+                      <div className="flex items-center justify-center gap-2 p-2.5 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                        <Moon className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                        <span className="text-base font-bold text-purple-500">{formatMetric(healthData.sleep, (value) => `${value.toFixed(1)}h`)}</span>
+                      </div>
 
                       {/* Max Heart Rate */}
-                      {healthData.heartRate && healthData.heartRate.max > 0 && (
-                        <div className="flex items-center justify-center gap-2 p-2.5 bg-red-500/10 rounded-lg border border-red-500/20">
-                          <Activity className="w-4 h-4 text-red-500 flex-shrink-0" />
-                          <span className="text-base font-bold text-red-500">{healthData.heartRate.max}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-center gap-2 p-2.5 bg-red-500/10 rounded-lg border border-red-500/20">
+                        <Activity className="w-4 h-4 text-red-500 flex-shrink-0" />
+                        <span className="text-base font-bold text-red-500">
+                          {healthData.heartRate && healthData.heartRate.max > 0 ? healthData.heartRate.max : "--"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -593,6 +876,106 @@ const Profile = () => {
             )}
           </div>
         </Card>
+
+        {healthConnected && (
+          <Card className="p-5 mb-4 shadow-lg border border-purple-500/20 bg-purple-500/5">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-purple-300">Sleep</p>
+                  <p className="text-2xl font-bold text-foreground">{formatMetric(healthData.sleep, (value) => `${value.toFixed(1)}h`)}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Ruler className="w-7 h-7 text-purple-300" />
+                    <span className="text-xl font-bold text-yellow-300">{formatMetric(healthData.sleepScore)}</span>
+                    <span className="text-xs uppercase text-purple-400 font-semibold tracking-wide">Sleep Score</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSleepSheetChange(true)}
+                    className="inline-flex items-center justify-center text-purple-200 hover:text-purple-100 transition-colors"
+                    aria-label="Sleep score details"
+                  >
+                    <Info className="w-9 h-9" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex h-2 w-full overflow-hidden rounded-full bg-purple-500/10">
+                {sleepStageTotals.data.map((stage) => (
+                  <div
+                    key={stage.key}
+                    className="h-full transition-all"
+                    style={{
+                      width: `${stage.fraction * 100}%`,
+                      backgroundColor: stage.color,
+                    }}
+                  />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {sleepStageTotals.data.map((stage) => (
+                  <div key={stage.key} className={`p-2 rounded-lg ${stage.cardClass}`}>
+                    <p className={`text-xs font-semibold uppercase ${stage.textClass}`}>{stage.label}</p>
+                    <p className="text-sm font-medium text-foreground">{formatMetric(stage.minutes, (value) => `${(value / 60).toFixed(1)}h`)}</p>
+                    <p className="text-xs text-muted-foreground">{stage.percent}% of night</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        <Sheet open={sleepInsightOpen} onOpenChange={handleSleepSheetChange}>
+          <SheetContent
+            side={Capacitor.isNativePlatform() ? "bottom" : "right"}
+            className="sm:max-w-xl overflow-y-auto"
+          >
+            <SheetHeader>
+              <SheetTitle>Sleep Score Insights</SheetTitle>
+              <SheetDescription>Understand how last night’s sleep affects readiness.</SheetDescription>
+            </SheetHeader>
+            <div className="mt-4 space-y-5 text-sm text-muted-foreground">
+              <section>
+                <h4 className="text-sm font-semibold text-foreground mb-2">Sleep Score ({formatMetric(healthData.sleepScore)})</h4>
+                <p>
+                  Combines duration, deep/REM quality, and nighttime heart & breathing stability. 80+ means you’re primed for harder training; below 60, keep today easy and prioritise recovery work.
+                </p>
+              </section>
+              <section>
+                <h4 className="text-sm font-semibold text-foreground mb-2">Efficiency ({formatMetric(healthData.sleepEfficiency, (value) => `${Math.round(value)}%`)})</h4>
+                <p>
+                  Percentage of time in bed actually spent asleep. Aim for 85% or better by dimming lights 45 minutes before bed, keeping the room cool (~18°C), and keeping devices out of the bedroom.
+                </p>
+              </section>
+              <section>
+                <h4 className="text-sm font-semibold text-foreground mb-2">Stage Breakdown</h4>
+                <ul className="list-disc list-inside space-y-1">
+                  {sleepStageTotals.data.map((stage) => (
+                    <li key={stage.key} className="flex items-center gap-2">
+                      <span className="inline-flex w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.color }} />
+                      <span>{stage.label}: {(stage.minutes / 60).toFixed(1)}h ({stage.percent}%)</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2">
+                  REM fuels cognitive sharpness; Deep sleep handles tissue repair. Avoid heavy meals or alcohol within 3 hours of bed and finish intense training at least 2 hours before lights out to protect these phases.
+                </p>
+              </section>
+              <section>
+                <h4 className="text-sm font-semibold text-foreground mb-2">Next Steps</h4>
+                <ul className="space-y-2">
+                  <li>• Set a wind-down reminder so you hit the pillow at the same time nightly.</li>
+                  <li>• Get 10 minutes of bright morning light within an hour of waking to anchor your circadian rhythm.</li>
+                  <li>• Keep naps before 3pm and under 20 minutes so night sleep stays consolidated.</li>
+                </ul>
+              </section>
+            </div>
+          </SheetContent>
+        </Sheet>
+
         {/* HYROX Assessment - Entire card is clickable */}
         <Card 
           className="p-6 mb-4 shadow-lg bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 border-2 border-yellow-500 cursor-pointer hover:border-yellow-400 hover:shadow-xl active:scale-[0.98] transition-all duration-200"
@@ -803,18 +1186,60 @@ const Profile = () => {
           </div>
         </Card>
 
-        {/* App Info */}
-        <Card className="p-6 mb-4">
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3">About</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Version</span>
-              <span className="font-medium">1.0.0</span>
+        {/* Athlete Details */}
+        <Card className="p-6 mb-4 shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs uppercase font-semibold tracking-wide text-muted-foreground">
+                Athlete Details
+              </p>
+              <p className="text-sm text-muted-foreground/80">
+                Keep your birthdate up to date so age-based targets stay accurate.
+              </p>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Data Source</span>
-              <span className="font-medium">Google Sheets</span>
+            {age !== null && (
+              <Badge className="bg-purple-500/20 text-purple-100 border border-purple-400/40 text-xs px-3 py-1">
+                Age&nbsp;{age}
+              </Badge>
+            )}
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                Date of Birth
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+                <Input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  max={maxBirthDate}
+                  inputMode="numeric"
+                  pattern="\\d{4}-\\d{2}-\\d{2}"
+                  placeholder="Select date"
+                  className="bg-background pl-14 pr-4 h-14 text-lg rounded-2xl border-2 border-border focus-visible:border-yellow-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+                />
+              </div>
             </div>
+            <Button
+              onClick={handleSaveDob}
+              disabled={savingDob}
+              className="w-full"
+              size="lg"
+            >
+              {savingDob ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-5 h-5 mr-2" />
+                  Save Date of Birth
+                </>
+              )}
+            </Button>
           </div>
         </Card>
 

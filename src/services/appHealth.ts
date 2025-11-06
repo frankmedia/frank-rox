@@ -55,6 +55,17 @@ export interface AppHealthPlugin {
   }): Promise<{
     hours: number;
     minutes: number;
+    inBedHours: number;
+    inBedMinutes: number;
+    efficiency: number;
+    sleepScore: number;
+    stages: {
+      awakeMinutes: number;
+      lightMinutes: number;
+      deepMinutes: number;
+      remMinutes: number;
+      outOfBedMinutes: number;
+    };
     platform: 'android' | 'ios';
   }>;
 }
@@ -90,7 +101,22 @@ const plugin = registerPlugin<AppHealthPlugin>('AppHealth', {
     },
     getSleep: async () => {
       console.log('[AppHealth Web] getSleep called');
-      return { hours: 0, minutes: 0, platform: 'android' as const };
+      return {
+        hours: 0,
+        minutes: 0,
+        inBedHours: 0,
+        inBedMinutes: 0,
+        efficiency: 0,
+        sleepScore: 0,
+        stages: {
+          awakeMinutes: 0,
+          lightMinutes: 0,
+          deepMinutes: 0,
+          remMinutes: 0,
+          outOfBedMinutes: 0,
+        },
+        platform: 'android' as const,
+      };
     },
   }),
 });

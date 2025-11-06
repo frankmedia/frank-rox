@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Flame, ChevronRight, Dumbbell, PersonStanding, Info, Zap, Repeat, Target, Footprints, User, Heart, HandMetal, CheckCircle2, Trophy, Activity, Moon, Gauge, MapPin, TrendingUp, Loader2 } from "lucide-react";
+import { Flame, ChevronRight, Dumbbell, PersonStanding, Info, Zap, Repeat, Target, Footprints, User, Heart, HandMetal, Check, Trophy, Activity, Moon, Gauge, MapPin, TrendingUp, Loader2, Clock3, Route } from "lucide-react";
 import { getTodayExercises } from "@/services/supabasePlans";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { TrainingDayGridSkeleton } from "@/components/TrainingDayGridSkeleton";
@@ -12,6 +12,7 @@ import type { Exercise } from "@/types/workout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/utils/supabaseClient";
 import { Capacitor } from "@capacitor/core";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { AppHealth } from "@/services/appHealth";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { toast } from "sonner";
@@ -43,6 +44,107 @@ interface DaySummary {
   exerciseLogs: ExerciseLog[]; // Logged workout data for this day
 }
 
+type DisplayExercise = Exercise & {
+  __groupLabel?: string;
+  __isGroupHeader?: boolean;
+};
+
+const baseExerciseType = (type: Exercise["type"]) => {
+  if (!type) return "other";
+  return type.replace("_exercise", "");
+};
+
+const getExerciseTypeLabel = (type: Exercise["type"]) => {
+  const raw = baseExerciseType(type);
+  return raw
+    .split(/[\s_-]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+const flattenExercisesForDisplay = (items: Exercise[]): DisplayExercise[] => {
+  const result: DisplayExercise[] = [];
+
+  items.forEach((item) => {
+    if (item.type === "intro") {
+      return;
+    }
+
+    if (item.isGroupHeader && item.exercises && item.exercises.length > 0) {
+      result.push({ ...item, __isGroupHeader: true });
+      item.exercises.forEach((child) => {
+        if (child.type !== "intro") {
+          result.push({ ...child, __groupLabel: item.name });
+        }
+      });
+    } else if (!item._isChildExercise) {
+      result.push(item);
+    }
+  });
+
+  return result;
+};
+
+const getExerciseIcon = (exercise: Exercise) => {
+  const type = baseExerciseType(exercise.type);
+  const commonClasses = "w-4 h-4";
+
+  switch (type) {
+    case "weights":
+      return <Dumbbell className={`${commonClasses} text-emerald-400`} />;
+    case "cardio":
+      return <Activity className={`${commonClasses} text-rose-300`} />;
+    case "bodyweight":
+      return <PersonStanding className={`${commonClasses} text-sky-300`} />;
+    case "running":
+      return <Footprints className={`${commonClasses} text-orange-300`} />;
+    case "mobility":
+      return <HandMetal className={`${commonClasses} text-purple-300`} />;
+    case "hiit":
+      return <Flame className={`${commonClasses} text-pink-400`} />;
+    case "circuit":
+      return <Repeat className={`${commonClasses} text-amber-300`} />;
+    case "amrap":
+      return <Target className={`${commonClasses} text-indigo-300`} />;
+    case "rehab":
+      return <Heart className={`${commonClasses} text-emerald-300`} />;
+    case "simulation":
+      return <Zap className={`${commonClasses} text-yellow-300`} />;
+    default:
+      return <Info className={`${commonClasses} text-zinc-400`} />;
+  }
+};
+
+const getExerciseMeta = (exercise: Exercise) => {
+  const meta: string[] = [];
+  if (exercise.sets && exercise.reps) {
+    meta.push(`${exercise.sets}×${exercise.reps}`);
+  }
+  if (exercise.suggestedKg) {
+    meta.push(`${exercise.suggestedKg}kg`);
+  }
+  if (exercise.durationMin) {
+    meta.push(`${exercise.durationMin} min`);
+  }
+  if (exercise.targetDistanceKm) {
+    meta.push(`${exercise.targetDistanceKm} km`);
+  }
+  if (exercise.workRestRatio) {
+    meta.push(exercise.workRestRatio);
+  }
+  return meta.join(" • ");
+};
+
+const getCompletedExerciseCount = (logs: ExerciseLog[], total: number) => {
+  if (!logs || logs.length === 0) return 0;
+  const unique = new Set(
+    logs
+      .map((log) => log.exerciseName?.trim().toLowerCase())
+      .filter(Boolean)
+  );
+  return Math.min(unique.size, total);
+};
+
 const Overview = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
@@ -51,13 +153,106 @@ const Overview = () => {
   const [maxDay, setMaxDay] = useState(14);
   const [allRaces, setAllRaces] = useState<Array<{ id: number; race_name: string; race_date: string }>>([]);
   const [healthConnected, setHealthConnected] = useState(false);
-  const [healthData, setHealthData] = useState<{
-    steps: number;
-    heartRate: { average: number; max: number; min: number } | null;
-    distance: number;
-    calories: number;
-    sleep: number;
-  } | null>(null);
+const [healthData, setHealthData] = useState<{
+  steps: number;
+  heartRate: { average: number; max: number; min: number } | null;
+  distance: number;
+  calories: number;
+  sleep: number;
+  sleepScore: number;
+  readiness: number;
+  sleepEfficiency: number;
+  recoveryScore: number;
+  sleepStages: {
+    remMinutes: number;
+    deepMinutes: number;
+    lightMinutes: number;
+    awakeMinutes: number;
+    outOfBedMinutes: number;
+  };
+} | null>(null);
+
+  const formatMetric = useCallback((value: number | null | undefined, formatter?: (value: number) => string) => {
+    if (!value || Number.isNaN(value) || value <= 0) return "--";
+    return formatter ? formatter(value) : Math.round(value).toString();
+  }, []);
+
+  const readinessInsight = useMemo(() => {
+    const value = healthData?.readiness ?? 0;
+    if (!value || Number.isNaN(value) || value <= 0) {
+      return null;
+    }
+
+    const clamped = Math.max(0, Math.min(value, 100));
+    const fraction = clamped / 100;
+    const activeColor = '#f97316';
+    const trackColor = '#1f2937';
+    const gradient = `conic-gradient(${activeColor} ${fraction * 100}%, ${trackColor} ${fraction * 100}% 100%)`;
+
+    return {
+      value: Math.round(clamped),
+      gradient,
+      textClass: clamped >= 80 ? 'text-emerald-400' : clamped >= 60 ? 'text-orange-400' : 'text-yellow-300',
+    };
+  }, [healthData?.readiness]);
+
+  const quickStats = useMemo(() => {
+    if (!healthData) return [] as Array<{ key: string; icon: JSX.Element; value: string }>;
+
+    const stats: Array<{ key: string; icon: JSX.Element; value: string }> = [];
+
+    if (healthData.steps > 0) {
+      stats.push({
+        key: 'steps',
+        icon: <Footprints className="w-4 h-4 text-blue-500 flex-shrink-0" />,
+        value: healthData.steps.toLocaleString(),
+      });
+    }
+
+    const avgHeart = healthData.heartRate?.average ?? 0;
+    if (avgHeart > 0) {
+      stats.push({
+        key: 'heart',
+        icon: <Heart className="w-4 h-4 text-red-500 flex-shrink-0" />,
+        value: avgHeart.toString(),
+      });
+    }
+
+    if (healthData.distance > 0) {
+      stats.push({
+        key: 'distance',
+        icon: <MapPin className="w-4 h-4 text-green-500 flex-shrink-0" />,
+        value: `${healthData.distance.toFixed(1)}km`,
+      });
+    }
+
+    const calories = formatMetric(healthData.calories);
+    if (calories !== '--') {
+      stats.push({
+        key: 'calories',
+        icon: <Flame className="w-4 h-4 text-orange-500 flex-shrink-0" />,
+        value: calories,
+      });
+    }
+
+    if (healthData.sleep > 0) {
+      stats.push({
+        key: 'sleep',
+        icon: <Moon className="w-4 h-4 text-purple-400 flex-shrink-0" />,
+        value: `${healthData.sleep.toFixed(1)}h`,
+      });
+    }
+
+    if (healthData.sleepScore > 0) {
+      stats.push({
+        key: 'sleepScore',
+        icon: <Gauge className="w-4 h-4 text-purple-300 flex-shrink-0" />,
+        value: `Sleep Score ${Math.round(healthData.sleepScore)}`,
+      });
+    }
+
+    return stats;
+  }, [healthData, formatMetric]);
 
   // Pull-to-refresh
   const { containerRef, pullDistance, isRefreshing } = usePullToRefresh({
@@ -67,6 +262,109 @@ const Overview = () => {
     },
     threshold: 150,
   });
+
+  const ExerciseRow = ({ exercise }: { exercise: DisplayExercise }) => {
+    const [offset, setOffset] = useState(0);
+    const [dragging, setDragging] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+    const startXRef = useRef<number | null>(null);
+    const pointerIdRef = useRef<number | null>(null);
+
+    const finishGesture = useCallback(
+      (finalOffset: number) => {
+        const shouldReveal = finalOffset <= -70;
+        if (shouldReveal) {
+          setOffset(-96);
+          if (!isOpen && Capacitor.isNativePlatform()) {
+            Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+          }
+          setIsOpen(true);
+        } else {
+          setOffset(0);
+          setIsOpen(false);
+        }
+      },
+      [isOpen],
+    );
+
+    const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+      event.stopPropagation();
+      startXRef.current = event.clientX;
+      pointerIdRef.current = event.pointerId;
+      setDragging(true);
+      event.currentTarget.setPointerCapture(event.pointerId);
+    };
+
+    const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!dragging || startXRef.current === null) return;
+      const delta = event.clientX - startXRef.current;
+      if (delta > 0) {
+        setOffset(Math.min(delta, 24));
+        return;
+      }
+      const clamped = Math.max(delta, -110);
+      setOffset(clamped);
+    };
+
+    const endGesture = (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!dragging) return;
+      event.stopPropagation();
+      setDragging(false);
+      finishGesture(offset);
+      startXRef.current = null;
+      if (pointerIdRef.current !== null) {
+        try {
+          event.currentTarget.releasePointerCapture(pointerIdRef.current);
+        } catch {
+          // noop
+        }
+        pointerIdRef.current = null;
+      }
+    };
+
+    const metaSummary = getExerciseMeta(exercise);
+
+    return (
+      <div className="relative overflow-hidden">
+        <div
+          className="relative flex items-center gap-3 px-3.5 py-2 bg-background/80"
+          style={{
+            transform: `translateX(${offset}px)`,
+            transition: dragging ? "none" : "transform 0.18s ease-out",
+          }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endGesture}
+          onPointerCancel={endGesture}
+          onPointerLeave={dragging ? endGesture : undefined}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (isOpen) {
+              setOffset(0);
+              setIsOpen(false);
+            }
+          }}
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 border border-zinc-800">
+            {getExerciseIcon(exercise)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[13px] font-semibold text-foreground truncate leading-tight">{exercise.name}</p>
+              {metaSummary ? (
+                <span className="inline-flex items-center gap-1 text-[12px] text-zinc-400 whitespace-nowrap">
+                  <Clock3 className="w-3.5 h-3.5" />
+                  {metaSummary}
+                </span>
+              ) : (
+                <span className="text-[12px] text-zinc-500 whitespace-nowrap">{getExerciseTypeLabel(exercise.type)}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     const loadDays = async () => {
@@ -337,14 +635,42 @@ const Overview = () => {
       console.log('📊 [Overview] Current time:', now.toLocaleString());
       console.log('📊 [Overview] Start of today:', startOfToday.toLocaleString());
       
+      const emptySleep = {
+        hours: 0,
+        minutes: 0,
+        inBedHours: 0,
+        inBedMinutes: 0,
+        efficiency: 0,
+        sleepScore: 0,
+        stages: {
+          awakeMinutes: 0,
+          lightMinutes: 0,
+          deepMinutes: 0,
+          remMinutes: 0,
+          outOfBedMinutes: 0,
+        },
+        platform: 'android' as const,
+      };
+
       const [stepsResult, heartRateResult, distanceResult, caloriesResult, sleepResult] = await Promise.all([
         AppHealth.getSteps({ start, end}).catch(() => ({ total: 0, platform: 'android' as const })),
         AppHealth.getHeartRate({ start, end }).catch(() => null),
         AppHealth.getDistance({ start, end }).catch(() => ({ kilometers: 0, meters: 0, platform: 'android' as const })),
         AppHealth.getCalories({ start, end }).catch(() => ({ calories: 0, platform: 'android' as const })),
-        AppHealth.getSleep({ start: sleepStart, end }).catch(() => ({ hours: 0, minutes: 0, platform: 'android' as const }))
+        AppHealth.getSleep({ start: sleepStart, end }).catch(() => emptySleep)
       ]);
-      
+
+      const asleepHours = sleepResult.hours || 0;
+      const stages = sleepResult.stages || emptySleep.stages;
+      const calculatedSleepScore = asleepHours > 0
+        ? Math.round(Math.min(asleepHours / 7.5, 1) * 100)
+        : 0;
+      const sleepScore = sleepResult.sleepScore || calculatedSleepScore;
+      const stepGoal = 8000;
+      const stepPenaltyRatio = Math.min(Math.max(stepsResult.total - stepGoal, 0) / stepGoal, 1);
+      const recoveryScore = Math.round((1 - stepPenaltyRatio) * 100);
+      const readiness = Math.round(0.7 * sleepScore + 0.3 * recoveryScore);
+
       const data = {
         steps: stepsResult.total,
         heartRate: heartRateResult && heartRateResult.samples > 0 ? {
@@ -354,7 +680,18 @@ const Overview = () => {
         } : null,
         distance: distanceResult.kilometers,
         calories: caloriesResult.calories,
-        sleep: sleepResult.hours
+        sleep: asleepHours,
+        sleepScore,
+        readiness,
+        sleepEfficiency: sleepResult.efficiency || 0,
+        recoveryScore,
+        sleepStages: {
+          remMinutes: stages.remMinutes || 0,
+          deepMinutes: stages.deepMinutes || 0,
+          lightMinutes: stages.lightMinutes || 0,
+          awakeMinutes: stages.awakeMinutes || 0,
+          outOfBedMinutes: stages.outOfBedMinutes || 0,
+        },
       };
       
       console.log('📊 [Overview] Received health data:', JSON.stringify(data, null, 2));
@@ -375,6 +712,9 @@ const Overview = () => {
   };
 
   const handleDayClick = (day: number) => {
+    if (Capacitor.isNativePlatform()) {
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+    }
     // Update current training day
     const userStr = localStorage.getItem("frank_rock_user");
     if (userStr) {
@@ -405,7 +745,7 @@ const Overview = () => {
             </div>
           </div>
         </header>
-        <main className="container max-w-2xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
+        <main className="container max-w-2xl mx-auto px-2 sm:px-4 pt-8 pb-14 sm:pt-10 sm:pb-16">
           <div className="h-8 w-64 bg-muted rounded mb-6 animate-pulse" />
           <TrainingDayGridSkeleton count={14} />
         </main>
@@ -800,7 +1140,7 @@ const Overview = () => {
       </header>
 
       {/* Content */}
-      <main className="container max-w-2xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
+      <main className="container max-w-2xl mx-auto px-2 sm:px-4 pt-8 pb-14 sm:pt-10 sm:pb-16">
         {/* Race Schedule */}
         {allRaces.length > 0 && (
           <div className="mb-6">
@@ -862,50 +1202,33 @@ const Overview = () => {
           </div>
         )}
 
-        {/* Health Stats - Compact Inline */}
-        {healthConnected && healthData && (
+        {healthConnected && readinessInsight && (
+          <Card className="mb-4 p-5 bg-background/80 border border-orange-500/30 shadow-lg flex items-center gap-6">
+            <div className="relative w-36 h-36 sm:w-40 sm:h-40">
+              <div className="absolute inset-0 rounded-full" style={{ background: readinessInsight.gradient }} />
+              <div className="absolute inset-3 rounded-full bg-background flex items-center justify-center border border-white/5">
+                <span className="text-4xl font-bold text-foreground">{readinessInsight.value}</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs uppercase font-semibold text-yellow-300 mb-1">24h Recovery Index</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                A science-backed recovery score from your sleep, HRV, and heart rate. Train harder when ready—recover deeper when not.
+              </p>
+            </div>
+          </Card>
+        )}
+
+        {healthConnected && healthData && quickStats.length > 0 && (
           <div className="mb-4">
             <Card className="p-3 bg-gradient-to-r from-primary/5 to-red-500/5 border-primary/10">
-              <div className="flex items-center justify-around gap-3 flex-wrap">
-                {/* Steps */}
-                {healthData.steps > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <Footprints className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                    <span className="text-lg font-bold text-foreground">{healthData.steps.toLocaleString()}</span>
+              <div className="flex flex-wrap items-center justify-around gap-3">
+                {quickStats.map((stat) => (
+                  <div key={stat.key} className="flex items-center gap-1.5">
+                    {stat.icon}
+                    <span className="text-lg font-bold text-foreground">{stat.value}</span>
                   </div>
-                )}
-
-                {/* Heart Rate - Pulsing */}
-                {healthData.heartRate && healthData.heartRate.average > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <Heart className="w-4 h-4 text-red-500 flex-shrink-0 animate-pulse" />
-                    <span className="text-lg font-bold text-foreground">{healthData.heartRate.average}</span>
-                  </div>
-                )}
-
-                {/* Distance */}
-                {healthData.distance > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-lg font-bold text-foreground">{healthData.distance.toFixed(1)}km</span>
-                  </div>
-                )}
-
-                {/* Calories */}
-                {healthData.calories > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <Flame className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                    <span className="text-lg font-bold text-foreground">{healthData.calories}</span>
-                  </div>
-                )}
-
-                {/* Sleep */}
-                {healthData.sleep > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <Moon className="w-4 h-4 text-purple-500 flex-shrink-0" />
-                    <span className="text-lg font-bold text-foreground">{healthData.sleep.toFixed(1)}h</span>
-                  </div>
-                )}
+                ))}
               </div>
             </Card>
           </div>
@@ -926,155 +1249,139 @@ const Overview = () => {
         </motion.div>
 
         <div className="grid gap-3">
-          {daySummaries.map((summary) => (
-            <Card
-              key={summary.day}
-              className={`p-4 hover:bg-secondary/10 transition-colors cursor-pointer border-2 hover:border-primary relative ${
-                summary.isCompleted ? 'border-[#FFCC00]' : ''
-              }`}
-              onClick={() => handleDayClick(summary.day)}
-            >
-              {/* Completion Badge */}
-              {summary.isCompleted && (
-                <div className="absolute top-2 right-2">
-                  <CheckCircle2 className="w-16 h-16 fill-[#22c55e] text-white" />
-                </div>
-              )}
-              
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold"
-                      style={{ 
-                        backgroundColor: summary.isRestDay ? '#6B7280' : '#FFCC00', 
-                        color: summary.isRestDay ? '#FFF' : '#000' 
-                      }}
-                    >
-                      {summary.day}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-foreground">
-                        Day {summary.day}
-                      </h3>
-                      {summary.isRestDay ? (
-                        <p className="text-sm text-muted-foreground">
-                          Rest day
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          {summary.totalExercises} exercises
-                        </p>
-                      )}
+          {daySummaries.map((summary) => {
+            const displayExercises = flattenExercisesForDisplay(summary.exercises);
+            const completedCount = getCompletedExerciseCount(summary.exerciseLogs, summary.totalExercises);
+
+            return (
+              <Card
+                key={summary.day}
+                className={`group relative cursor-pointer rounded-2xl border border-zinc-800/70 bg-zinc-950/70 p-4 sm:p-5 shadow-[0_20px_45px_-30px_rgba(0,0,0,0.8)] transition-colors hover:border-yellow-500/40`}
+                onClick={() => handleDayClick(summary.day)}
+              >
+                {summary.isCompleted && (
+                  <div className="absolute top-3 right-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#22c55e] shadow-[0_8px_20px_-8px_rgba(34,197,94,0.8)]">
+                      <Check className="h-6 w-6 text-white" />
                     </div>
                   </div>
+                )}
 
-                  {/* Exercise type icons - only show if not a rest day */}
-                  {!summary.isRestDay && (
-                    <div className="flex flex-wrap items-center gap-2 ml-15">
-                      {summary.hasWeights && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Dumbbell className="w-4 h-4" />
-                          <span>Weights</span>
-                        </div>
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold shadow-inner"
+                        style={{
+                          backgroundColor: summary.isRestDay ? "#27272a" : "#FFCC00",
+                          color: summary.isRestDay ? "#e4e4e7" : "#000",
+                        }}
+                      >
+                        {summary.day}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-bold text-foreground">
+                            Day {summary.day}
+                          </h3>
+                          {summary.isRestDay && (
+                            <Badge className="rounded-full bg-blue-500/15 text-blue-200 border border-blue-500/30 text-[10px] uppercase tracking-wide">
+                              Recovery Focus
+                            </Badge>
+                          )}
+                      {!summary.isRestDay && (
+                        <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground ml-1">
+                          <span className="text-sm font-semibold text-foreground">{summary.totalExercises}</span>
+                          <Repeat className="w-3.5 h-3.5 text-yellow-400" />
+                          <span>Exercises</span>
+                        </span>
                       )}
-                      {summary.hasBodyweight && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <User className="w-4 h-4" />
-                          <span>Bodyweight</span>
                         </div>
+                      {summary.isRestDay && (
+                        <p className="text-sm text-muted-foreground">
+                          Coach scheduled recovery—mobility and easy movement.
+                        </p>
                       )}
-                      {summary.hasRunning && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Footprints className="w-4 h-4" />
-                          <span>Running</span>
-                        </div>
-                      )}
-                      {summary.hasCardio && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Heart className="w-4 h-4" />
-                          <span>Cardio</span>
-                        </div>
-                      )}
-                      {summary.hasMobility && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <HandMetal className="w-4 h-4" />
-                          <span>Mobility</span>
-                        </div>
-                      )}
-                      {summary.hasHIIT && (
-                        <div className="flex items-center gap-1 text-xs" style={{ color: '#FF00B2' }}>
-                          <Flame className="w-4 h-4" />
-                          <span>HIIT</span>
-                        </div>
-                      )}
-                      {summary.hasCircuit && (
-                        <div className="flex items-center gap-1 text-xs" style={{ color: '#FFB74D' }}>
-                          <Repeat className="w-4 h-4" />
-                          <span>Circuit</span>
-                        </div>
-                      )}
-                      {summary.hasAMRAP && (
-                        <div className="flex items-center gap-1 text-xs" style={{ color: '#00E676' }}>
-                          <Target className="w-4 h-4" />
-                          <span>AMRAP</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
-                  {/* Logged exercise data - show if completed */}
-                  {summary.isCompleted && summary.exerciseLogs.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-border">
-                      <div className="grid grid-cols-1 gap-2">
-                        {summary.exerciseLogs.slice(0, 3).map((log, idx) => (
-                          <div key={idx} className="text-xs">
-                            <span className="font-medium text-foreground">{log.exerciseName}</span>
-                            <div className="flex items-center gap-3 mt-1 text-muted-foreground">
-                              {log.weights && log.weights.length > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <Dumbbell className="w-3 h-3" />
-                                  {Math.max(...log.weights)}kg
-                                </span>
-                              )}
-                              {log.weight && (
-                                <span className="flex items-center gap-1">
-                                  <Dumbbell className="w-3 h-3" />
-                                  {log.weight}kg
-                                </span>
-                              )}
-                              {log.duration && (
-                                <span className="flex items-center gap-1">
-                                  ⏱️ {log.duration}min
-                                </span>
-                              )}
-                              {log.distance && (
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="w-3 h-3" />
-                                  {log.distance}km
-                                </span>
-                              )}
-                              {log.rating && (
-                                <span className="flex items-center gap-1">
-                                  <Flame className="w-3 h-3" style={{ color: '#FFCC00' }} />
-                                  {log.rating}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                        {summary.exerciseLogs.length > 3 && (
-                          <span className="text-xs text-muted-foreground italic">
-                            +{summary.exerciseLogs.length - 3} more...
-                          </span>
-                        )}
+                      {!summary.isRestDay && (
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                          {summary.hasCardio && (
+                            <span className="inline-flex items-center gap-1">
+                              <Heart className="w-4 h-4" />
+                              Cardio
+                            </span>
+                          )}
+                          {summary.hasMobility && (
+                            <span className="inline-flex items-center gap-1">
+                              <HandMetal className="w-4 h-4" />
+                              Mobility
+                            </span>
+                          )}
+                          {summary.hasCircuit && (
+                            <span className="inline-flex items-center gap-1 text-amber-300">
+                              <Repeat className="w-4 h-4" />
+                              Circuit
+                            </span>
+                          )}
+                          {summary.hasRunning && (
+                            <span className="inline-flex items-center gap-1">
+                              <Footprints className="w-4 h-4" />
+                              Running
+                            </span>
+                          )}
+                          {summary.hasWeights && (
+                            <span className="inline-flex items-center gap-1">
+                              <Dumbbell className="w-4 h-4" />
+                              Weights
+                            </span>
+                          )}
+                          {summary.hasHIIT && (
+                            <span className="inline-flex items-center gap-1 text-pink-400">
+                              <Flame className="w-4 h-4" />
+                              HIIT
+                            </span>
+                          )}
+                          {summary.hasAMRAP && (
+                            <span className="inline-flex items-center gap-1 text-emerald-300">
+                              <Target className="w-4 h-4" />
+                              AMRAP
+                            </span>
+                          )}
+                        </div>
+                      )}
                       </div>
                     </div>
-                  )}
+                    <ChevronRight className="mt-1 h-5 w-5 text-zinc-600 transition-colors group-hover:text-yellow-400" />
+                  </div>
+
+                  <div className="overflow-hidden rounded-xl border border-zinc-800/60 bg-black/40">
+                    {displayExercises.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        {summary.isRestDay ? "Enjoy the rest—coach suggests light mobility." : "Exercises will populate soon."}
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-zinc-800/70">
+                        {displayExercises.map((exercise, index) =>
+                          exercise.__isGroupHeader ? (
+                            <div
+                              key={`${exercise.id || exercise.name}-header-${index}`}
+                              className="bg-purple-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-purple-300"
+                            >
+                              {exercise.name}
+                            </div>
+                          ) : (
+                            <ExerciseRow key={`${exercise.id || exercise.name}-${index}`} exercise={exercise} />
+                          ),
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Recent log highlights removed for cleaner view */}
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
 
         <Button

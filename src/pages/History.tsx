@@ -597,19 +597,17 @@ const History = () => {
                                   {/* Simulation splits breakdown */}
                                   {(entry as any).simulationData?.splits && (
                                     <div className="ml-6 mt-3 pt-3 border-t border-border/50">
-                                      <p className="text-xs font-semibold text-muted-foreground mb-2">Split Times:</p>
-                                      <div className="space-y-1">
+                                      <p className="text-xs font-semibold text-yellow-500 mb-2">📊 Split Times</p>
+                                      <div className="space-y-1.5 max-h-64 overflow-y-auto">
                                         {(entry as any).simulationData.splits.map((split: any, idx: number) => (
-                                          <div key={idx} className="flex justify-between items-center text-xs">
-                                            <span className="text-muted-foreground">
-                                              {idx + 1}. {split.station}
+                                          <div key={idx} className="flex justify-between items-center text-xs bg-secondary/5 rounded px-2 py-1.5">
+                                            <span className="text-muted-foreground font-medium">
+                                              #{split.station_number || (idx + 1)} {split.station_name || split.station}
                                             </span>
-                                            <span className="font-mono font-semibold text-foreground">
-                                              {(() => {
-                                                // Handle both old (ms) and new (seconds) formats
-                                                const elapsed = split.elapsed || 0;
-                                                // If elapsed > 10000, it's likely in milliseconds (old format)
-                                                const totalSecs = elapsed > 10000 ? Math.floor(elapsed / 1000) : elapsed;
+                                            <span className="font-mono font-bold text-foreground">
+                                              {split.time_formatted || (() => {
+                                                // Fallback for old format
+                                                const totalSecs = split.time_seconds || split.elapsed || 0;
                                                 const mins = Math.floor(totalSecs / 60);
                                                 const secs = totalSecs % 60;
                                                 return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -625,11 +623,15 @@ const History = () => {
                                   {/* Simulation workout display */}
                                   {(entry as any).simulationData ? (
                                     <div>
-                                      <p className="text-xs font-semibold text-muted-foreground mb-1">Total Time:</p>
-                                      <p className="text-xl font-bold text-yellow-500">
+                                      <p className="text-xs font-semibold text-muted-foreground mb-1">🏁 Total Time</p>
+                                      <p className="text-2xl font-bold text-yellow-500 font-mono">
                                         {(() => {
                                           const simData = (entry as any).simulationData;
-                                          // Handle both old (total_time in ms) and new (total_time_seconds in s) formats
+                                          // Use pre-formatted time if available (new format)
+                                          if (simData.total_time_formatted) {
+                                            return simData.total_time_formatted;
+                                          }
+                                          // Fallback to calculate from seconds (old format)
                                           const totalSecs = simData.total_time_seconds 
                                             || Math.floor((simData.total_time || 0) / 1000);
                                           const mins = Math.floor(totalSecs / 60);
@@ -638,7 +640,7 @@ const History = () => {
                                         })()}
                                       </p>
                                       <p className="text-xs text-muted-foreground mt-1">
-                                        {(entry as any).simulationData.splits?.length || 0} stations
+                                        {(entry as any).simulationData.stations_completed || (entry as any).simulationData.splits?.length || 0}/{(entry as any).simulationData.total_stations || (entry as any).simulationData.splits?.length || 0} stations
                                       </p>
                                     </div>
                                   ) : entry.weights && entry.weights.length > 0 ? (
