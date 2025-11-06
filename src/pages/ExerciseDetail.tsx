@@ -1736,68 +1736,29 @@ const ExerciseDetail = () => {
             <FlameRating 
               value={rating}
               readonly={isSaving}
-              onChange={(selectedRating) => {
-                // Just set the rating, don't save yet
+              onChange={async (selectedRating) => {
+                if (isSaving) return;
+                
                 console.log("🔥 Flame clicked, rating:", selectedRating);
                 setRating(selectedRating);
+                setIsSaving(true);
+                
+                try {
+                  console.log("🟢 Calling handleMarkAsDone");
+                  await handleMarkAsDone(selectedRating);
+                  console.log("✅ Save completed, navigation will happen now");
+                } catch (error) {
+                  console.error("❌ Save failed:", error);
+                  toast.error("Failed to save exercise");
+                  setIsSaving(false);
+                }
               }} 
               size="lg" 
             />
             
-            {rating > 0 && (
-              <p className="text-lg text-foreground font-bold">
-                {rating === 5 && "🔥 Crushed it!"}
-                {rating === 4 && "💪 Great effort!"}
-                {rating === 3 && "👍 Solid work!"}
-                {rating === 2 && "😅 Challenging!"}
-                {rating === 1 && "😮‍💨 Tough one!"}
-              </p>
+            {isSaving && (
+              <p className="text-lg font-bold text-primary">Saving...</p>
             )}
-            
-            {/* Save & Continue Button */}
-            {rating > 0 && (
-              <Button
-                onClick={async () => {
-                  if (isSaving) return;
-                  setIsSaving(true);
-                  try {
-                    console.log("🟢 Save button clicked, calling handleMarkAsDone");
-                    await handleMarkAsDone(rating);
-                    console.log("✅ handleMarkAsDone completed successfully");
-                    toast.success("Exercise saved!");
-                  } catch (error) {
-                    console.error("❌ Save failed:", error);
-                    toast.error("Failed to save exercise");
-                  } finally {
-                    setIsSaving(false);
-                  }
-                }}
-                disabled={isSaving || (exercise.type === "mobility" && !todaysDuration)}
-                className="w-full h-14 text-lg font-bold"
-                style={{ backgroundColor: '#FFCC00', color: '#000' }}
-              >
-                {isSaving ? "Saving..." : "Save & Continue"}
-              </Button>
-            )}
-            
-            {/* Skip rating option */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={async () => {
-                if (isSaving) return;
-                setIsSaving(true);
-                try {
-                  await handleMarkAsDone();
-                } finally {
-                  setIsSaving(false);
-                }
-              }}
-              disabled={isSaving}
-              className="text-muted-foreground hover:text-foreground mt-2"
-            >
-              {existingLogId ? "Update without rating" : "Skip and complete without rating"}
-            </Button>
           </div>
         </Card>
 

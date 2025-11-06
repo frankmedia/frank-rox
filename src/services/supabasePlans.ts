@@ -179,6 +179,9 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                   childExercise.distance = extra.distance; // Also add for SimulationWorkout
                 }
               } else if (childType === "mobility") {
+                // Mobility/core exercises can have reps too (e.g., sit-ups, planks)
+                if (extra.sets) childExercise.sets = extra.sets;
+                if (extra.reps) childExercise.reps = extra.reps;
                 if (extra.duration) childExercise.durationMin = extra.duration;
               } else {
                 // weights or bodyweight

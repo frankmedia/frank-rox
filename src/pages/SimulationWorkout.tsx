@@ -286,22 +286,66 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
         total_stations: stations.length,
       });
       
-      // Use the proper workout logging system
+      // Log the overall simulation
       await syncWorkoutLogToSupabase(
         authUser.clientId,
         planData.id,
         trainingDay,
         {
           exerciseName: exercise.name,
+          exerciseId: exercise.id,
           duration: Math.round(totalElapsed / 60), // Duration in minutes
           notes,
         }
       );
       
+      // Also log each individual station/exercise for tracking
+      for (let i = 0; i < stations.length; i++) {
+        const station = stations[i];
+        const stationTime = stationTimes[i];
+        
+        if (stationTime?.isComplete) {
+          const logData: any = {
+            exerciseName: station.name,
+            exerciseId: station.id,
+            notes: `Part of ${exercise.name} simulation`,
+          };
+          
+          // Add reps if available
+          if (station.reps && station.reps > 0) {
+            logData.reps = station.reps;
+            logData.sets = 1;
+          }
+          
+          // Add distance if available
+          if (station.targetDistanceKm && station.targetDistanceKm > 0) {
+            logData.distance = station.targetDistanceKm;
+          }
+          
+          // Add weight if available
+          if (station.suggestedKg && station.suggestedKg > 0) {
+            logData.weight = station.suggestedKg;
+          }
+          
+          // Add station completion time (in minutes)
+          if (stationTime.elapsed > 0) {
+            logData.duration = Math.round(stationTime.elapsed / 60000); // Convert ms to minutes
+          }
+          
+          await syncWorkoutLogToSupabase(
+            authUser.clientId,
+            planData.id,
+            trainingDay,
+            logData
+          );
+        }
+      }
+      
       console.log("✅ Simulation synced to Supabase", {
         exercise: exercise.name,
         duration_min: Math.round(totalElapsed / 60),
-        splits: splits.length
+        splits: splits.length,
+        individual_logs: stations.length
       });
     } catch (e) {
       console.error("❌ Error saving simulation:", e);
@@ -406,7 +450,9 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
           
           {stations[currentStation] && (
             <div className="text-2xl font-bold text-white/90">
-              {stations[currentStation].name}
+              {stations[currentStation].reps && stations[currentStation].reps > 0 
+                ? `${stations[currentStation].reps} x ${stations[currentStation].name}` 
+                : stations[currentStation].name}
             </div>
           )}
           <div className={`text-[132px] md:text-[176px] font-mono font-bold text-white leading-none ${simulationStarted && !simulationComplete && currentStationData?.isRunning ? 'animate-breathe' : ''}`}>
