@@ -388,9 +388,10 @@ const ExerciseDetail = () => {
     // Check if we have any meaningful data to save (not just undefined rating)
     const hasData = Object.values(data).some(value => value !== undefined && value !== null);
     if (!hasData) {
-      toast.warning("No data to save", {
-        description: "Please enter duration, distance, or weight data before completing",
-        duration: 3000,
+      console.log("❌ No data to save - user must enter duration/distance/weight first");
+      toast.error("⚠️ Cannot complete exercise", {
+        description: "Please enter duration, distance, or weight data before rating",
+        duration: 5000,
       });
       return;
     }
