@@ -340,6 +340,8 @@ const ExerciseDetail = () => {
   const handleMarkAsDone = async (customRating?: number) => {
     if (!exercise) return;
 
+    console.log("🟢 handleMarkAsDone called for", exercise.name);
+
     // Trigger haptic feedback
     triggerSuccessHaptic();
 

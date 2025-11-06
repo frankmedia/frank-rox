@@ -167,6 +167,8 @@ export function markExerciseComplete(
   exerciseId: string,
   clientId?: string
 ): void {
+  console.log("🟡 markExerciseComplete called (localStorage only)", { exerciseId, username, trainingDay });
+  
   const cache = getWorkoutCache(username, trainingDay);
 
   if (!cache.completedExercises.includes(exerciseId)) {
@@ -333,6 +335,8 @@ export async function syncWorkoutLogToSupabase(
     isPB?: boolean;
   }
 ): Promise<{ success: boolean; error?: string; logId?: string }> {
+  console.log("🧩 syncWorkoutLogToSupabase CALLED", { exerciseName: logData.exerciseName, duration: logData.duration, distance: logData.distance });
+  
   try {
     const timestamp = new Date().toISOString();
 
@@ -363,11 +367,11 @@ export async function syncWorkoutLogToSupabase(
       .single();
 
     if (error) {
-      console.error("❌ Error syncing to Supabase:", error);
+      console.error("❌ Supabase insert failed:", error.message, error);
       return { success: false, error: error.message };
     }
 
-    console.log("✅ Successfully synced to Supabase, log ID:", data?.id);
+    console.log("✅ Supabase insert succeeded:", data?.id);
     return { success: true, logId: data?.id };
   } catch (err) {
     console.error("❌ Unexpected error syncing to Supabase:", err);
