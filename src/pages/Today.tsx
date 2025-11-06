@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExerciseCard } from "@/components/ExerciseCard";
 import { ExerciseMedia } from "@/components/ExerciseMedia";
@@ -43,62 +43,74 @@ const Today = () => {
   }, [exercises]);
   
   // Fetch workout logs for today's exercises
+  const fetchLogs = useCallback(async () => {
+    console.log('🔍 Starting to fetch workout logs...');
+    
+    if (!authUser?.clientId) {
+      console.log('❌ No clientId, skipping log fetch');
+      return;
+    }
+    
+    const userStr = localStorage.getItem("frank_rock_user");
+    if (!userStr) {
+      console.log('❌ No user in localStorage, skipping log fetch');
+      return;
+    }
+    
+    const userData = JSON.parse(userStr);
+    const trainingDay = parseInt(localStorage.getItem(`currentTrainingDay_${userData.username}`) || "1");
+    
+    console.log(`📊 Fetching logs for clientId: ${authUser.clientId}, training day: ${trainingDay}`);
+    
+    try {
+      const { data: logs, error } = await supabase
+        .from('workout_logs')
+        .select('exercise_name, duration_min, distance_km, weight, weights')
+        .eq('client_id', authUser.clientId)
+        .eq('training_day', trainingDay);
+      
+      if (error) {
+        console.error('❌ Supabase error fetching logs:', error);
+        return;
+      }
+      
+      console.log('📊 Raw logs from Supabase:', logs);
+      
+      if (logs && logs.length > 0) {
+        const logMap: Record<string, any> = {};
+        logs.forEach(log => {
+          logMap[log.exercise_name] = {
+            duration: log.duration_min,
+            distance: log.distance_km,
+            weight: log.weight,
+            weights: log.weights,
+          };
+        });
+        console.log('📊 Mapped exercise logs:', logMap);
+        setExerciseLogs(logMap);
+      } else {
+        console.log('📊 No logs found in Supabase for this day');
+        setExerciseLogs({}); // Clear any old logs
+      }
+    } catch (e) {
+      console.error('❌ Error fetching exercise logs:', e);
+    }
+  }, [authUser?.clientId]);
+  
   useEffect(() => {
-    const fetchLogs = async () => {
-      console.log('🔍 Starting to fetch workout logs...');
-      
-      if (!authUser?.clientId) {
-        console.log('❌ No clientId, skipping log fetch');
-        return;
-      }
-      
-      const userStr = localStorage.getItem("frank_rock_user");
-      if (!userStr) {
-        console.log('❌ No user in localStorage, skipping log fetch');
-        return;
-      }
-      
-      const userData = JSON.parse(userStr);
-      const trainingDay = parseInt(localStorage.getItem(`currentTrainingDay_${userData.username}`) || "1");
-      
-      console.log(`📊 Fetching logs for clientId: ${authUser.clientId}, training day: ${trainingDay}`);
-      
-      try {
-        const { data: logs, error } = await supabase
-          .from('workout_logs')
-          .select('exercise_name, duration_min, distance_km, weight, weights')
-          .eq('client_id', authUser.clientId)
-          .eq('training_day', trainingDay);
-        
-        if (error) {
-          console.error('❌ Supabase error fetching logs:', error);
-          return;
-        }
-        
-        console.log('📊 Raw logs from Supabase:', logs);
-        
-        if (logs && logs.length > 0) {
-          const logMap: Record<string, any> = {};
-          logs.forEach(log => {
-            logMap[log.exercise_name] = {
-              duration: log.duration_min,
-              distance: log.distance_km,
-              weight: log.weight,
-              weights: log.weights,
-            };
-          });
-          console.log('📊 Mapped exercise logs:', logMap);
-          setExerciseLogs(logMap);
-        } else {
-          console.log('📊 No logs found in Supabase for this day');
-        }
-      } catch (e) {
-        console.error('❌ Error fetching exercise logs:', e);
-      }
+    fetchLogs();
+  }, [fetchLogs, exercises]);
+  
+  // Refetch logs when page gains focus (user returns from exercise detail)
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 Page focused, refetching logs...');
+      fetchLogs();
     };
     
-    fetchLogs();
-  }, [authUser?.clientId, exercises]);
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [fetchLogs]);
   
   // Check if health is connected and fetch data
   useEffect(() => {
