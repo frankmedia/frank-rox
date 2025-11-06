@@ -564,6 +564,7 @@ const ExerciseDetail = () => {
     }
     
     // Navigate to next exercise or back to home
+    console.log("🚀 About to navigate - check logs above for sync status");
     if (currentIndex < exercises.length - 1) {
       const nextExercise = exercises[currentIndex + 1];
       if (!isPB) {
@@ -572,8 +573,9 @@ const ExerciseDetail = () => {
         });
       }
       setTimeout(() => {
+        console.log("🚀 Navigating now to next exercise");
         navigate(`/exercise/${nextExercise.id}`);
-      }, isPB ? 2000 : 500); // Longer delay for PB celebration
+      }, isPB ? 2000 : 2000); // 2 second delay to see logs
     } else {
       // Mark the training day as complete
       const userStr = localStorage.getItem("frank_rock_user");
@@ -1738,9 +1740,14 @@ const ExerciseDetail = () => {
             <FlameRating 
               value={rating} 
               onChange={(selectedRating) => {
+                console.log("🔥 Flame clicked, rating:", selectedRating);
                 setRating(selectedRating);
                 // Auto-complete when flame is clicked, passing the rating directly
-                setTimeout(() => handleMarkAsDone(selectedRating), 100);
+                // Delay increased to 3 seconds so user can see console logs
+                setTimeout(() => {
+                  console.log("🔥 Calling handleMarkAsDone after flame click");
+                  handleMarkAsDone(selectedRating);
+                }, 3000);
               }} 
               size="lg" 
             />
