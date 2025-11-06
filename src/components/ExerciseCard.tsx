@@ -171,12 +171,11 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
                     : `${exercise.durationMin} min`}
                 </span>
               )}
-              {loggedDuration && (
-                <span className="text-2xl font-bold text-green-400">
+              {loggedDuration ? (
+                <span className={exercise.durationMin ? "text-2xl font-bold text-green-400" : "text-4xl font-bold text-green-400"}>
                   ✓ {loggedDuration} min
                 </span>
-              )}
-              {!exercise.durationMin && !loggedDuration && (
+              ) : !exercise.durationMin && (
                 <span className="text-sm text-muted-foreground">Mobility</span>
               )}
             </div>
