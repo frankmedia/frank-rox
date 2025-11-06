@@ -12,8 +12,8 @@ import AIAssistant from "@/components/AIAssistant";
 interface Plan { id: string; name: string; cycle_days?: number; client_id?: string; }
 interface PlanDay { id: string; day_index: number; label?: string; is_rest?: boolean; description?: string }
 interface Exercise { id: string; name: string; modality?: string; primary_area?: string; pattern?: string; tags?: string | null; equipment?: string[] | null }
-interface RenderedItem { id: string; name: string; modality?: string; item_order?: number }
-interface GroupItem { id: string; name: string; modality?: string }
+interface RenderedItem { id: string; name: string; modality?: string; item_order?: number; extra?: any }
+interface GroupItem { id: string; name: string; modality?: string; extra?: any }
 interface Group { 
   blockId: string; 
   sessionId: string; 
@@ -916,6 +916,12 @@ const PlanDetail = () => {
       debouncedSave(sets, reps, weight, duration, distance, val);
     };
 
+    // Format exercise name with reps if available
+    console.log('🔍 CompactItemRow render:', { name: it.name, extra: it.extra, repsState: reps });
+    const displayName = it.extra?.reps 
+      ? `${it.extra.reps} x ${it.name}` 
+      : it.name;
+
     return (
       <div ref={setNodeRef} style={style} className={`w-full text-xs px-2 py-2 rounded border ${chip}`}>
         {/* First line: Exercise name and controls */}
@@ -925,7 +931,7 @@ const PlanDetail = () => {
               <Move className="w-5 h-5" />
             </span>
             <Icon className="w-4 h-4 flex-shrink-0 mt-1" />
-            <span className="break-words leading-snug text-sm font-medium">{it.name}</span>
+            <span className="break-words leading-snug text-sm font-medium">{displayName}</span>
           </div>
           
           <div className="inline-flex items-start gap-1.5 flex-shrink-0 ml-2">
@@ -1695,6 +1701,12 @@ const PlanDetail = () => {
       await createHyroxSimInDay(dayId);
       return;
     }
+    // George → drop zone
+    if (activeId === 'george:workout' && overId.startsWith('drop:')) {
+      const [, dayId] = overId.split(':');
+      await createGeorgeWorkoutInDay(dayId);
+      return;
+    }
   }
 
   async function toggleRest(day: PlanDay) {
@@ -1724,6 +1736,189 @@ const PlanDetail = () => {
       toast({ description: e?.message || "Failed to toggle rest", variant: "destructive" as any });
     } finally {
       setSavingDayId(null);
+    }
+  }
+
+  async function createGeorgeWorkoutInDay(explicitDayId?: string) {
+    try {
+      const target = explicitDayId || selectedDayId || filteredDays[0]?.id;
+      if (!target) { 
+        toast({ description: 'Select a day first', variant: 'default' as any }); 
+        return; 
+      }
+
+      // George workout structure: Run 1km, 5 rounds circuit (20 squats, 20 burpees, 20 situps, 20 pushups), Run 1km
+      // This is a "for time" workout - complete all exercises as fast as possible
+      const georgeExercises = [
+        { name: 'Squats', searchTerms: ['Air Squat', 'Bodyweight Squat', 'BW Squat'], reps: 20, rounds: 5 },
+        { name: 'Burpees', searchTerms: ['Burpee', 'Burpees'], reps: 20, rounds: 5 },
+        { name: 'Sit-ups', searchTerms: ['Sit-up', 'Situp', 'Sit Up', 'Abmat Sit-up'], reps: 20, rounds: 5 },
+        { name: 'Push-ups', searchTerms: ['Push-up', 'Pushup', 'Push Up', 'Standard Push'], reps: 20, rounds: 5 }
+      ];
+
+      // Create session
+      const sessionName = 'George (For Time)';
+      const { data: existingSessions } = await supabase
+        .from('sessions')
+        .select('order_index')
+        .eq('plan_day_id', target)
+        .order('order_index', { ascending: false })
+        .limit(1);
+      const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+      const sIns = await supabase.from('sessions').insert({ 
+        plan_day_id: target, 
+        name: sessionName, 
+        order_index: maxOrder + 1 
+      }).select('id').single();
+      if (sIns.error) throw sIns.error;
+      const sessionId = String((sIns.data as any).id);
+
+      // Create simulation block for the entire workout (timed)
+      const blockTitle = 'George - For Time';
+      const bIns = await supabase.from('session_blocks').insert({ 
+        session_id: sessionId, 
+        block_type: 'simulation', 
+        title: blockTitle,
+        rounds: 1,
+        parameters: { 
+          format: 'simulation',
+          race_type: 'george',
+          sequential: true, 
+          track_splits: false // Track total time only, not individual splits
+        }
+      }).select('id').single();
+      if (bIns.error) throw bIns.error;
+      const blockId = String((bIns.data as any).id);
+
+      // Get 1km run exercise
+      let runExerciseId = null;
+      const runSearchTerms = ['1km Run', '1km', '400m Run', '600m Run', 'Run'];
+      for (const term of runSearchTerms) {
+        const query = await supabase
+          .from('exercises')
+          .select('id,name')
+          .ilike('name', `%${term}%`)
+          .limit(1);
+        
+        if (query.data && query.data.length > 0) {
+          runExerciseId = query.data[0].id;
+          console.log(`✅ Found run exercise: ${query.data[0].name}`);
+          break;
+        }
+      }
+
+      if (!runExerciseId) {
+        console.warn('⚠️ No running exercise found');
+        toast({ description: 'Warning: No running exercise found', variant: 'default' as any });
+      }
+
+      let itemOrder = 0;
+      const failedExercises: string[] = [];
+
+      // Add initial 1km run
+      if (runExerciseId) {
+        await supabase.from('session_block_items').insert({ 
+          block_id: blockId, 
+          exercise_id: runExerciseId, 
+          status: 'draft', 
+          item_order: itemOrder++,
+          extra: { distance: 1 } // 1km
+        });
+        console.log('✅ Added initial 1km run');
+      }
+
+      // Find all exercises first
+      const exerciseIds: Record<string, string> = {};
+      for (const exercise of georgeExercises) {
+        let exerciseData = null;
+        
+        // Search for each term and filter out unwanted variations
+        for (const term of exercise.searchTerms) {
+          const query = await supabase
+            .from('exercises')
+            .select('id,name')
+            .ilike('name', `%${term}%`);
+          
+          if (query.data && query.data.length > 0) {
+            // Filter out modified versions (holds, knees, assisted, trx, broad, etc.)
+            const filtered = query.data.find((ex: any) => {
+              const name = ex.name.toLowerCase();
+              return !name.includes('hold') && 
+                     !name.includes('knee') && 
+                     !name.includes('assisted') && 
+                     !name.includes('elevated') &&
+                     !name.includes('deficit') &&
+                     !name.includes('trx') &&
+                     !name.includes('broad');
+            });
+            
+            if (filtered) {
+              exerciseData = filtered;
+              console.log(`✅ Found ${exercise.name} via "${term}": ${exerciseData.name}`);
+              break;
+            }
+          }
+        }
+
+        if (exerciseData?.id) {
+          exerciseIds[exercise.name] = exerciseData.id;
+        } else {
+          console.error(`❌ Could not find exercise: ${exercise.name}`);
+          failedExercises.push(exercise.name);
+          toast({ description: `Warning: Could not find "${exercise.name}"`, variant: 'default' as any });
+        }
+      }
+
+      // Add circuit exercises - 5 rounds of the complete sequence
+      // This means: Round 1 (squats, burpees, situps, pushups), Round 2 (same), etc.
+      for (let round = 1; round <= 5; round++) {
+        for (const exercise of georgeExercises) {
+          if (exerciseIds[exercise.name]) {
+            await supabase.from('session_block_items').insert({ 
+              block_id: blockId, 
+              exercise_id: exerciseIds[exercise.name], 
+              status: 'draft', 
+              item_order: itemOrder++,
+              extra: { 
+                reps: exercise.reps,
+                sets: 1
+              }
+            });
+          }
+        }
+        console.log(`✅ Added round ${round} (4 exercises x 20 reps each)`);
+      }
+
+      // Add final 1km run
+      if (runExerciseId) {
+        await supabase.from('session_block_items').insert({ 
+          block_id: blockId, 
+          exercise_id: runExerciseId, 
+          status: 'draft', 
+          item_order: itemOrder++,
+          extra: { distance: 1 } // 1km
+        });
+        console.log('✅ Added final 1km run');
+      }
+
+      // Update plan day description
+      await supabase.from('plan_days').update({ 
+        description: 'George (For Time): 1km Run, 5 Rounds of 20 Squats/20 Burpees/20 Sit-ups/20 Push-ups, 1km Run' 
+      }).eq('id', target);
+
+      // Force reload
+      await loadDayGroups(target);
+      
+      console.log('✅ George workout created!', { sessionId, blockId, target });
+      
+      if (failedExercises.length > 0) {
+        toast({ description: `George created but missing: ${failedExercises.join(', ')}`, variant: 'default' as any });
+      } else {
+        toast({ description: 'George (For Time) workout created successfully!' });
+      }
+    } catch (err: any) {
+      console.error('❌ George workout creation failed:', err);
+      toast({ description: err?.message || 'Failed to create George workout', variant: 'destructive' as any });
     }
   }
 
@@ -1947,6 +2142,21 @@ const PlanDetail = () => {
         role="button"
         aria-label="Hyrox Sim"
       >Hyrox Sim</button>
+    );
+  };
+
+  const DraggableGeorge = () => {
+    const { attributes, listeners, setNodeRef } = useDraggable({ id: 'george:workout', data: { name: 'George' } });
+    return (
+      <button
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        onClick={async ()=>{ await createGeorgeWorkoutInDay(); }}
+        className="text-xs px-3 py-1.5 rounded border border-zinc-700 bg-white text-black font-semibold hover:bg-zinc-100 transition-colors"
+        role="button"
+        aria-label="George"
+      >George</button>
     );
   };
 
@@ -2193,7 +2403,7 @@ const PlanDetail = () => {
     console.log('🔄 📥 loadDayGroups called for day:', dayId);
     const sess = await supabase
       .from('sessions')
-      .select('id,name,order_index,collapsed,session_blocks(id,block_type,title,parameters,rounds,rest_between_rounds_s,time_cap_sec,work_sec,rest_sec,intensity,session_block_items(id,exercise_id,item_order,status))')
+      .select('id,name,order_index,collapsed,session_blocks(id,block_type,title,parameters,rounds,rest_between_rounds_s,time_cap_sec,work_sec,rest_sec,intensity,session_block_items(id,exercise_id,item_order,status,extra))')
       .eq('plan_day_id', dayId)
       .order('order_index', { ascending: true });
     
@@ -2263,7 +2473,7 @@ const PlanDetail = () => {
       work_sec: b.work_sec ?? 0,
       rest_sec: b.rest_sec ?? 0,
       intensity: b.intensity,
-      items: (b.itemRows||[]).sort((a:any,b:any)=>(a.item_order??0)-(b.item_order??0)).map((r:any)=> ({ id: String(r.id), name: exMap[String(r.exercise_id)]?.name || 'Exercise', modality: exMap[String(r.exercise_id)]?.modality }))
+      items: (b.itemRows||[]).sort((a:any,b:any)=>(a.item_order??0)-(b.item_order??0)).map((r:any)=> ({ id: String(r.id), name: exMap[String(r.exercise_id)]?.name || 'Exercise', modality: exMap[String(r.exercise_id)]?.modality, extra: r.extra }))
     }));
 
     setGroupsByDay(prev=> ({ ...prev, [dayId]: groups }));
@@ -2285,7 +2495,7 @@ const PlanDetail = () => {
         if (blockDiff !== 0) return blockDiff;
         return (a.r.item_order ?? 0) - (b.r.item_order ?? 0);
       })
-      .map((x:any)=> ({ id: String(x.r.id), name: exMap[String(x.r.exercise_id)]?.name || 'Exercise', modality: exMap[String(x.r.exercise_id)]?.modality, item_order: x.r.item_order }));
+      .map((x:any)=> ({ id: String(x.r.id), name: exMap[String(x.r.exercise_id)]?.name || 'Exercise', modality: exMap[String(x.r.exercise_id)]?.modality, item_order: x.r.item_order, extra: x.r.extra }));
     
     console.log('🔄 📥 Final flatItems order:', flatItems.map((it, idx) => ({ position: idx + 1, name: it.name })));
     setItemsByDay(prev=> ({ ...prev, [dayId]: flatItems }));
@@ -2301,7 +2511,7 @@ const PlanDetail = () => {
       } else {
         const rows = (b.itemRows||[]).sort((a:any,b:any)=>(a.item_order??0)-(b.item_order??0));
         const r = rows[0];
-        if (r) sequence.push({ kind: 'item', item: { id: String(r.id), name: exMap[String(r.exercise_id)]?.name || 'Exercise', modality: exMap[String(r.exercise_id)]?.modality, item_order: r.item_order } });
+        if (r) sequence.push({ kind: 'item', item: { id: String(r.id), name: exMap[String(r.exercise_id)]?.name || 'Exercise', modality: exMap[String(r.exercise_id)]?.modality, item_order: r.item_order, extra: r.extra } });
       }
     }
     setSequenceByDay(prev => ({ ...prev, [dayId]: sequence }));
@@ -2778,9 +2988,16 @@ const PlanDetail = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" key="main-grid">
         {/* Left: Library */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium">Exercise Library</h2>
+          
+          {/* Pre-Made Plans Section */}
+          <div className="mb-4 pb-4 border-b border-zinc-700">
+            <h3 className="text-sm uppercase tracking-wide text-yellow-400 font-semibold mb-2">Pre-Made Plans</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <DraggableHyroxSim />
+              <DraggableGeorge />
+            </div>
           </div>
+
           {/* Format shortcuts */}
           <div className="mb-3 space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
@@ -2798,10 +3015,6 @@ const PlanDetail = () => {
                   {['HIIT','Tabata','Sprint Intervals'].map(n=> <DraggableFormatChip key={n} name={n} />)}
                 </>
               )}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-zinc-800">
-              <span className="text-xs uppercase tracking-wide text-zinc-400 font-semibold">Simulations</span>
-              <DraggableHyroxSim />
             </div>
           </div>
           {/* Modality filter chips */}

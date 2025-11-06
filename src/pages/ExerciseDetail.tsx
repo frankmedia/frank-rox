@@ -47,6 +47,7 @@ const ExerciseDetail = () => {
   const [todaysDuration, setTodaysDuration] = useState("");
   const [rating, setRating] = useState(0); // 0-5 flame rating
   const [runStats, setRunStats] = useState<{ speed: number; pace: string; time: string; distance: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false); // Prevent navigation during save
   
   // Save in-progress weights and completions to localStorage
   const saveInProgressData = useCallback((weights: string[], completed: boolean[]) => {
@@ -568,18 +569,15 @@ const ExerciseDetail = () => {
     }
     
     // Navigate to next exercise or back to home
-    console.log("🚀 About to navigate - check logs above for sync status");
+    console.log("🚀 About to navigate - all saves complete");
     if (currentIndex < exercises.length - 1) {
       const nextExercise = exercises[currentIndex + 1];
-      if (!isPB) {
-        toast.success("✅ Exercise completed!", {
-          description: `Moving to: ${nextExercise.name}`,
-        });
-      }
-      setTimeout(() => {
-        console.log("🚀 Navigating now to next exercise");
-        navigate(`/exercise/${nextExercise.id}`);
-      }, isPB ? 2000 : 2000); // 2 second delay to see logs
+      toast.success("✅ Exercise completed!", {
+        description: `Moving to: ${nextExercise.name}`,
+        duration: 2000,
+      });
+      console.log("🚀 Navigating to next exercise");
+      navigate(`/exercise/${nextExercise.id}`);
     } else {
       // Mark the training day as complete
       const userStr = localStorage.getItem("frank_rock_user");
@@ -596,19 +594,13 @@ const ExerciseDetail = () => {
         }
       }
       
-      if (!isPB) {
-        toast.success("🎉 All exercises complete!", {
-          description: "Great workout! Returning to overview...",
-        });
-      } else {
-        toast.success("🎉 Workout complete + NEW PB!", {
-          description: "Amazing session! Returning to overview...",
-        });
-      }
-      setTimeout(() => {
-        endWorkoutSession(); // End session when all exercises complete
-        navigate("/");
-      }, isPB ? 2500 : 1000);
+      toast.success("🎉 All exercises complete!", {
+        description: "Great workout! Returning to overview...",
+        duration: 2000,
+      });
+      console.log("🚀 Navigating to home");
+      endWorkoutSession(); // End session when all exercises complete
+      navigate("/");
     }
   };
 
@@ -1738,17 +1730,31 @@ const ExerciseDetail = () => {
         <Card className="rating-section p-6 bg-yellow-500/10 border-4 border-yellow-500">
           <div className="flex flex-col items-center gap-4">
             <Label className="text-3xl font-bold text-foreground text-center">
-              {existingLogId ? "Update & Rate" : "Rate to Continue"}
+              {isSaving ? "Saving..." : (existingLogId ? "Update & Rate" : "Rate to Continue")}
             </Label>
             
             <FlameRating 
-              value={rating} 
-              onChange={(selectedRating) => {
-                console.log("🔥 Flame clicked, rating:", selectedRating);
-                setRating(selectedRating);
-                // Call immediately without setTimeout to test
-                console.log("🔥 Calling handleMarkAsDone IMMEDIATELY");
-                handleMarkAsDone(selectedRating);
+              value={rating}
+              readonly={isSaving}
+              onChange={async (selectedRating) => {
+                if (isSaving) {
+                  console.log("⏳ Already saving, ignoring click");
+                  return;
+                }
+                
+                setIsSaving(true);
+                try {
+                  console.log("🔥 Flame clicked, rating:", selectedRating);
+                  setRating(selectedRating);
+                  console.log("🔥 About to call handleMarkAsDone");
+                  await handleMarkAsDone(selectedRating);
+                  console.log("🔥 handleMarkAsDone completed successfully");
+                } catch (error) {
+                  console.error("❌ ERROR in flame onChange:", error);
+                  toast.error("Failed to save exercise");
+                } finally {
+                  setIsSaving(false);
+                }
               }} 
               size="lg" 
             />

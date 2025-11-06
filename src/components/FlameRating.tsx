@@ -34,8 +34,8 @@ export function FlameRating({ value, onChange, readonly = false, size = "md" }: 
     e.preventDefault(); // Prevent any default behavior
     
     if (readonly || !onChange) return;
-    // If clicking the same rating, clear it (set to 0)
-    onChange(rating === value ? 0 : rating);
+    // Always set the rating (don't toggle off)
+    onChange(rating);
   };
 
   return (

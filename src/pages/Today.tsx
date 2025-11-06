@@ -252,7 +252,7 @@ const Today = () => {
         // 1. Check workout cache (new hybrid system)
         exercises.forEach((ex) => {
           if (isExerciseComplete(username, trainingDay, ex.id)) {
-            completedIds.add(ex.name); // ExerciseCard expects exercise names
+            completedIds.add(ex.id); // Use exercise ID, not name!
           }
         });
         
@@ -1101,7 +1101,7 @@ const Today = () => {
                     key={exercise.id}
                     exercise={exercise}
                     onClick={() => navigate(`/exercise/${exercise.id}`)}
-                    isCompleted={completedExercises.has(exercise.name)}
+                    isCompleted={completedExercises.has(exercise.id)}
                     loggedDuration={loggedData?.duration}
                     loggedDistance={loggedData?.distance}
                     loggedWeight={loggedData?.weight}
