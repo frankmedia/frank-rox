@@ -33,6 +33,11 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
   const { user: authUser } = useAuth();
   const stations = exercise.exercises || [];
   
+  // Debug: Log stations to see reps data
+  useEffect(() => {
+    console.log('🏃 SimulationWorkout stations:', stations.map(s => ({ name: s.name, reps: s.reps, distance: s.targetDistanceKm })));
+  }, []);
+  
   // User data
   const [username, setUsername] = useState<string>("");
   const [trainingDay, setTrainingDay] = useState<number>(1);
@@ -455,7 +460,9 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                       <span className="font-semibold text-sm text-white/60">
                         #{index + 1}
                       </span>
-                      <h3 className="font-bold text-lg text-white">{station.name}</h3>
+                      <h3 className="font-bold text-lg text-white">
+                        {station.reps && station.reps > 0 ? `${station.reps} x ${station.name}` : station.name}
+                      </h3>
                       {stationTime.isComplete && (
                         <Check className="w-6 h-6 text-white" />
                       )}
@@ -463,13 +470,13 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                     
                     {/* Station Details */}
                     <div className="text-sm text-white/60 mt-1 space-y-1">
-                      {station.distance && station.distance > 0 && (
-                        <div>Distance: {station.distance * 1000}m</div>
+                      {station.targetDistanceKm && station.targetDistanceKm > 0 && (
+                        <div>Distance: {station.targetDistanceKm * 1000}m</div>
                       )}
                       {station.reps && station.reps > 0 && (
                         <div>Reps: {station.reps}</div>
                       )}
-                      {station.weight && <div>Weight: {station.weight}</div>}
+                      {station.suggestedKg && <div>Weight: {station.suggestedKg}</div>}
                     </div>
                   </div>
                   

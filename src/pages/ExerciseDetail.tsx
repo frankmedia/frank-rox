@@ -1736,25 +1736,10 @@ const ExerciseDetail = () => {
             <FlameRating 
               value={rating}
               readonly={isSaving}
-              onChange={async (selectedRating) => {
-                if (isSaving) {
-                  console.log("⏳ Already saving, ignoring click");
-                  return;
-                }
-                
-                setIsSaving(true);
-                try {
-                  console.log("🔥 Flame clicked, rating:", selectedRating);
-                  setRating(selectedRating);
-                  console.log("🔥 About to call handleMarkAsDone");
-                  await handleMarkAsDone(selectedRating);
-                  console.log("🔥 handleMarkAsDone completed successfully");
-                } catch (error) {
-                  console.error("❌ ERROR in flame onChange:", error);
-                  toast.error("Failed to save exercise");
-                } finally {
-                  setIsSaving(false);
-                }
+              onChange={(selectedRating) => {
+                // Just set the rating, don't save yet
+                console.log("🔥 Flame clicked, rating:", selectedRating);
+                setRating(selectedRating);
               }} 
               size="lg" 
             />
@@ -1769,11 +1754,46 @@ const ExerciseDetail = () => {
               </p>
             )}
             
+            {/* Save & Continue Button */}
+            {rating > 0 && (
+              <Button
+                onClick={async () => {
+                  if (isSaving) return;
+                  setIsSaving(true);
+                  try {
+                    console.log("🟢 Save button clicked, calling handleMarkAsDone");
+                    await handleMarkAsDone(rating);
+                    console.log("✅ handleMarkAsDone completed successfully");
+                    toast.success("Exercise saved!");
+                  } catch (error) {
+                    console.error("❌ Save failed:", error);
+                    toast.error("Failed to save exercise");
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+                disabled={isSaving || (exercise.type === "mobility" && !todaysDuration)}
+                className="w-full h-14 text-lg font-bold"
+                style={{ backgroundColor: '#FFCC00', color: '#000' }}
+              >
+                {isSaving ? "Saving..." : "Save & Continue"}
+              </Button>
+            )}
+            
             {/* Skip rating option */}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleMarkAsDone()}
+              onClick={async () => {
+                if (isSaving) return;
+                setIsSaving(true);
+                try {
+                  await handleMarkAsDone();
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              disabled={isSaving}
               className="text-muted-foreground hover:text-foreground mt-2"
             >
               {existingLogId ? "Update without rating" : "Skip and complete without rating"}

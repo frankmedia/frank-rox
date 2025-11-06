@@ -2459,22 +2459,31 @@ const PlanDetail = () => {
     }
 
     // Treat 'circuit', 'amrap', and 'simulation' as group wrappers
-    console.log('🔍 Checking blocks for groups:', blocks.map((b:any) => ({ blockType: b.blockType, title: b.title })));
-    const groups: Group[] = blocks.filter((b:any)=> (b.blockType === 'circuit' || b.blockType === 'amrap' || b.blockType === 'simulation')).map((b:any)=> ({
-      sessionId: b.sessionId,
-      blockId: b.blockId,
-      title: b.title,
-      blockType: b.blockType,
-      collapsed: b.collapsed,
-      parameters: b.parameters,
-      rounds: b.rounds ?? 0,
-      rest_between_rounds_s: b.rest_between_rounds_s ?? 0,
-      time_cap_sec: b.time_cap_sec ?? null,
-      work_sec: b.work_sec ?? 0,
-      rest_sec: b.rest_sec ?? 0,
-      intensity: b.intensity,
-      items: (b.itemRows||[]).sort((a:any,b:any)=>(a.item_order??0)-(b.item_order??0)).map((r:any)=> ({ id: String(r.id), name: exMap[String(r.exercise_id)]?.name || 'Exercise', modality: exMap[String(r.exercise_id)]?.modality, extra: r.extra }))
-    }));
+    console.log('🔍 Checking blocks for groups:', blocks.map((b:any) => ({ blockType: b.blockType, title: b.title, itemCount: b.itemRows?.length })));
+    const groups: Group[] = blocks.filter((b:any)=> (b.blockType === 'circuit' || b.blockType === 'amrap' || b.blockType === 'simulation')).map((b:any)=> {
+      const items = (b.itemRows||[]).sort((a:any,b:any)=>(a.item_order??0)-(b.item_order??0)).map((r:any)=> ({ 
+        id: String(r.id), 
+        name: exMap[String(r.exercise_id)]?.name || 'Exercise', 
+        modality: exMap[String(r.exercise_id)]?.modality, 
+        extra: r.extra 
+      }));
+      console.log(`🔍 Group "${b.title}" has ${items.length} items:`, items.map(i => ({ name: i.name, reps: i.extra?.reps })));
+      return {
+        sessionId: b.sessionId,
+        blockId: b.blockId,
+        title: b.title,
+        blockType: b.blockType,
+        collapsed: false, // Always show simulation/circuit/amrap blocks expanded
+        parameters: b.parameters,
+        rounds: b.rounds ?? 0,
+        rest_between_rounds_s: b.rest_between_rounds_s ?? 0,
+        time_cap_sec: b.time_cap_sec ?? null,
+        work_sec: b.work_sec ?? 0,
+        rest_sec: b.rest_sec ?? 0,
+        intensity: b.intensity,
+        items: items
+      };
+    });
 
     setGroupsByDay(prev=> ({ ...prev, [dayId]: groups }));
     // Standalones are items from non-group blocks only (exclude circuit/amrap)
