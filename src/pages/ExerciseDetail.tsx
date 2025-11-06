@@ -1746,12 +1746,9 @@ const ExerciseDetail = () => {
               onChange={(selectedRating) => {
                 console.log("🔥 Flame clicked, rating:", selectedRating);
                 setRating(selectedRating);
-                // Auto-complete when flame is clicked, passing the rating directly
-                // Delay increased to 3 seconds so user can see console logs
-                setTimeout(() => {
-                  console.log("🔥 Calling handleMarkAsDone after flame click");
-                  handleMarkAsDone(selectedRating);
-                }, 3000);
+                // Call immediately without setTimeout to test
+                console.log("🔥 Calling handleMarkAsDone IMMEDIATELY");
+                handleMarkAsDone(selectedRating);
               }} 
               size="lg" 
             />
