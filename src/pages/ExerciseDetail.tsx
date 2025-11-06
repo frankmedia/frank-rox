@@ -479,7 +479,10 @@ const ExerciseDetail = () => {
       console.log('🧹 Cleared in-progress data for completed exercise');
       
       // Check for Personal Best and sync to Supabase if logged in
+      console.log('🔍 Checking authUser for Supabase sync:', { authUser, clientId: authUser?.clientId });
+      
       if (authUser?.clientId) {
+        console.log('✅ authUser has clientId, syncing to Supabase...');
         const pbResult = await checkPersonalBest(
           authUser.clientId,
           exercise.name,
