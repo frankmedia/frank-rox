@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,14 @@ const ExerciseDetail = () => {
   const [rating, setRating] = useState(0); // 0-5 flame rating
   const [runStats, setRunStats] = useState<{ speed: number; pace: string; time: string; distance: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false); // Prevent navigation during save
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   
   // Save in-progress weights and completions to localStorage
   const saveInProgressData = useCallback((weights: string[], completed: boolean[]) => {
@@ -1750,7 +1758,10 @@ const ExerciseDetail = () => {
                 } catch (error) {
                   console.error("❌ Save failed:", error);
                   toast.error("Failed to save exercise");
-                  setIsSaving(false);
+                } finally {
+                  if (isMountedRef.current) {
+                    setIsSaving(false);
+                  }
                 }
               }} 
               size="lg" 
