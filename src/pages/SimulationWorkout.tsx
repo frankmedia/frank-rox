@@ -48,6 +48,8 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
   const [totalElapsed, setTotalElapsed] = useState(0);
   const [simulationStarted, setSimulationStarted] = useState(false);
   const [simulationComplete, setSimulationComplete] = useState(false);
+  const [savingResults, setSavingResults] = useState(false);
+  const [hasSavedResults, setHasSavedResults] = useState(false);
   
   // Timer
   const [now, setNow] = useState(Date.now());
@@ -76,6 +78,8 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       isComplete: false,
     }));
     setStationTimes(initial);
+    setHasSavedResults(false);
+    setSavingResults(false);
     
     // Load user data
     try {
@@ -189,7 +193,13 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
     );
   };
   
-  const completeStation = async (index: number) => {
+  const scheduleConfettiCleanup = (delay = 1500) => {
+    setTimeout(() => {
+      confetti.reset();
+    }, delay);
+  };
+
+  const handleStationComplete = async (index: number) => {
     const currentTime = Date.now();
     
     setStationTimes((prev) =>
@@ -220,6 +230,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
       origin: { y: 0.6 },
       colors: ['#ffffff', '#cccccc', '#999999']
     });
+    scheduleConfettiCleanup();
     
     triggerSuccessHaptic();
     
@@ -236,120 +247,142 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
         colors: ['#ffffff', '#cccccc', '#999999'],
         ticks: 300
       });
+      scheduleConfettiCleanup(4000);
       
       setSimulationComplete(true);
       toast.success("🎉 Simulation complete!");
       
       // Mark exercise as complete in cache and sync to Supabase
-      await saveSimulationResults();
+      console.log('🏁 Last station completed, calling saveSimulationResults...');
+      try {
+        await saveSimulationResults();
+      } catch (error) {
+        console.error('💥 Error in saveSimulationResults:', error);
+        toast.error(`Save failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
     
     triggerSuccessHaptic();
   };
   
-  const saveSimulationResults = async () => {
+  const saveSimulationResults = async (): Promise<{ success: boolean; skipped?: boolean; logId?: string; error?: string }> => {
+    console.log('💾 saveSimulationResults called', {
+      hasAuthUser: !!authUser,
+      clientId: authUser?.clientId,
+      username,
+      trainingDay,
+      exerciseId: exercise.id,
+      exerciseName: exercise.name,
+      savingResults,
+      hasSavedResults
+    });
+
     if (!authUser?.clientId || !username) {
-      console.log('⚠️ Cannot save simulation: missing user data');
-      return;
+      console.error('❌ Cannot save simulation: missing user data', { authUser, username });
+      toast.error('Cannot save: missing user data');
+      return { success: false, error: 'missing-user' };
     }
-    
+
+    if (savingResults) {
+      console.log('⏳ Save already in progress, skipping additional request');
+      return { success: false, skipped: true, error: 'in-progress' };
+    }
+
+    if (hasSavedResults) {
+      console.log('✅ Simulation already saved, skipping duplicate save');
+      return { success: true, skipped: true };
+    }
+
+    setSavingResults(true);
+
     try {
       // Mark exercise as complete in local cache
       markExerciseComplete(username, trainingDay, exercise.id, authUser.clientId);
       console.log('✅ Simulation marked as complete in cache');
-      
+
       // Get the plan ID
-      const { data: planData } = await supabase
-        .from("plans")
-        .select("id")
-        .eq("client_id", authUser.clientId)
-        .eq("status", "active")
+      console.log('🔍 Looking for active plan for client:', authUser.clientId);
+      const { data: planData, error: planError } = await supabase
+        .from('plans')
+        .select('id')
+        .eq('client_id', authUser.clientId)
+        .eq('status', 'active')
         .single();
-      
+
+      console.log('📋 Plan query result:', { planData, planError });
+
+      if (planError) {
+        console.error('❌ Error fetching plan:', planError);
+        toast.error(`Plan error: ${planError.message}`);
+        return { success: false, error: planError.message };
+      }
+
       if (!planData?.id) {
-        console.log('⚠️ No active plan found for simulation save');
-        return;
+        console.error('⚠️ No active plan found for simulation save');
+        toast.error('No active plan found. Simulation not saved.');
+        return { success: false, error: 'no-plan' };
       }
-      
-      // Store split times in notes
-      const splits = stationTimes.map((station) => ({
-        station: station.stationName,
-        elapsed: Math.round(station.elapsed / 1000), // Convert to seconds
-        complete: station.isComplete,
-      }));
-      
-      const notes = JSON.stringify({
-        type: "simulation",
+
+      console.log('✅ Found active plan:', planData.id);
+
+      const simulationData = {
+        type: 'simulation',
+        race_type: exercise.name.toLowerCase().includes('hyrox') ? 'hyrox' : 'benchmark',
         total_time_seconds: Math.round(totalElapsed / 1000),
-        splits,
-        stations_completed: stationTimes.filter(s => s.isComplete).length,
+        total_time_formatted: formatTime(totalElapsed),
+        splits: stationTimes.map((station, idx) => ({
+          station_number: idx + 1,
+          station_name: station.stationName,
+          time_seconds: Math.round(station.elapsed / 1000),
+          time_formatted: formatTime(station.elapsed),
+          complete: station.isComplete,
+        })),
+        stations_completed: stationTimes.filter((s) => s.isComplete).length,
         total_stations: stations.length,
-      });
-      
-      // Log the overall simulation
-      await syncWorkoutLogToSupabase(
-        authUser.clientId,
-        planData.id,
+      };
+
+      // Log the simulation as one complete workout with all split data
+      console.log('📤 Syncing simulation to Supabase...', {
+        clientId: authUser.clientId,
+        planId: planData.id,
         trainingDay,
-        {
-          exerciseName: exercise.name,
-          exerciseId: exercise.id,
-          duration: Math.round(totalElapsed / 60), // Duration in minutes
-          notes,
-        }
-      );
-      
-      // Also log each individual station/exercise for tracking
-      for (let i = 0; i < stations.length; i++) {
-        const station = stations[i];
-        const stationTime = stationTimes[i];
-        
-        if (stationTime?.isComplete) {
-          const logData: any = {
-            exerciseName: station.name,
-            exerciseId: station.id,
-            notes: `Part of ${exercise.name} simulation`,
-          };
-          
-          // Add reps if available
-          if (station.reps && station.reps > 0) {
-            logData.reps = station.reps;
-            logData.sets = 1;
-          }
-          
-          // Add distance if available
-          if (station.targetDistanceKm && station.targetDistanceKm > 0) {
-            logData.distance = station.targetDistanceKm;
-          }
-          
-          // Add weight if available
-          if (station.suggestedKg && station.suggestedKg > 0) {
-            logData.weight = station.suggestedKg;
-          }
-          
-          // Add station completion time (in minutes)
-          if (stationTime.elapsed > 0) {
-            logData.duration = Math.round(stationTime.elapsed / 60000); // Convert ms to minutes
-          }
-          
-          await syncWorkoutLogToSupabase(
-            authUser.clientId,
-            planData.id,
-            trainingDay,
-            logData
-          );
-        }
-      }
-      
-      console.log("✅ Simulation synced to Supabase", {
-        exercise: exercise.name,
-        duration_min: Math.round(totalElapsed / 60),
-        splits: splits.length,
-        individual_logs: stations.length
+        exerciseName: exercise.name,
+        exerciseId: exercise.id,
+        duration: Math.round(totalElapsed / 60),
+        totalElapsed,
+        stationsCompleted: simulationData.stations_completed,
+        totalStations: simulationData.total_stations
       });
-    } catch (e) {
-      console.error("❌ Error saving simulation:", e);
-      toast.error("Failed to save simulation results");
+
+      const syncResult = await syncWorkoutLogToSupabase(authUser.clientId, planData.id, trainingDay, {
+        exerciseName: exercise.name,
+        duration: Math.round(totalElapsed / 60), // Duration in minutes
+        notes: JSON.stringify(simulationData),
+      });
+
+      console.log('📥 Sync result:', syncResult);
+
+      if (syncResult.success) {
+        setHasSavedResults(true);
+        console.log('✅ Simulation synced to Supabase', {
+          exercise: exercise.name,
+          total_time: formatTime(totalElapsed),
+          splits: simulationData.splits.length,
+          logId: syncResult.logId
+        });
+        toast.success(`${exercise.name} saved! Total time: ${formatTime(totalElapsed)}`);
+        return { success: true, logId: syncResult.logId };
+      }
+
+      console.error('❌ Sync failed:', syncResult.error);
+      toast.error(`Failed to save: ${syncResult.error}`);
+      return { success: false, error: syncResult.error };
+    } catch (e: any) {
+      console.error('❌ Error saving simulation:', e);
+      toast.error(e?.message || 'Failed to save simulation results');
+      return { success: false, error: e?.message };
+    } finally {
+      setSavingResults(false);
     }
   };
   
@@ -362,18 +395,38 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
   };
   
   const handleComplete = async () => {
+    console.log('🎯 handleComplete called', { simulationComplete, savingResults, hasSavedResults });
+
     if (!simulationComplete) {
-      toast.error("Complete all stations first!");
+      toast.error('Complete all stations first!');
       return;
     }
-    
-    // Clear saved progress (completion already marked in saveSimulationResults)
+
+    if (savingResults) {
+      toast.info('Still saving results…');
+      return;
+    }
+
+    // Save again just to be safe (in case the automatic save failed or was skipped)
+    console.log('💾 Saving results before navigation...');
+
+    const result = await saveSimulationResults();
+    if (result?.success === false && !result?.skipped) {
+      // saveSimulationResults already surfaced the error via toast/log; abort navigation
+      return;
+    }
+
+    // Clear saved progress
     if (username && trainingDay && exercise.id) {
       const savedKey = `simulation_${username}_${trainingDay}_${exercise.id}`;
       localStorage.removeItem(savedKey);
       console.log('🧹 Cleared simulation progress from localStorage');
     }
-    
+
+    // Small delay to ensure any final UI updates complete
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    console.log('🏃 Navigating away...');
     onComplete();
   };
   
@@ -396,6 +449,8 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
     setTotalElapsed(0);
     setSimulationStarted(false);
     setSimulationComplete(false);
+    setHasSavedResults(false);
+    setSavingResults(false);
     
     // Clear saved progress
     if (username && trainingDay && exercise.id) {
@@ -556,7 +611,7 @@ export function SimulationWorkout({ exercise, onComplete }: SimulationWorkoutPro
                           <Pause className="w-8 h-8" />
                         </Button>
                         <Button
-                          onClick={() => completeStation(index)}
+                          onClick={() => handleStationComplete(index)}
                           className="flex-[3] bg-white text-black hover:bg-white/90"
                         >
                           <Check className="w-6 h-6 mr-2" />

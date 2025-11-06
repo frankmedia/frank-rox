@@ -495,7 +495,9 @@ const Today = () => {
         const timeLeft = animationEnd - Date.now();
         
         if (timeLeft <= 0) {
-          return clearInterval(interval);
+          clearInterval(interval);
+          confetti.reset();
+          return;
         }
         
         const particleCount = 50 * (timeLeft / duration);
@@ -534,6 +536,7 @@ const Today = () => {
       
       // Refresh exercises for next day after confetti
       setTimeout(async () => {
+        confetti.reset();
         await refresh();
       }, 3000);
     }
