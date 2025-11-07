@@ -3,19 +3,25 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:pathData="M54,20
-            C42,20 36,30 36,42
-            C36,50 40,58 46,64
-            C40,70 38,78 38,84
-            C38,96 48,104 54,106
-            C60,104 70,96 70,84
-            C70,78 68,70 62,64
-            C68,58 72,50 72,42
-            C72,30 66,20 54,20"
-        android:fillColor="#00000000"
-        android:strokeColor="#FACC15"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="10" />
+    <group
+        android:translateX="10"
+        android:translateY="10"
+        android:scaleX="0.8"
+        android:scaleY="0.8">
+        <path
+            android:pathData="M54,20
+                C42,20 36,30 36,42
+                C36,50 40,58 46,64
+                C40,70 38,78 38,84
+                C38,96 48,104 54,106
+                C60,104 70,96 70,84
+                C70,78 68,70 62,64
+                C68,58 72,50 72,42
+                C72,30 66,20 54,20"
+            android:fillColor="#00000000"
+            android:strokeColor="#FACC15"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:strokeWidth="12" />
+    </group>
 </vector>

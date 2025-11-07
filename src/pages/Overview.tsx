@@ -338,8 +338,8 @@ const [healthData, setHealthData] = useState<{
           onPointerCancel={endGesture}
           onPointerLeave={dragging ? endGesture : undefined}
           onClick={(event) => {
-            event.stopPropagation();
             if (isOpen) {
+              event.stopPropagation();
               setOffset(0);
               setIsOpen(false);
             }

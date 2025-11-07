@@ -4068,7 +4068,203 @@ const PlanDetail = () => {
                             continue;
                           }
 
-                          if (rowType === "circuit") {
+                          if (rowType === "amrap") {
+                            try {
+                              console.log(`    🕑 AMRAP detected: ${row.Exercise}`, row);
+                              const durationMinRaw = row["Duration (min)"];
+                              const workSecondsRaw = row["Work (seconds)"];
+                              const restBetweenRaw = row["Rest between rounds (s)"];
+
+                              let timeCapSec: number | null = null;
+                              if (workSecondsRaw !== null && workSecondsRaw !== undefined && workSecondsRaw !== "") {
+                                timeCapSec = Math.round(Number(workSecondsRaw));
+                              } else if (durationMinRaw !== null && durationMinRaw !== undefined && durationMinRaw !== "") {
+                                timeCapSec = Math.round(Number(durationMinRaw) * 60);
+                              }
+
+                              let restBetweenRounds: number | null = null;
+                              if (restBetweenRaw !== null && restBetweenRaw !== undefined && restBetweenRaw !== "") {
+                                restBetweenRounds = Math.round(Number(restBetweenRaw));
+                              }
+
+                              let { data: preBlock } = await supabase
+                                .from('session_blocks')
+                                .select('id')
+                                .eq('session_id', session.id)
+                                .eq('title', row.Exercise)
+                                .maybeSingle();
+
+                              if (!preBlock) {
+                                const inserted = await supabase
+                                  .from('session_blocks')
+                                  .insert({
+                                    session_id: session.id,
+                                    block_type: 'amrap',
+                                    title: row.Exercise,
+                                    order_index: orderIndex + 1,
+                                    rounds: null,
+                                    work_sec: null,
+                                    rest_sec: null,
+                                    rest_between_rounds_s: restBetweenRounds,
+                                    time_cap_sec: timeCapSec,
+                                  })
+                                  .select()
+                                  .single();
+                                preBlock = inserted.data as any;
+                                if (inserted.error) {
+                                  console.error('    ❌ Failed to pre-create AMRAP block:', inserted.error);
+                                } else {
+                                  console.log(`    ✅ Pre-created AMRAP block: ${preBlock?.id}`);
+                                }
+                              } else {
+                                console.log(`    ↩︎ Updating existing AMRAP block: ${preBlock.id}`);
+                                await supabase
+                                  .from('session_blocks')
+                                  .update({
+                                    block_type: 'amrap',
+                                    rounds: null,
+                                    time_cap_sec: timeCapSec,
+                                    work_sec: null,
+                                    rest_sec: null,
+                                    rest_between_rounds_s: restBetweenRounds,
+                                  })
+                                  .eq('id', preBlock.id);
+                              }
+
+                              const amrapExercises: any[] = [];
+                              i++;
+                              console.log(`      Starting to collect AMRAP exercises from row ${i}...`);
+
+                              while (i < dayRows.length) {
+                                const nextRow = dayRows[i];
+                                if (!nextRow || !nextRow.Type) {
+                                  console.warn(`      ⚠️  Row ${i} is invalid, breaking`);
+                                  break;
+                                }
+
+                                const nextType = String(nextRow.Type).trim().toLowerCase();
+                                console.log(`      [${i}] Type="${nextRow.Type}" → "${nextType}", Ex="${nextRow.Exercise}"`);
+
+                                if (nextType === "amrap_exercise") {
+                                  amrapExercises.push(nextRow);
+                                  console.log(`      ✅ ADDED AMRAP exercise: ${nextRow.Exercise}`);
+                                  i++;
+                                  continue;
+                                }
+
+                                if (nextType === "amrap_exercise_rest") {
+                                  const nextRestRaw = nextRow["Rest between rounds (s)"] ?? nextRow["Work (seconds)"] ?? null;
+                                  if (nextRestRaw !== null && nextRestRaw !== undefined && nextRestRaw !== "") {
+                                    restBetweenRounds = Math.round(Number(nextRestRaw));
+                                    console.log(`      ⏸️  AMRAP rest between rounds updated to ${restBetweenRounds}s`);
+                                  }
+                                  i++;
+                                  continue;
+                                }
+
+                                console.log(`      ⏹️  STOP (found ${nextType})`);
+                                break;
+                              }
+
+                              console.log(`    🎯 AMRAP "${row.Exercise}" has ${amrapExercises.length} exercises`);
+
+                              orderIndex++;
+                              const { data: blockUpdate, error: blockUpdateError } = await supabase
+                                .from('session_blocks')
+                                .update({
+                                  order_index: orderIndex,
+                                  block_type: 'amrap',
+                                  rounds: null,
+                                  work_sec: null,
+                                  rest_sec: null,
+                                  rest_between_rounds_s: restBetweenRounds,
+                                  time_cap_sec: timeCapSec,
+                                })
+                                .eq('id', preBlock!.id)
+                                .select('id')
+                                .single();
+
+                              if (blockUpdateError) {
+                                console.error('    ❌ Failed to update AMRAP block timings:', blockUpdateError);
+                                continue;
+                              }
+
+                              const amrapBlockId = blockUpdate?.id || preBlock?.id;
+                              if (!amrapBlockId) {
+                                console.error('    ❌ No AMRAP block id available after update');
+                                continue;
+                              }
+
+                              const { data: existingItemsRaw } = await supabase
+                                .from('session_block_items')
+                                .select('id, exercise_id, item_order')
+                                .eq('block_id', amrapBlockId);
+                              const existingItems = existingItemsRaw || [];
+                              let nextOrder = (existingItems.reduce((m: number, it: any) => Math.max(m, it.item_order ?? -1), -1) + 1);
+                              const existingExerciseIds = new Set((existingItems as any[]).map(it => String(it.exercise_id)));
+
+                              for (let j = 0; j < amrapExercises.length; j++) {
+                                const ex = amrapExercises[j];
+                                let matchedEx = dbExercises.find(
+                                  (e) => e.name.toLowerCase().trim() === ex.Exercise.toLowerCase().trim()
+                                );
+
+                                if (!matchedEx) {
+                                  const selected = await waitForMapping(ex.Exercise, dbExercises, levenshtein);
+                                  if (!selected) {
+                                    console.warn(`      ⏭️ Skipping AMRAP exercise: ${ex.Exercise}`);
+                                    continue;
+                                  }
+                                  matchedEx = selected;
+                                  if (!dbExercises.find((e) => e.id === matchedEx.id)) {
+                                    dbExercises.push(matchedEx);
+                                  }
+                                }
+
+                                if (!matchedEx || !matchedEx.id) {
+                                  addImportLog(`❌ Mapping failed for "${ex.Exercise}" (no selection)`, 'error');
+                                  console.warn(`      ❌ Mapping returned invalid value for: ${ex.Exercise}`, matchedEx);
+                                  continue;
+                                }
+                                console.log(`      ✅ Matched AMRAP exercise: "${ex.Exercise}" → ${matchedEx.name} (${matchedEx.id})`);
+
+                                if (existingExerciseIds.has(String(matchedEx.id))) {
+                                  console.log(`      ↩︎ AMRAP exercise already present in block: ${matchedEx.name}`);
+                                  continue;
+                                }
+
+                                const durationFromMin = ex["Duration (min)"];
+                                const durationFromWorkSec = ex["Work (seconds)"] ? Number(ex["Work (seconds)"]) / 60 : null;
+                                const computedDuration = durationFromMin ?? durationFromWorkSec ?? null;
+
+                                const { data: item, error: itemError } = await supabase.from("session_block_items").insert({
+                                  block_id: amrapBlockId,
+                                  exercise_id: matchedEx.id,
+                                  item_order: nextOrder,
+                                  extra: {
+                                    duration: computedDuration,
+                                    sets: ex["Sets/Rounds"],
+                                    reps: ex.Reps,
+                                    weight: ex.Kg,
+                                    distance: ex["Distance (KM)"],
+                                  },
+                                }).select().single();
+
+                                if (itemError) {
+                                  console.error(`      ❌ Failed to insert AMRAP item:`, itemError);
+                                } else {
+                                  console.log(`      ✅ Inserted AMRAP item: ${item.id}`);
+                                  existingExerciseIds.add(String(matchedEx.id));
+                                  nextOrder++;
+                                }
+                              }
+                            } catch (amrapErr: any) {
+                              console.error(`❌❌❌ AMRAP PROCESSING ERROR:`, amrapErr);
+                              console.error(`AMRAP: ${row.Exercise}`, amrapErr.message, amrapErr.stack);
+                              alert(`AMRAP error: ${amrapErr.message}`);
+                              i++;
+                            }
+                          } else if (rowType === "circuit") {
                             try {
                               console.log(`    🔄 Circuit detected: ${row.Exercise}`, row);
                               // Create/Reuse block up front so wrapper exists even if mapping pauses
@@ -4310,7 +4506,12 @@ const PlanDetail = () => {
                               // Skip this circuit and continue
                               i++;
                             }
-                          } else if (rowType !== "circuit_exercise" && rowType !== "circuit_exercise_rest") {
+                          } else if (
+                            rowType !== "circuit_exercise" &&
+                            rowType !== "circuit_exercise_rest" &&
+                            rowType !== "amrap_exercise" &&
+                            rowType !== "amrap_exercise_rest"
+                          ) {
                             console.log(`    💪 Standalone exercise: ${row.Exercise} (${rowType})`, row);
                             // Standalone exercise
                             let matchedEx = dbExercises.find(
