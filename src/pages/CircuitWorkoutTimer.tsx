@@ -60,7 +60,7 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
   );
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<{ context: AudioContext; play: () => Promise<void> } | null>(null);
   
   // Use global workout session to keep screen awake
   const { startWorkoutSession, isWakeLockActive } = useWorkoutSession();
@@ -72,45 +72,60 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
     }
   }, [isRunning, isPaused, phase, startWorkoutSession]);
   
-  // Create beep sound
-  useEffect(() => {
-    // Create an audio context for beep sound
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    console.log('🔊 Audio context created, state:', audioContext.state);
-    
-    const playBeep = async () => {
-      try {
-        // Resume audio context if suspended (browser autoplay policy)
-        if (audioContext.state === 'suspended') {
-          console.log('🔊 Resuming suspended audio context...');
-          await audioContext.resume();
-          console.log('🔊 Audio context resumed, state:', audioContext.state);
+  const ensureAudio = useCallback(async () => {
+    if (typeof window === 'undefined') return null;
+    const AudioCtor = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext | undefined;
+    if (!AudioCtor) {
+      console.warn('AudioContext not supported');
+      return null;
+    }
+
+    if (!audioRef.current) {
+      const context = new AudioCtor();
+      const play = async () => {
+        try {
+          if (context.state === 'suspended') {
+            await context.resume();
+          }
+
+          const oscillator = context.createOscillator();
+          const gainNode = context.createGain();
+
+          oscillator.type = 'sine';
+          oscillator.frequency.value = 820;
+
+          gainNode.gain.setValueAtTime(0.4, context.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
+
+          oscillator.connect(gainNode);
+          gainNode.connect(context.destination);
+
+          oscillator.start(context.currentTime);
+          oscillator.stop(context.currentTime + 0.2);
+        } catch (err) {
+          console.error('🔇 Error playing beep:', err);
         }
-        
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.value = 800;
-        oscillator.type = 'sine';
-        
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.1);
-        console.log('🔊 BEEP played!');
+      };
+
+      audioRef.current = { context, play };
+    }
+
+    if (audioRef.current?.context.state === 'suspended') {
+      try {
+        await audioRef.current.context.resume();
       } catch (err) {
-        console.error('🔇 Error playing beep:', err);
+        console.warn('Unable to resume audio context', err);
       }
-    };
-    
-    (audioRef as any).current = { play: playBeep, context: audioContext };
-    
+    }
+
+    return audioRef.current;
+  }, []);
+
+  useEffect(() => {
     return () => {
-      audioContext.close();
+      if (audioRef.current?.context && audioRef.current.context.state !== 'closed') {
+        audioRef.current.context.close().catch(() => undefined);
+      }
     };
   }, []);
   
@@ -126,8 +141,10 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
         }
         
         // Beep and voice cues at specific times
-        if ((prev === 3 || prev === 2 || prev === 1) && audioRef.current) {
-          audioRef.current.play();
+          if (prev === 3 || prev === 2 || prev === 1) {
+            ensureAudio().then((manager) => {
+              manager?.play().catch(() => undefined);
+            });
           triggerSuccessHaptic();
           // Voice countdown for last 3 seconds
           workoutCues.countdown(prev);
@@ -145,7 +162,7 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isRunning, isPaused, phase, currentRound, currentExerciseIndex]);
+  }, [isRunning, isPaused, phase, currentRound, currentExerciseIndex, ensureAudio]);
   
   const advanceToNextPhase = () => {
     if (phase === "GET_READY") {
@@ -227,42 +244,18 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
   };
   
   const handleStart = async () => {
-    // Unlock audio on user interaction (required by browsers)
-    if ((audioRef as any).current?.context) {
-      const ctx = (audioRef as any).current.context;
-      if (ctx.state === 'suspended') {
-        console.log('🔊 Unlocking audio on start...');
-        await ctx.resume();
-        console.log('🔊 Audio unlocked!');
-      }
-    }
+    await ensureAudio();
     setIsRunning(true);
     setIsPaused(false);
   };
   
   const handlePause = async () => {
-    // Unlock audio on user interaction
-    if ((audioRef as any).current?.context) {
-      const ctx = (audioRef as any).current.context;
-      if (ctx.state === 'suspended') {
-        console.log('🔊 Unlocking audio on tap...');
-        await ctx.resume();
-        console.log('🔊 Audio unlocked!');
-      }
-    }
+    await ensureAudio();
     setIsPaused(!isPaused);
   };
   
   const handleReset = async () => {
-    // Unlock audio on user interaction
-    if ((audioRef as any).current?.context) {
-      const ctx = (audioRef as any).current.context;
-      if (ctx.state === 'suspended') {
-        console.log('🔊 Unlocking audio on reset...');
-        await ctx.resume();
-        console.log('🔊 Audio unlocked!');
-      }
-    }
+    await ensureAudio();
     setIsRunning(false);
     setIsPaused(false);
     setPhase("GET_READY");

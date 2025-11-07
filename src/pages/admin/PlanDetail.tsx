@@ -3986,6 +3986,19 @@ const PlanDetail = () => {
                           console.error(`  ❌ No plan_day for day ${dayNum}, skipping`);
                           continue;
                         }
+
+                        // Clear existing sessions/blocks/items for this day so CSV import replaces content instead of duplicating
+                        try {
+                          await clearHyroxDay(supabase as any, planDay.id);
+                          setItemsByDay(prev => ({ ...prev, [planDay.id]: [] }));
+                          setGroupsByDay(prev => ({ ...prev, [planDay.id]: [] }));
+                          setSequenceByDay(prev => ({ ...prev, [planDay.id]: [] }));
+                          setReadyDays(prev => ({ ...prev, [planDay.id]: false }));
+                          addImportLog(`Cleared existing blocks for Day ${dayNum}`, 'info');
+                        } catch (clearErr: any) {
+                          console.warn(`  ⚠️ Failed to clear existing content for Day ${dayNum}:`, clearErr);
+                          addImportLog(`Failed to clear existing content for Day ${dayNum}: ${clearErr?.message || clearErr}`, 'warning');
+                        }
                         
                         // Get or create session
                         let { data: session, error: sessionError } = await supabase
