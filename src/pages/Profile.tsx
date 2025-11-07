@@ -1287,7 +1287,7 @@ const Profile = () => {
                   inputMode="numeric"
                   pattern="\\d{4}-\\d{2}-\\d{2}"
                   placeholder="Select date"
-                  className="bg-background pl-14 pr-4 h-14 text-lg rounded-2xl border-2 border-border focus-visible:border-yellow-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="w-full max-w-full min-w-0 bg-background pl-12 pr-3 h-12 text-base rounded-xl border-2 border-border focus-visible:border-yellow-400 focus-visible:ring-0 focus-visible:ring-offset-0 appearance-none"
                 />
               </div>
             </div>
