@@ -74,6 +74,10 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
       }
       
       const context = audioContextRef.current;
+      if (context.state === 'suspended') {
+        // Best-effort resume; must be triggered by a user gesture
+        context.resume().catch(() => {});
+      }
       const oscillator = context.createOscillator();
       const gainNode = context.createGain();
       
@@ -126,6 +130,17 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
     }
   };
 
+  const ensureAudio = async () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioContextRef.current;
+    if (ctx.state === 'suspended') {
+      try { await ctx.resume(); } catch {}
+    }
+    return ctx;
+  };
+
   useEffect(() => {
     console.log('⏱️ Timer interval effect triggered:', { isRunning, mode });
     
@@ -167,6 +182,8 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
             if (prev <= 1) {
               console.log('⏱️ Countdown reached 0, stopping timer');
               setIsRunning(false);
+              // Ensure a final completion beep even if last-second cadence didn't fire
+              playBeep(1);
               workoutCues.finish();
               handleComplete();
               return 0;
@@ -213,6 +230,10 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
 
   const reset = () => {
     console.log('⏱️ Timer reset');
+    if (isRunning) {
+      // End beep on manual stop
+      playBeep(1);
+    }
     setIsRunning(false);
     setSeconds(initialSeconds);
   };
@@ -271,6 +292,8 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
               workoutCues.start();
               hasAnnouncedStart.current = true;
             }
+            // Unlock and play a short start beep
+            ensureAudio().then(() => playBeep(60));
           } else {
             // Pausing timer
             workoutCues.pause();
