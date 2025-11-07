@@ -539,8 +539,8 @@ const History = () => {
                                 )}
                               </Button>
                               
-                                <div className="flex items-start justify-between pr-10">
-                                <div className="flex-1">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:pr-6">
+                                <div className="flex-1 sm:basis-5/6 sm:max-w-[calc(100%-150px)]">
                                   <div className="flex items-center gap-2 mb-1">
                                     {entry.exercise.startsWith("Strava:") ? (
                                       <Activity className="w-4 h-4 text-yellow-500" />
@@ -597,7 +597,7 @@ const History = () => {
                                   {/* Simulation splits breakdown */}
                                   {(entry as any).simulationData?.splits && (
                                     <div className="ml-6 mt-3 pt-3 border-t border-border/50">
-                                      <p className="text-xs font-semibold text-yellow-500 mb-2">📊 Split Times</p>
+                                      <p className="text-xs font-semibold text-yellow-500 mb-2">Split Times</p>
                                       <div className="space-y-1.5 max-h-64 overflow-y-auto">
                                         {(entry as any).simulationData.splits.map((split: any, idx: number) => (
                                           <div key={idx} className="flex justify-between items-center text-xs bg-secondary/5 rounded px-2 py-1.5">
@@ -619,12 +619,13 @@ const History = () => {
                                     </div>
                                   )}
                                 </div>
-                                <div className="text-right ml-4">
+                                <div className="sm:basis-1/6 sm:max-w-[150px] sm:ml-2 self-stretch">
                                   {/* Simulation workout display */}
                                   {(entry as any).simulationData ? (
-                                    <div>
-                                      <p className="text-xs font-semibold text-muted-foreground mb-1">🏁 Total Time</p>
-                                      <p className="text-2xl font-bold text-yellow-500 font-mono">
+                                    <div className="space-y-2 text-xs text-muted-foreground/85">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="uppercase tracking-wide">Total Time</span>
+                                        <span className="text-xl font-bold text-yellow-400 font-mono">
                                         {(() => {
                                           const simData = (entry as any).simulationData;
                                           // Use pre-formatted time if available (new format)
@@ -638,44 +639,62 @@ const History = () => {
                                           const secs = totalSecs % 60;
                                           return `${mins}:${secs.toString().padStart(2, '0')}`;
                                         })()}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground mt-1">
-                                        {(entry as any).simulationData.stations_completed || (entry as any).simulationData.splits?.length || 0}/{(entry as any).simulationData.total_stations || (entry as any).simulationData.splits?.length || 0} stations
-                                      </p>
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="uppercase tracking-wide">Stations</span>
+                                        <span className="font-semibold text-foreground">
+                                          {(entry as any).simulationData.stations_completed || (entry as any).simulationData.splits?.length || 0}/{(entry as any).simulationData.total_stations || (entry as any).simulationData.splits?.length || 0}
+                                        </span>
+                                      </div>
                                     </div>
                                   ) : entry.weights && entry.weights.length > 0 ? (
-                                    <div>
-                                      <p className="text-xs font-semibold text-muted-foreground mb-1">Sets:</p>
-                                      <p className="text-base font-bold text-secondary">
+                                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground/85">
+                                      <span className="uppercase tracking-wide">Sets</span>
+                                      <span className="text-base font-bold text-yellow-300">
                                         {entry.weights.map((w, i) => `${w}kg`).join(" → ")}
-                                      </p>
+                                      </span>
                                     </div>
                                   ) : entry.weight ? (
-                                    <div>
-                                      <p className="text-xl font-bold text-secondary">{entry.weight}kg</p>
+                                    <div className="space-y-2 text-xs text-muted-foreground/85">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="uppercase tracking-wide">Load</span>
+                                        <span className="text-xl font-bold text-yellow-400">{entry.weight}kg</span>
+                                      </div>
                                       {entry.sets && entry.reps && (
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          {entry.sets} × {entry.reps}
-                                        </p>
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="uppercase tracking-wide">Volume</span>
+                                          <span className="font-semibold text-yellow-300">{entry.sets} × {entry.reps}</span>
+                                        </div>
                                       )}
                                     </div>
                                   ) : entry.sets && entry.reps ? (
-                                    <p className="text-base font-bold text-secondary">{entry.sets} × {entry.reps}</p>
+                                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground/85">
+                                      <span className="uppercase tracking-wide">Volume</span>
+                                      <span className="font-semibold text-yellow-300">{entry.sets} × {entry.reps}</span>
+                                    </div>
                                   ) : null}
                                   {entry.distance && !(entry as any).simulationData && (
-                                    <div>
-                                      <p className="text-xl font-bold text-secondary">{entry.distance.toFixed(1)}km</p>
+                                    <div className="space-y-2 text-xs text-muted-foreground/85">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="uppercase tracking-wide">Distance</span>
+                                        <span className="text-xl font-bold text-yellow-300">{entry.distance.toFixed(1)}km</span>
+                                      </div>
                                       {entry.duration && (
-                                        <p className="text-xs text-muted-foreground flex items-center justify-end gap-1">
-                                          <Clock className="w-3 h-3" />
-                                          {entry.duration} min
-                                        </p>
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="uppercase tracking-wide">Duration</span>
+                                          <span className="inline-flex items-center gap-1 font-semibold text-yellow-300">
+                                            <Clock className="w-3 h-3" />
+                                            {entry.duration} min
+                                          </span>
+                                        </div>
                                       )}
                                     </div>
                                   )}
                                   {!entry.weight && !entry.weights && !entry.distance && entry.duration && !(entry as any).simulationData && (
-                                    <div>
-                                      <p className="text-xl font-bold text-secondary">{entry.duration} min</p>
+                                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground/85">
+                                      <span className="uppercase tracking-wide">Duration</span>
+                                      <span className="text-xl font-bold text-yellow-300">{entry.duration} min</span>
                                     </div>
                                   )}
                                 </div>

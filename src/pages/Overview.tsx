@@ -666,10 +666,21 @@ const [healthData, setHealthData] = useState<{
         ? Math.round(Math.min(asleepHours / 7.5, 1) * 100)
         : 0;
       const sleepScore = sleepResult.sleepScore || calculatedSleepScore;
+
+      const hasSleepData = asleepHours > 0 || (sleepResult.sleepScore ?? 0) > 0;
+      const hasStepData = (stepsResult.total ?? 0) > 0;
+      const hasRecoverySignal = hasSleepData || hasStepData;
+
       const stepGoal = 8000;
-      const stepPenaltyRatio = Math.min(Math.max(stepsResult.total - stepGoal, 0) / stepGoal, 1);
-      const recoveryScore = Math.round((1 - stepPenaltyRatio) * 100);
-      const readiness = Math.round(0.7 * sleepScore + 0.3 * recoveryScore);
+      const stepPenaltyRatio = hasStepData
+        ? Math.min(Math.max(stepsResult.total - stepGoal, 0) / stepGoal, 1)
+        : 0;
+      const recoveryScore = hasRecoverySignal
+        ? Math.round((1 - stepPenaltyRatio) * 100)
+        : 0;
+      const readiness = hasRecoverySignal
+        ? Math.round(0.7 * sleepScore + 0.3 * recoveryScore)
+        : 0;
 
       const data = {
         steps: stepsResult.total,

@@ -931,47 +931,116 @@ const Profile = () => {
         <Sheet open={sleepInsightOpen} onOpenChange={handleSleepSheetChange}>
           <SheetContent
             side={Capacitor.isNativePlatform() ? "bottom" : "right"}
-            className="sm:max-w-xl overflow-y-auto"
+            className="sm:max-w-xl w-full p-0"
           >
-            <SheetHeader>
-              <SheetTitle>Sleep Score Insights</SheetTitle>
-              <SheetDescription>Understand how last night’s sleep affects readiness.</SheetDescription>
-            </SheetHeader>
-            <div className="mt-4 space-y-5 text-sm text-muted-foreground">
-              <section>
-                <h4 className="text-sm font-semibold text-foreground mb-2">Sleep Score ({formatMetric(healthData.sleepScore)})</h4>
-                <p>
-                  Combines duration, deep/REM quality, and nighttime heart & breathing stability. 80+ means you’re primed for harder training; below 60, keep today easy and prioritise recovery work.
-                </p>
-              </section>
-              <section>
-                <h4 className="text-sm font-semibold text-foreground mb-2">Efficiency ({formatMetric(healthData.sleepEfficiency, (value) => `${Math.round(value)}%`)})</h4>
-                <p>
-                  Percentage of time in bed actually spent asleep. Aim for 85% or better by dimming lights 45 minutes before bed, keeping the room cool (~18°C), and keeping devices out of the bedroom.
-                </p>
-              </section>
-              <section>
-                <h4 className="text-sm font-semibold text-foreground mb-2">Stage Breakdown</h4>
-                <ul className="list-disc list-inside space-y-1">
-                  {sleepStageTotals.data.map((stage) => (
-                    <li key={stage.key} className="flex items-center gap-2">
-                      <span className="inline-flex w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.color }} />
-                      <span>{stage.label}: {(stage.minutes / 60).toFixed(1)}h ({stage.percent}%)</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-2">
-                  REM fuels cognitive sharpness; Deep sleep handles tissue repair. Avoid heavy meals or alcohol within 3 hours of bed and finish intense training at least 2 hours before lights out to protect these phases.
-                </p>
-              </section>
-              <section>
-                <h4 className="text-sm font-semibold text-foreground mb-2">Next Steps</h4>
-                <ul className="space-y-2">
-                  <li>• Set a wind-down reminder so you hit the pillow at the same time nightly.</li>
-                  <li>• Get 10 minutes of bright morning light within an hour of waking to anchor your circadian rhythm.</li>
-                  <li>• Keep naps before 3pm and under 20 minutes so night sleep stays consolidated.</li>
-                </ul>
-              </section>
+            <div className="flex h-full flex-col">
+              <SheetHeader className="px-6 pt-6 pb-4 text-left">
+                <SheetTitle className="text-lg font-semibold">Sleep Score Insights</SheetTitle>
+                <SheetDescription className="text-sm text-muted-foreground">
+                  Understand how last night’s sleep affects readiness.
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="flex-1 overflow-y-auto px-6 pb-8 space-y-6 text-sm text-muted-foreground">
+                <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-center">
+                  <div className="rounded-2xl border border-purple-400/30 bg-purple-500/10 px-3 py-4">
+                    <p className="text-[11px] uppercase tracking-wide text-purple-200">Sleep Score</p>
+                    <p className="text-2xl font-bold text-purple-50">{formatMetric(healthData.sleepScore)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-blue-400/30 bg-blue-500/10 px-3 py-4">
+                    <p className="text-[11px] uppercase tracking-wide text-blue-200">Efficiency</p>
+                    <p className="text-2xl font-bold text-blue-50">{formatMetric(healthData.sleepEfficiency, (value) => `${Math.round(value)}%`)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-4">
+                    <p className="text-[11px] uppercase tracking-wide text-emerald-200">Time Asleep</p>
+                    <p className="text-2xl font-bold text-emerald-50">{healthData.sleep ? `${healthData.sleep.toFixed(1)}h` : "--"}</p>
+                  </div>
+                  <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-3 py-4">
+                    <p className="text-[11px] uppercase tracking-wide text-amber-200">Awake</p>
+                    <p className="text-2xl font-bold text-amber-50">{sleepStageTotals.data.find((stage) => stage.key === 'awake') ? `${(sleepStageTotals.data.find((stage) => stage.key === 'awake')!.minutes / 60).toFixed(1)}h` : "0h"}</p>
+                  </div>
+                </section>
+
+                <section>
+                  <h4 className="text-sm font-semibold text-foreground mb-2">Sleep Score Trend</h4>
+                  <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground/80 mb-3">
+                      <span>Target</span>
+                      <span>Today</span>
+                    </div>
+                    <div className="relative h-3 w-full rounded-full bg-purple-500/10">
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-purple-400 to-yellow-300"
+                        style={{ width: `${Math.min(100, Math.max(0, healthData.sleepScore || 0))}%` }}
+                      />
+                      <div className="absolute inset-y-0 left-[80%] w-[2px] bg-yellow-200/60" />
+                    </div>
+                    <p className="mt-3 text-xs text-muted-foreground/90">
+                      Keep the bar at or above the yellow marker (80) to support higher intensity training days.
+                    </p>
+                  </div>
+                </section>
+
+                <section>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">Stage Breakdown</h4>
+                  <div className="overflow-hidden rounded-xl border border-zinc-800/70 bg-zinc-950/60">
+                    <table className="w-full text-left text-xs text-muted-foreground/80">
+                      <thead className="bg-zinc-900/60 text-[11px] uppercase tracking-wide text-muted-foreground">
+                        <tr>
+                          <th className="px-4 py-3 font-semibold">Stage</th>
+                          <th className="px-4 py-3 font-semibold">Hours</th>
+                          <th className="px-4 py-3 font-semibold">% of Night</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sleepStageTotals.data.map((stage) => (
+                          <tr key={stage.key} className="border-t border-zinc-900/50">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2 text-foreground">
+                                <span className="inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: stage.color }} />
+                                <span className="font-medium">{stage.label}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-foreground">{(stage.minutes / 60).toFixed(1)}h</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="relative h-2 flex-1 rounded-full bg-zinc-900/70">
+                                  <div
+                                    className="absolute inset-y-0 left-0 rounded-full"
+                                    style={{ width: `${stage.percent}%`, backgroundColor: stage.color }}
+                                  />
+                                </div>
+                                <span className="min-w-[2.5rem] text-right text-foreground">{stage.percent}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-3">
+                    REM fuels cognitive sharpness; Deep sleep handles tissue repair. Keep a 2-hour buffer after training and limit alcohol to protect these phases.
+                  </p>
+                </section>
+
+                <section>
+                  <h4 className="text-sm font-semibold text-foreground mb-2">Nightly Checklist</h4>
+                  <div className="grid gap-2 text-muted-foreground/90">
+                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+                      • Set a wind-down reminder so you hit the pillow at the same time nightly.
+                    </div>
+                    <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+                      • Get 10 minutes of bright morning light within an hour of waking to anchor your rhythm.
+                    </div>
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+                      • Keep naps before 3pm and under 20 minutes so night sleep stays consolidated.
+                    </div>
+                    <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 px-4 py-3">
+                      • Keep the room dark, cool (~18°C), and device-free for the last hour before bed.
+                    </div>
+                  </div>
+                </section>
+              </div>
             </div>
           </SheetContent>
         </Sheet>
