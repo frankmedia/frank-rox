@@ -844,12 +844,6 @@ const ExerciseDetail = () => {
                 {exercise.name}
               </h2>
               <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-3">
-                {exercise.suggestedKg && exercise.suggestedKg > 0 && (
-                  <span className="flex items-center gap-2 text-3xl font-bold text-foreground whitespace-nowrap">
-                    <Dumbbell className="w-7 h-7 text-primary" />
-                    <span className="font-extrabold text-primary">{exercise.suggestedKg}kg</span>
-                  </span>
-                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -859,6 +853,12 @@ const ExerciseDetail = () => {
                 </Button>
               </div>
             </div>
+            {exercise.type === "weights" && exercise.suggestedKg && exercise.suggestedKg > 0 && (
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <Dumbbell className="w-6 h-6 text-primary" />
+                <span className="text-3xl font-extrabold text-primary">{exercise.suggestedKg}kg</span>
+              </div>
+            )}
             {/* Plain-text description under title (skip URLs/media) */}
             {exercise.notes && (() => {
               const trimmedNotes = exercise.notes.trim();
@@ -1147,7 +1147,7 @@ const ExerciseDetail = () => {
               <>
                 <Label htmlFor="mobility-duration" className="text-xl font-bold block text-center mb-4">Duration (minutes)</Label>
                 <div className="flex items-center justify-center gap-3">
-                  <Button
+                    <Button
                     type="button"
                     onClick={() => setTodaysDuration((prev) => Math.max(0.5, parseFloat(prev || exercise.durationMin?.toString() || "0.5") - 0.5).toFixed(1))}
                     className="h-[6.4rem] w-[6.4rem] rounded-full text-[3.6rem] font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
@@ -1626,7 +1626,7 @@ const ExerciseDetail = () => {
                         newWeights[index] = Math.max(0, parseFloat(newWeights[index] || "0") - 1).toString();
                         setSetWeights(newWeights);
                       }}
-                      className="h-[6.4rem] w-[6.4rem] rounded-full text-[3.6rem] font-bold bg-yellow-500 hover:bg-yellow-600 text-black flex-shrink-0"
+                      className="h-[3.2rem] w-[3.2rem] rounded-full text-[1.8rem] font-bold bg-yellow-500 hover:bg-yellow-600 text-black flex-shrink-0"
                       variant="default"
                     >
                       -
@@ -1650,7 +1650,7 @@ const ExerciseDetail = () => {
                         newWeights[index] = (parseFloat(newWeights[index] || "0") + 1).toString();
                         setSetWeights(newWeights);
                       }}
-                      className="h-[6.4rem] w-[6.4rem] rounded-full text-[3.6rem] font-bold bg-yellow-500 hover:bg-yellow-600 text-black flex-shrink-0"
+                      className="h-[3.2rem] w-[3.2rem] rounded-full text-[1.8rem] font-bold bg-yellow-500 hover:bg-yellow-600 text-black flex-shrink-0"
                       variant="default"
                     >
                       +
@@ -1670,7 +1670,7 @@ const ExerciseDetail = () => {
                           toast.success(`Set ${index + 1} complete! 💪`);
                         }
                       }}
-                      className={`h-[6.4rem] w-[6.4rem] text-3xl font-bold flex-shrink-0 transition-all ${
+                      className={`h-[3.2rem] w-[3.2rem] text-2xl font-bold flex-shrink-0 transition-all ${
                         setCompleted[index] 
                           ? 'bg-green-500 hover:bg-green-600 text-white' 
                           : 'bg-yellow-500 hover:bg-yellow-600 text-white'
