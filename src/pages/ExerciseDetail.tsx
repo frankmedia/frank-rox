@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Timer } from "@/components/Timer";
 import { RestTimer } from "@/components/RestTimer";
 import { Card } from "@/components/ui/card";
-import { CheckCircle2, Loader2, List, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle2, Loader2, List, Pencil, ChevronLeft, ChevronRight, Target, Clock, Dumbbell, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Exercise } from "@/types/workout";
 import { ExerciseMedia } from "@/components/ExerciseMedia";
@@ -49,6 +49,7 @@ const ExerciseDetail = () => {
   const [runStats, setRunStats] = useState<{ speed: number; pace: string; time: string; distance: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false); // Prevent navigation during save
   const isMountedRef = useRef(true);
+  const [distanceInputUnlocked, setDistanceInputUnlocked] = useState(false); // Show distance input only after timer completes for timed runs
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -295,6 +296,7 @@ const ExerciseDetail = () => {
                     
                     if (todayLog.duration) {
                       setTodaysDuration(todayLog.duration.toString());
+                    setDistanceInputUnlocked(true);
                     }
                     
                     if (todayLog.distance) {
@@ -836,20 +838,40 @@ const ExerciseDetail = () => {
         {/* Static Header: Exercise Title + Notes + Media - Always visible for ALL exercise types */}
         <div className="space-y-4">
           {/* Exercise Title with Border */}
-          <Card className="p-6 border-4 border-yellow-500">
-            <div className="flex items-center justify-between">
+          <Card className="p-6 bg-black/5 border-0">
+            <div className="relative flex items-center justify-center">
               <h2 className="text-4xl font-bold text-foreground text-center flex-1">
                 {exercise.name}
               </h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setEditMode(!editMode)}
-                className="ml-2"
-              >
-                {editMode ? "×" : <Pencil className="w-4 h-4" />}
-              </Button>
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                {exercise.suggestedKg && exercise.suggestedKg > 0 && (
+                  <span className="flex items-center gap-2 text-3xl font-bold text-foreground whitespace-nowrap">
+                    <Dumbbell className="w-7 h-7 text-primary" />
+                    <span className="font-extrabold text-primary">{exercise.suggestedKg}kg</span>
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setEditMode(!editMode)}
+                >
+                  {editMode ? "×" : <Pencil className="w-4 h-4" />}
+                </Button>
+              </div>
             </div>
+            {/* Plain-text description under title (skip URLs/media) */}
+            {exercise.notes && (() => {
+              const trimmedNotes = exercise.notes.trim();
+              const isUrl = trimmedNotes.startsWith('http://') || trimmedNotes.startsWith('https://');
+              if (!isUrl && trimmedNotes.length > 0) {
+                return (
+                  <p className="mt-3 text-base text-foreground whitespace-pre-wrap text-center">
+                    {exercise.notes}
+                  </p>
+                );
+              }
+              return null;
+            })()}
           </Card>
           
           {/* Edit Exercise Plan */}
@@ -1089,58 +1111,46 @@ const ExerciseDetail = () => {
             </Card>
           )}
           
-          {/* Media & Notes */}
-          {(exercise.notes || exercise.mediaUrl) && (
-            <div className="text-center">
-              {/* Media from mediaUrl field */}
-              {exercise.mediaUrl && (
-                <div className="mb-4 max-w-full">
-                  <ExerciseMedia url={exercise.mediaUrl} alt={`${exercise.name} demonstration`} />
-                </div>
-              )}
-              
-              {/* Notes - check if it's a URL or text */}
-              {exercise.notes && (() => {
-                const trimmedNotes = exercise.notes.trim();
-                const isUrl = trimmedNotes.startsWith('http://') || trimmedNotes.startsWith('https://');
-                const isMediaUrl = isUrl && (
-                  trimmedNotes.match(/\.(jpg|jpeg|png|gif|webp|mp4|webm|ogg|youtube\.com|youtu\.be)/i) ||
-                  trimmedNotes.includes('youtube.com') || trimmedNotes.includes('youtu.be')
-                );
-                
-                if (isMediaUrl) {
-                  return (
-                    <div className="max-w-full">
-                      <ExerciseMedia url={trimmedNotes} alt={`${exercise.name} demonstration`} />
-                    </div>
-                  );
-                } else {
-                  return (
-                    <p className="text-base text-foreground whitespace-pre-wrap text-center">{exercise.notes}</p>
-                  );
-                }
-              })()}
-            </div>
-          )}
+          {/* Media & Notes (media-only; plain text moved under title) */}
+          {(() => {
+            const trimmedNotes = exercise.notes?.trim() || "";
+            const isUrl = trimmedNotes.startsWith('http://') || trimmedNotes.startsWith('https://');
+            const isMediaNote = isUrl && (
+              trimmedNotes.match(/\.(jpg|jpeg|png|gif|webp|mp4|webm|ogg|youtube\.com|youtu\.be)/i) ||
+              trimmedNotes.includes('youtube.com') || trimmedNotes.includes('youtu.be')
+            );
+            const shouldRender = !!exercise.mediaUrl || !!isMediaNote;
+            if (!shouldRender) return null;
+
+            return (
+              <div className="text-center">
+                {exercise.mediaUrl && (
+                  <div className="mb-4 max-w-full">
+                    <ExerciseMedia url={exercise.mediaUrl} alt={`${exercise.name} demonstration`} />
+                  </div>
+                )}
+                {isMediaNote && (
+                  <div className="max-w-full">
+                    <ExerciseMedia url={trimmedNotes} alt={`${exercise.name} demonstration`} />
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Target Card - Hide for cardio/running (shown in timer section), hide when timer running for mobility */}
         {exercise.type !== "cardio" && exercise.type !== "running" && !(exercise.type === "mobility" && showWorkoutTimer) && (
         <Card className="p-6 bg-secondary/10 border-secondary">
           <div className="text-center">
-            {/* Hide "Target" label for mobility exercises */}
-            {exercise.type !== "mobility" && (
-              <p className="text-sm text-muted-foreground mb-2">Target</p>
-            )}
             {exercise.type === "mobility" ? (
               <>
                 <Label htmlFor="mobility-duration" className="text-xl font-bold block text-center mb-4">Duration (minutes)</Label>
-                <p className="text-sm text-muted-foreground text-center mb-2">0.5 min = 30 seconds</p>
                 <div className="flex items-center justify-center gap-3">
                   <Button
                     type="button"
                     onClick={() => setTodaysDuration((prev) => Math.max(0.5, parseFloat(prev || exercise.durationMin?.toString() || "0.5") - 0.5).toFixed(1))}
-                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                    className="h-[6.4rem] w-[6.4rem] rounded-full text-[3.6rem] font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
                   >
                     −
@@ -1173,12 +1183,13 @@ const ExerciseDetail = () => {
                   <Button
                     type="button"
                     onClick={() => setTodaysDuration((prev) => (parseFloat(prev || exercise.durationMin?.toString() || "0") + 0.5).toFixed(1))}
-                    className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                    className="h-[6.4rem] w-[6.4rem] rounded-full text-[3.6rem] font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                     variant="default"
                   >
                     +
                   </Button>
                 </div>
+                <p className="text-sm text-muted-foreground text-center mt-2">0.5 min = 30 seconds</p>
               </>
             ) : exercise.type === "rehab" ? (
               <>
@@ -1216,11 +1227,7 @@ const ExerciseDetail = () => {
                 <p className="text-7xl font-bold text-foreground mb-4">
                   {exercise.sets} × {exercise.reps}
                 </p>
-                {exercise.type === "weights" && exercise.suggestedKg && exercise.suggestedKg > 0 && (
-                  <p className="text-2xl text-secondary font-semibold">
-                    Suggested: {exercise.suggestedKg}kg
-                  </p>
-                )}
+                {/* Suggested weight now displayed inline in the header */}
                 {exercise.type === "bodyweight" && (
                   <p className="text-xl text-muted-foreground font-medium">
                     Bodyweight Exercise
@@ -1293,8 +1300,11 @@ const ExerciseDetail = () => {
             {exercise.targetDistanceKm && exercise.targetDistanceKm > 0 ? (
               <>
                 <Card className="p-6 bg-primary/10 border-primary mb-4">
-                  <p className="text-center text-2xl font-bold">
-                    Target: <span className="text-primary">{exercise.targetDistanceKm < 1 ? `${(exercise.targetDistanceKm * 1000).toFixed(0)}m` : `${exercise.targetDistanceKm}km`}</span>
+                  <p className="flex items-center justify-center gap-3 text-4xl font-extrabold">
+                    <Target className="w-6 h-6 text-primary" />
+                    <span className="text-primary">
+                      {exercise.targetDistanceKm < 1 ? `${(exercise.targetDistanceKm * 1000).toFixed(0)}m` : `${exercise.targetDistanceKm}km`}
+                    </span>
                   </p>
                 </Card>
                 
@@ -1372,23 +1382,24 @@ const ExerciseDetail = () => {
                 ) : (
                   <Button
                     size="lg"
-                    onClick={() => setShowWorkoutTimer(true)} // Just start the stopwatch, no duration needed!
-                    className="h-24 px-16 text-3xl font-bold w-full"
-                    style={{ backgroundColor: '#FFCC00', color: '#000' }}
+                    onClick={() => setShowWorkoutTimer(true)} // Start/restart the stopwatch
+                    className={`h-24 px-16 text-3xl font-bold w-full ${runStats || todaysDuration ? 'bg-yellow-500/80 hover:bg-yellow-500 text-black' : ''}`}
+                    style={!(runStats || todaysDuration) ? { backgroundColor: '#FFCC00', color: '#000' } : undefined}
                   >
-                    START RECORDING
+                    {runStats || todaysDuration ? (
+                      <>
+                        <RotateCcw className="w-6 h-6 mr-3" />
+                        RESTART RECORDING
+                      </>
+                    ) : (
+                      'START RECORDING'
+                    )}
                   </Button>
                 )}
               </>
             ) : exercise.durationMin && exercise.durationMin > 0 ? (
               /* DURATION-BASED: Use countdown timer, record distance achieved */
               <>
-                <Card className="p-6 bg-primary/10 border-primary mb-4">
-                  <p className="text-center text-2xl font-bold">
-                    Duration: <span className="text-primary">{exercise.durationMin} min</span>
-                  </p>
-                </Card>
-                
                 {showWorkoutTimer ? (
                   <>
                     <div className="overflow-hidden rounded-xl border-2 border-primary">
@@ -1400,6 +1411,7 @@ const ExerciseDetail = () => {
                           const completedDuration = Math.round(workoutDuration / 60);
                           setTodaysDuration(completedDuration.toString());
                           setShowWorkoutTimer(false);
+                          setDistanceInputUnlocked(true);
                           
                           toast.success("🎉 Time Complete!", {
                             description: "Enter distance achieved below",
@@ -1413,6 +1425,17 @@ const ExerciseDetail = () => {
                               distanceInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
                           }, 500);
+                        }}
+                        onCancel={() => {
+                          // User stopped early: allow entering distance and keep whatever time has elapsed
+                          const timerElement = document.querySelector('[data-timer-elapsed]');
+                          const remaining = timerElement ? parseInt(timerElement.getAttribute('data-timer-elapsed') || '0') : 0;
+                          const elapsedMinutes = ((workoutDuration - remaining) / 60).toFixed(2);
+                          setTodaysDuration(elapsedMinutes);
+                          // Keep timer visible but paused
+                          const container = timerElement?.parentElement;
+                          container?.dispatchEvent(new CustomEvent('timer:toggle', { bubbles: true, detail: { action: 'pause' } }));
+                          setDistanceInputUnlocked(true);
                         }}
                       />
                     </div>
@@ -1430,10 +1453,17 @@ const ExerciseDetail = () => {
                   <Button
                     size="lg"
                     onClick={handleStartWorkout}
-                    className="h-24 px-16 text-3xl font-bold w-full"
-                    style={{ backgroundColor: '#FFCC00', color: '#000' }}
+                    className={`h-24 px-16 text-3xl font-bold w-full ${distanceInputUnlocked ? 'bg-yellow-500/80 hover:bg-yellow-500 text-black' : ''}`}
+                    style={!distanceInputUnlocked ? { backgroundColor: '#FFCC00', color: '#000' } : undefined}
                   >
-                    START COUNTDOWN
+                    {distanceInputUnlocked ? (
+                      <>
+                        <RotateCcw className="w-6 h-6 mr-3" />
+                        {`RESTART ${exercise.durationMin < 1 ? `${Math.round(exercise.durationMin * 60)} SEC` : `${exercise.durationMin} MIN`}`}
+                      </>
+                    ) : (
+                      `START ${exercise.durationMin < 1 ? `${Math.round(exercise.durationMin * 60)} SEC` : `${exercise.durationMin} MIN`}`
+                    )}
                   </Button>
                 )}
               </>
@@ -1582,13 +1612,13 @@ const ExerciseDetail = () => {
         <div className="space-y-4">
           {exercise.type === "weights" && (
             <div className="space-y-3">
-              <Label className="text-xl font-bold">Weight per Set (kg)</Label>
+              <Label className="text-xl font-bold text-center block">Weight per Set (kg)</Label>
               {setWeights.map((weight, index) => (
                 <div key={index}>
-                  <Label htmlFor={`set-${index}`} className="text-xl font-semibold text-foreground mb-3 block">
-                    Set {index + 1} of {exercise.sets}
-                  </Label>
                   <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-full border flex items-center justify-center text-lg font-bold text-foreground">
+                      {index + 1}
+                    </div>
                     <Button
                       type="button"
                       onClick={() => {
@@ -1596,7 +1626,7 @@ const ExerciseDetail = () => {
                         newWeights[index] = Math.max(0, parseFloat(newWeights[index] || "0") - 1).toString();
                         setSetWeights(newWeights);
                       }}
-                      className="h-16 w-16 text-3xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black flex-shrink-0"
+                      className="h-[6.4rem] w-[6.4rem] rounded-full text-[3.6rem] font-bold bg-yellow-500 hover:bg-yellow-600 text-black flex-shrink-0"
                       variant="default"
                     >
                       -
@@ -1610,7 +1640,7 @@ const ExerciseDetail = () => {
                         newWeights[index] = e.target.value;
                         setSetWeights(newWeights);
                       }}
-                      className="text-3xl font-bold h-16 text-center border-2 flex-1"
+                      className="text-3xl font-bold h-[6.4rem] text-center border-2 flex-[2]"
                       placeholder="0"
                     />
                     <Button
@@ -1620,7 +1650,7 @@ const ExerciseDetail = () => {
                         newWeights[index] = (parseFloat(newWeights[index] || "0") + 1).toString();
                         setSetWeights(newWeights);
                       }}
-                      className="h-16 w-16 text-3xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black flex-shrink-0"
+                      className="h-[6.4rem] w-[6.4rem] rounded-full text-[3.6rem] font-bold bg-yellow-500 hover:bg-yellow-600 text-black flex-shrink-0"
                       variant="default"
                     >
                       +
@@ -1640,7 +1670,7 @@ const ExerciseDetail = () => {
                           toast.success(`Set ${index + 1} complete! 💪`);
                         }
                       }}
-                      className={`h-16 w-16 text-3xl font-bold flex-shrink-0 transition-all ${
+                      className={`h-[6.4rem] w-[6.4rem] text-3xl font-bold flex-shrink-0 transition-all ${
                         setCompleted[index] 
                           ? 'bg-green-500 hover:bg-green-600 text-white' 
                           : 'bg-yellow-500 hover:bg-yellow-600 text-white'
@@ -1659,9 +1689,9 @@ const ExerciseDetail = () => {
           {(exercise.type === "running" || exercise.type === "cardio") && (
             <>
               {/* For DURATION-BASED runs: show distance input (to record distance achieved) */}
-              {exercise.durationMin && exercise.durationMin > 0 && !exercise.targetDistanceKm && (
+              {exercise.durationMin && exercise.durationMin > 0 && !exercise.targetDistanceKm && distanceInputUnlocked && (
                 <div>
-                  <Label htmlFor="distance" className="text-xl font-bold">Distance Achieved (km)</Label>
+                  <Label htmlFor="distance" className="text-xl font-bold text-center block">Distance Achieved (km)</Label>
                   <div className="flex items-center gap-3 mt-3">
                     <Button
                       type="button"
@@ -1670,7 +1700,7 @@ const ExerciseDetail = () => {
                         const newValue = Math.max(0, current - 0.1);
                         setTodaysDistance(newValue.toFixed(1));
                       }}
-                      className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                      className="h-[6.4rem] w-[6.4rem] rounded-full text-[3.6rem] font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                       variant="default"
                     >
                       -
@@ -1691,12 +1721,47 @@ const ExerciseDetail = () => {
                         const newValue = current + 0.1;
                         setTodaysDistance(newValue.toFixed(1));
                       }}
-                      className="h-32 w-24 text-5xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
+                      className="h-[6.4rem] w-[6.4rem] rounded-full text-[3.6rem] font-bold bg-yellow-500 hover:bg-yellow-600 text-black"
                       variant="default"
                     >
                       +
                     </Button>
                   </div>
+                  {(todaysDistance && parseFloat(todaysDistance) > 0) && (
+                    <div className="flex justify-center mt-4">
+                      <Button
+                        size="lg"
+                        onClick={() => {
+                          const distKm = parseFloat(todaysDistance || "0");
+                          const mins = parseFloat(todaysDuration || "0");
+                          if (!distKm || !mins) {
+                            toast.error("Enter distance and ensure the timer has run");
+                            return;
+                          }
+                          const hours = mins / 60;
+                          const speed = distKm / hours; // km/h
+                          const paceMinPerKm = mins / distKm; // min/km
+                          const paceMin = Math.floor(paceMinPerKm);
+                          const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
+                          const paceString = `${paceMin}:${paceSec.toString().padStart(2, '0')}`;
+                          const totalSecs = Math.round(mins * 60);
+                          const mm = Math.floor(totalSecs / 60);
+                          const ss = totalSecs % 60;
+                          const timeString = `${mm}:${ss.toString().padStart(2, '0')}`;
+                          setRunStats({
+                            speed: parseFloat(speed.toFixed(1)),
+                            pace: paceString,
+                            time: timeString,
+                            distance: `${distKm.toFixed(1)}km`
+                          });
+                        }}
+                        className="h-16 px-12 text-2xl font-bold"
+                        style={{ backgroundColor: '#22c55e', color: '#fff' }}
+                      >
+                        Calculate Stats
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -1735,7 +1800,7 @@ const ExerciseDetail = () => {
         )}
 
         {/* Flame Rating - Click to Rate & Complete */}
-        <Card className="rating-section p-6 bg-yellow-500/10 border-4 border-yellow-500">
+        <Card className="rating-section p-6 bg-yellow-500/10">
           <div className="flex flex-col items-center gap-4">
             <Label className="text-3xl font-bold text-foreground text-center">
               {isSaving ? "Saving..." : (existingLogId ? "Update & Rate" : "Rate to Continue")}

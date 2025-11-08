@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,7 @@ interface FlameRatingProps {
 
 export function FlameRating({ value, onChange, readonly = false, size = "md" }: FlameRatingProps) {
   const flames = [1, 2, 3, 4, 5];
+  const [hovered, setHovered] = useState<number | null>(null);
   
   const sizeClasses = {
     sm: "w-5 h-5",
@@ -45,6 +47,12 @@ export function FlameRating({ value, onChange, readonly = false, size = "md" }: 
           key={flame}
           type="button"
           onClick={(e) => handleClick(flame, e)}
+          onMouseEnter={() => {
+            if (!readonly) setHovered(flame);
+          }}
+          onMouseLeave={() => {
+            if (!readonly) setHovered(null);
+          }}
           disabled={readonly}
           className={cn(
             "transition-all p-0 border-0 bg-transparent m-0 leading-none",
@@ -57,7 +65,7 @@ export function FlameRating({ value, onChange, readonly = false, size = "md" }: 
             className={cn(
               sizeClasses[size],
               "transition-all",
-              flame <= value
+              flame <= (hovered ?? value)
                 ? "fill-[#FFCC00] stroke-[#FFCC00]"
                 : "fill-transparent stroke-muted-foreground"
             )}

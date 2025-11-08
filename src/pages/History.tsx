@@ -649,12 +649,18 @@ const History = () => {
                                       </div>
                                     </div>
                                   ) : entry.weights && entry.weights.length > 0 ? (
-                                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground/85">
-                                      <span className="uppercase tracking-wide">Sets</span>
-                                      <span className="text-base font-bold text-yellow-300">
-                                        {entry.weights.map((w, i) => `${w}kg`).join(" → ")}
-                                      </span>
-                                    </div>
+                                    (() => {
+                                      const nonZero = entry.weights.filter((w) => typeof w === "number" && w > 0);
+                                      if (nonZero.length === 0) return null;
+                                      return (
+                                        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground/85">
+                                          <span className="uppercase tracking-wide">Sets</span>
+                                          <span className="text-base font-bold text-yellow-300">
+                                            {nonZero.map((w) => `${w}kg`).join(" → ")}
+                                          </span>
+                                        </div>
+                                      );
+                                    })()
                                   ) : entry.weight ? (
                                     <div className="space-y-2 text-xs text-muted-foreground/85">
                                       <div className="flex items-center justify-between gap-2">

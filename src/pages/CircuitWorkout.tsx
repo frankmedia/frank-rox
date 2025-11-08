@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Dumbbell, Clock, Target, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Timer } from "@/components/Timer";
@@ -14,6 +14,7 @@ import {
   syncCircuitToSupabase
 } from "@/services/workoutCache";
 import { useAuth } from "@/contexts/AuthContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/utils/supabaseClient";
 import { ExerciseMedia } from "@/components/ExerciseMedia";
 
@@ -38,6 +39,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
   const [showTimer, setShowTimer] = useState(false);
   const [timerDuration, setTimerDuration] = useState(90);
   const [hasUnsavedProgress, setHasUnsavedProgress] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   
   // Load user data and cached progress on mount
   useEffect(() => {
@@ -82,22 +84,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
     }
   }, [completedRounds, username, trainingDay]);
   
-  // Warn user before leaving if they have unsaved progress
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedProgress) {
-        e.preventDefault();
-        e.returnValue = ''; // Chrome requires returnValue to be set
-        return 'You have unsaved circuit progress. Are you sure you want to leave?';
-      }
-    };
-    
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [hasUnsavedProgress]);
+  // Removed native beforeunload prompt to avoid system popup on mobile
   
   const toggleNextRound = (exerciseId: string, exerciseName: string) => {
     if (!username) return;
@@ -220,12 +207,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
             size="icon"
             onClick={() => {
               if (hasUnsavedProgress) {
-                const confirmed = window.confirm(
-                  'You have unsaved circuit progress. Your progress is saved locally, but the circuit is not marked as complete. Are you sure you want to go back?'
-                );
-                if (confirmed) {
-                  navigate(-1);
-                }
+                setShowLeaveConfirm(true);
               } else {
                 navigate(-1);
               }
@@ -242,18 +224,18 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
       {/* Content */}
       <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6">
         {/* Exercise Name */}
-        <Card className="p-6 border-4" style={{ borderColor: "#FFB74D" }}>
-          <h2 className="text-3xl font-bold text-center mb-2">{exercise.name}</h2>
+        <Card className="p-6 bg-black/5 border-0">
+          <h2 className="text-3xl font-bold text-center mb-2 flex items-center justify-center gap-2">
+            <Repeat className="w-7 h-7 text-primary" />
+            {exercise.name}
+          </h2>
           <p className="text-center text-foreground/70 text-lg">
-            {totalRounds} rounds • {exercises.length} exercises per round
+            {totalRounds} rounds {exercises.length} exercises per round
           </p>
         </Card>
         
         {/* Progress Display */}
         <div className="text-center space-y-2">
-          <div className="text-5xl font-bold" style={{ color: "#FFB74D" }}>
-            {getTotalCompleted()} / {getTotalRequired()}
-          </div>
           <p className="text-base text-foreground/70">Sets completed</p>
           
           {/* Progress Bar */}
@@ -278,39 +260,63 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                   title = `${ex.name} [${meters}m]`;
                 }
                 
-                // Build subtitle
-                if (ex.reps) {
-                  parts.push(`${ex.reps} reps`);
-                }
-                
-                if (ex.suggestedKg) {
-                  parts.push(`${ex.suggestedKg}kg`);
-                }
-                
-                if (ex.durationMin) {
-                  parts.push(`${ex.durationMin} min`);
-                }
+                // Build subtitle flags (kept for legacy; actual rendering below with icons)
+                if (ex.reps) parts.push(`${ex.reps} reps`);
+                if (ex.suggestedKg) parts.push(`${ex.suggestedKg}kg`);
+                if (ex.durationMin) parts.push(`${ex.durationMin} min`);
                 
                 return (
                   <Card
                     key={ex.id}
-                    className="p-6 border-2 cursor-pointer hover:bg-muted/50 transition-all"
+                    className="p-6 border-0 cursor-pointer transition-all"
                     onClick={() => toggleNextRound(ex.id, ex.name)}
                   >
                     <div className="flex flex-col gap-4">
-                      {/* Exercise Name */}
+                      {/* Exercise header row: title + meta inline */}
                       <div className="w-full">
-                        <h3 className="text-2xl font-bold mb-2 text-foreground">{title}</h3>
-                        {parts.length > 0 && (
-                          <p className="text-lg text-foreground/70 mb-3">
-                            {parts.join(" • ")}
-                          </p>
-                        )}
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <h3 className="text-2xl font-bold text-foreground truncate">{title}</h3>
+                          <div className="flex items-center gap-4 text-muted-foreground whitespace-nowrap">
+                            {ex.sets && ex.reps && (
+                              <span className="text-4xl font-bold text-foreground">
+                                {ex.sets} × {ex.reps}
+                              </span>
+                            )}
+                            {ex.suggestedKg && ex.suggestedKg > 0 && (
+                              <span className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
+                                <Dumbbell className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+                                <span className="font-extrabold text-primary">{ex.suggestedKg}kg</span>
+                              </span>
+                            )}
+                            {!ex.sets && !ex.reps && ex.durationMin && (
+                              <span className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
+                                <Clock className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+                                <span className="font-extrabold text-primary">
+                                  {ex.durationMin < 1 ? `${Math.round(ex.durationMin * 60)} sec` : `${ex.durationMin} min`}
+                                </span>
+                              </span>
+                            )}
+                            {!ex.sets && !ex.reps && ex.targetDistanceKm && (
+                              <span className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
+                                <Target className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+                                <span className="font-extrabold text-primary">
+                                  {ex.targetDistanceKm < 1 ? `${Math.round(ex.targetDistanceKm * 1000)}m` : `${ex.targetDistanceKm}km`}
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       
                       {/* Exercise Media (YouTube/Video) */}
                       {ex.mediaUrl && (
-                        <div className="w-full">
+                        <div
+                          className="w-full"
+                          onClick={(e) => {
+                            // Prevent media clicks from toggling exercise completion
+                            e.stopPropagation();
+                          }}
+                        >
                           <ExerciseMedia 
                             url={ex.mediaUrl} 
                             alt={ex.name}
@@ -410,6 +416,23 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
           </Card>
         )}
       </div>
+      {/* In-app leave confirmation dialog */}
+      <Dialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Leave circuit?</DialogTitle>
+            <DialogDescription>
+              You have unsaved circuit progress. Your progress is saved locally, but the circuit is not marked as complete.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowLeaveConfirm(false)}>Cancel</Button>
+            <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#FFCC00", color: "#000" }}>
+              Leave
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

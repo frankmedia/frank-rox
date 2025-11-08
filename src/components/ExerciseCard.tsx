@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Dumbbell, Medal, Activity, Zap, Repeat, Target, PersonStanding, HeartPulse, CheckCircle2 } from "lucide-react";
+import { Clock, Dumbbell, Medal, Activity, Zap, Repeat, Target, PersonStanding, HeartPulse, CheckCircle2, Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InlineHeartRate } from "@/components/HeartRateZone";
 
@@ -39,12 +39,21 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
       case "hiit":
       case "hiit_exercise": return "border-[#FF00B2]"; // Hot pink
       case "circuit":
-      case "circuit_exercise": return "border-[#FFB74D]"; // Amber (better contrast 7.2:1)
+      case "circuit_exercise": return "border-[#FFB74D]"; // Amber (unused when border removed)
       case "amrap":
-      case "amrap_exercise": return "border-[#00E676]"; // Material green (better contrast)
+      case "amrap_exercise": return "border-[#00E676]"; // Green (unused when border removed)
       default: return "border-border hover:border-secondary/50";
     }
   };
+  
+  const isCircuitLike = exercise.type === "circuit" || exercise.type === "circuit_exercise";
+  const isAmrapLike = exercise.type === "amrap" || exercise.type === "amrap_exercise";
+  const useTintBackground = isCircuitLike || isAmrapLike;
+  const tintBackgroundClass = isCircuitLike 
+    ? "bg-amber-500/10 hover:bg-amber-500/15"
+    : isAmrapLike 
+    ? "bg-emerald-500/10 hover:bg-emerald-500/15"
+    : "bg-card hover:bg-card/80";
   
   // Get icon based on exercise type
   const getIcon = () => {
@@ -67,18 +76,28 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
     <Card
       className={cn(
         "relative overflow-hidden transition-all duration-300 cursor-pointer",
-        "bg-card hover:bg-card/80 border-2",
-        getBorderColor()
+        tintBackgroundClass,
+        useTintBackground ? "border-0" : "border",
+        useTintBackground ? "" : getBorderColor()
       )}
       onClick={onClick}
     >
       <div className="p-5">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 min-w-0">
             {getIcon()}
-            <h3 className="text-lg font-bold text-foreground">{exercise.name}</h3>
+            <h3 className="text-lg font-bold text-foreground truncate whitespace-nowrap">
+              {exercise.name}
+            </h3>
           </div>
           <div className="flex items-center gap-2">
+            {/* Show target weight inline with the title when available */}
+            {exercise.suggestedKg && (
+              <span className="flex items-center gap-2 text-4xl font-bold text-foreground whitespace-nowrap flex-shrink-0">
+                <Dumbbell className="w-8 h-8 text-primary" />
+                <span className="font-extrabold text-primary">{exercise.suggestedKg}kg</span>
+              </span>
+            )}
             {/* Heart rate zone tracking for cardio/running/HIIT/circuit/AMRAP */}
             {["cardio", "running", "hiit", "circuit", "amrap"].includes(exercise.type) && (
               <InlineHeartRate />
@@ -95,15 +114,10 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
         <div className="space-y-2">
           {/* Child exercises (amrap_exercise, circuit_exercise, hiit_exercise) render as simple cards */}
           {(exercise.type === "amrap_exercise" || exercise.type === "circuit_exercise" || exercise.type === "hiit_exercise") && (
-            <div className="flex items-center gap-4 text-muted-foreground flex-wrap">
+            <div className="flex items-center gap-4 text-muted-foreground flex-nowrap">
               {exercise.sets && exercise.reps && (
                 <span className="text-4xl font-bold text-foreground">
                   {exercise.sets} × {exercise.reps}
-                </span>
-              )}
-              {exercise.suggestedKg && exercise.suggestedKg > 0 && (
-                <span className="text-lg">
-                  <span className="font-semibold text-secondary">{exercise.suggestedKg}kg</span>
                 </span>
               )}
               {exercise.durationMin && exercise.durationMin > 0 && (
@@ -121,9 +135,11 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
                 </span>
               )}
               {/* Only show "Bodyweight" if there's truly no data at all */}
-              {!exercise.sets && !exercise.reps && !exercise.durationMin && !exercise.targetDistanceKm && !exercise.suggestedKg && (
-                <span className="text-sm text-muted-foreground">Bodyweight</span>
-              )}
+            {!exercise.sets && !exercise.reps && !exercise.durationMin && !exercise.targetDistanceKm && !exercise.suggestedKg && (
+              <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                <PersonStanding className="w-5 h-5 text-primary" />
+              </span>
+            )}
             </div>
           )}
 
@@ -134,13 +150,10 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
                   {exercise.sets} × {exercise.reps}
                 </span>
               )}
-              {exercise.type === "weights" && exercise.suggestedKg && (
-                <span className="text-lg">
-                  Target: <span className="font-semibold text-secondary">{exercise.suggestedKg}kg</span>
-                </span>
-              )}
               {exercise.type === "bodyweight" && (
-                <span className="text-sm text-muted-foreground">Bodyweight</span>
+              <span className="flex items-center gap-2 text-4xl font-bold text-foreground">
+                <PersonStanding className="w-8 h-8 text-primary" />
+              </span>
               )}
             </div>
           )}
@@ -155,8 +168,9 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
                 </span>
               )}
               {exercise.targetDistanceKm && (
-                <span className="text-lg">
-                  Target: <span className="font-semibold text-secondary">{exercise.targetDistanceKm.toFixed(1)}km</span>
+              <span className="flex items-center gap-2 text-4xl font-bold text-foreground">
+                <Target className="w-6 h-6 text-primary" />
+                <span className="font-extrabold text-primary">{exercise.targetDistanceKm.toFixed(1)}km</span>
                 </span>
               )}
             </div>
@@ -243,8 +257,9 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
                 </span>
               )}
               {exercise.durationMin && (
-                <span className="text-lg">
-                  Target: <span className="font-semibold text-secondary">
+              <span className="flex items-center gap-2 text-4xl font-bold text-foreground">
+                <Target className="w-6 h-6 text-primary" />
+                <span className="font-extrabold text-primary">
                     {exercise.durationMin < 1 
                       ? `${Math.round(exercise.durationMin * 60)} sec` 
                       : `${exercise.durationMin} min`}
@@ -269,50 +284,60 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
           
           {exercise.type === "circuit" && (
             <div className="space-y-2">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col items-start gap-1">
                 <span className="text-4xl font-bold text-foreground">
-                  {exercise.totalRounds || 3} rounds
+                  <span className="text-primary">{exercise.totalRounds || 3}</span> rounds
                 </span>
                 <span className="text-sm text-muted-foreground">
-                  • {exercise.exercises?.length || 0} exercises per round
+                {exercise.exercises?.length || 0} exercises per round
                 </span>
               </div>
               {exercise.exercises && exercise.exercises.length > 0 && (
-                <div className="text-lg space-y-2 mt-3">
-                  {exercise.exercises.map((ex: any, idx: number) => {
-                    let displayName = ex.name;
-                    
-                    // Add distance to name in brackets (only if explicitly set and reasonable: 0.01km to 100km)
-                    if (ex.targetDistanceKm && ex.targetDistanceKm >= 0.01 && ex.targetDistanceKm <= 100) {
-                      const meters = Math.round(ex.targetDistanceKm * 1000);
-                      displayName = `${ex.name} [${meters}m]`;
-                    }
-                    
-                    return (
-                      <div key={idx} className="flex items-center gap-2 flex-wrap">
-                        <span className="text-foreground text-xl">→</span>
-                        <span className="text-foreground">{displayName}</span>
-                        {(ex.reps || ex.suggestedKg || ex.durationMin) && (
-                          <span className="font-semibold text-foreground/70">
-                            (
-                            {ex.reps && <span>{ex.reps} reps</span>}
-                            {ex.reps && ex.suggestedKg && <span> • </span>}
-                            {ex.suggestedKg && <span style={{ color: "#FFB74D" }}>{ex.suggestedKg}kg</span>}
-                            {(ex.reps || ex.suggestedKg) && ex.durationMin && <span> • </span>}
-                            {ex.durationMin && (
-                              <span>
-                                {ex.durationMin < 1 
-                                  ? `${Math.round(ex.durationMin * 60)} sec` 
-                                  : `${ex.durationMin} min`}
+              <div className="space-y-2 mt-3">
+                {exercise.exercises.map((ex: any, idx: number) => {
+                  // Determine display meta summary
+                  const metaParts: string[] = [];
+                  if (ex.suggestedKg) metaParts.push(`${ex.suggestedKg}kg`);
+                  if (ex.durationMin) metaParts.push(ex.durationMin < 1 ? `${Math.round(ex.durationMin * 60)} sec` : `${ex.durationMin} min`);
+                  if (ex.targetDistanceKm) metaParts.push(ex.targetDistanceKm < 1 ? `${Math.round(ex.targetDistanceKm * 1000)}m` : `${ex.targetDistanceKm}km`);
+                  if (ex.reps && ex.sets) {
+                    metaParts.unshift(`${ex.sets}×${ex.reps}`);
+                  } else if (ex.reps) {
+                    metaParts.unshift(`${ex.reps} reps`);
+                  }
+                  const metaSummary = metaParts.join(" • ");
+
+                  // Choose a small icon
+                  const SmallIcon = ex.suggestedKg
+                    ? Dumbbell
+                    : ex.durationMin
+                    ? Clock
+                    : ex.targetDistanceKm
+                    ? Target
+                    : PersonStanding;
+
+                  return (
+                    <div key={idx} className="relative overflow-hidden">
+                      <div className="relative flex items-center gap-3 px-3.5 py-2 bg-background/80">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 border border-zinc-800">
+                          <SmallIcon className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-[13px] font-semibold text-foreground truncate leading-tight">{ex.name}</p>
+                            {metaSummary && (
+                              <span className="inline-flex items-center gap-1 text-[12px] text-zinc-400 whitespace-nowrap">
+                                <Clock3 className="w-3.5 h-3.5" />
+                                {metaSummary}
                               </span>
                             )}
-                            )
-                          </span>
-                        )}
+                          </div>
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
+              </div>
               )}
             </div>
           )}
@@ -325,41 +350,51 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
                 </span>
                 <span className="text-lg text-foreground/70">AMRAP</span>
               </div>
-              {exercise.exercises && exercise.exercises.length > 0 && (
-                <div className="text-lg space-y-2 mt-3">
-                  {exercise.exercises.map((ex: any, idx: number) => {
-                    let displayName = ex.name;
-                    
-                    // Add distance to name in brackets (only if explicitly set and reasonable: 0.01km to 100km)
-                    if (ex.targetDistanceKm && ex.targetDistanceKm >= 0.01 && ex.targetDistanceKm <= 100) {
-                      const meters = Math.round(ex.targetDistanceKm * 1000);
-                      displayName = `${ex.name} [${meters}m]`;
-                    }
-                    
-                    return (
-                      <div key={idx} className="flex items-center gap-2 flex-wrap">
-                        <span className="text-foreground text-xl">→</span>
-                        <span className="text-foreground">{displayName}</span>
-                        {(ex.suggestedKg || ex.durationMin) && (
-                          <span className="font-semibold text-foreground/70">
-                            (
-                            {ex.suggestedKg && <span style={{ color: "#00E676" }}>{ex.suggestedKg}kg</span>}
-                            {ex.suggestedKg && ex.durationMin && <span> • </span>}
-                            {ex.durationMin && (
-                              <span>
-                                {ex.durationMin < 1 
-                                  ? `${Math.round(ex.durationMin * 60)} sec` 
-                                  : `${ex.durationMin} min`}
+            {exercise.exercises && exercise.exercises.length > 0 && (
+              <div className="space-y-2 mt-3">
+                {exercise.exercises.map((ex: any, idx: number) => {
+                  const metaParts: string[] = [];
+                  if (ex.suggestedKg) metaParts.push(`${ex.suggestedKg}kg`);
+                  if (ex.durationMin) metaParts.push(ex.durationMin < 1 ? `${Math.round(ex.durationMin * 60)} sec` : `${ex.durationMin} min`);
+                  if (ex.targetDistanceKm) metaParts.push(ex.targetDistanceKm < 1 ? `${Math.round(ex.targetDistanceKm * 1000)}m` : `${ex.targetDistanceKm}km`);
+                  if (ex.reps && ex.sets) {
+                    metaParts.unshift(`${ex.sets}×${ex.reps}`);
+                  } else if (ex.reps) {
+                    metaParts.unshift(`${ex.reps} reps`);
+                  }
+                  const metaSummary = metaParts.join(" • ");
+
+                  const SmallIcon = ex.suggestedKg
+                    ? Dumbbell
+                    : ex.durationMin
+                    ? Clock
+                    : ex.targetDistanceKm
+                    ? Target
+                    : PersonStanding;
+
+                  return (
+                    <div key={idx} className="relative overflow-hidden">
+                      <div className="relative flex items-center gap-3 px-3.5 py-2 bg-background/80">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 border border-zinc-800">
+                          <SmallIcon className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-[13px] font-semibold text-foreground truncate leading-tight">{ex.name}</p>
+                            {metaSummary && (
+                              <span className="inline-flex items-center gap-1 text-[12px] text-zinc-400 whitespace-nowrap">
+                                <Clock3 className="w-3.5 h-3.5" />
+                                {metaSummary}
                               </span>
                             )}
-                            )
-                          </span>
-                        )}
+                          </div>
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             </div>
           )}
         </div>

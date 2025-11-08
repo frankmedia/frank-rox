@@ -16,16 +16,16 @@ export function RestTimer({ onSelectDuration, exerciseType }: RestTimerProps) {
     : [30, 60, 90];    // 30s, 60s, 90s for weights/bodyweight
 
   return (
-    <div className="flex items-center gap-3 justify-center">
-      <TimerIcon className="w-6 h-6 text-muted-foreground" />
-      <span className="text-lg font-medium text-muted-foreground">Rest:</span>
+    <div className="group flex items-center gap-3 justify-center rounded-md px-2 py-2 transition-colors hover:bg-yellow-500/5">
+      <TimerIcon className="w-6 h-6 text-muted-foreground transition-colors group-hover:text-foreground/80" />
+      <span className="text-lg font-medium text-muted-foreground transition-colors group-hover:text-foreground/80">Rest:</span>
       {presets.map((duration) => (
         <Button
           key={duration}
           variant="outline"
           size="lg"
           onClick={() => onSelectDuration(duration)}
-          className="font-bold text-xl px-6 h-14"
+          className="font-bold text-xl px-6 h-14 transition-colors hover:bg-yellow-500/10 hover:border-yellow-500/30 hover:text-foreground"
         >
           {isLongDuration ? `${duration / 60}min` : `${duration}s`}
         </Button>

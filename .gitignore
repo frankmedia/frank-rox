@@ -1,3 +1,20 @@
+# Node and build outputs
+node_modules/
+dist/
+build/
+
+# iOS/Xcode derived data and workspaces
+ios/build/
+ios/Pods/
+ios/App/App.xcworkspace/
+ios/App/Podfile.lock
+
+# OS/editor files
+.DS_Store
+*.log
+.env.local
+.env.*
+
 # Logs
 logs
 *.log

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -148,8 +148,11 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
       {/* Content */}
       <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6">
         {/* Exercise Name */}
-        <Card className="p-6 border-4" style={{ borderColor: "#00E676" }}>
-          <h2 className="text-3xl font-bold text-center mb-2">{exercise.name}</h2>
+        <Card className="p-6 bg-black/5 border-0">
+          <h2 className="text-3xl font-bold text-center mb-2 flex items-center justify-center gap-2">
+            <Repeat className="w-7 h-7 text-primary" />
+            {exercise.name}
+          </h2>
           <p className="text-center text-foreground/70 text-lg">
             {timeCap} minute time cap • As many rounds as possible
           </p>

@@ -638,14 +638,16 @@ const Today = () => {
 
       {/* Today's Workout */}
       <main className="container max-w-2xl mx-auto px-2 sm:px-4 pt-16 pb-6">
-        <div className="flex items-center justify-between mb-3 sm:mb-6">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Training Day {currentTrainingDay}</h2>
+        <div className="relative flex items-center mb-3 sm:mb-6">
+          <h2 className="absolute left-1/2 -translate-x-1/2 text-center text-2xl sm:text-3xl md:text-4xl font-extrabold text-foreground" style={{ top: 10 }}>
+            Training <span className="text-yellow-500">Day {currentTrainingDay}</span>
+          </h2>
           
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
-              className="text-primary"
+              className="text-primary hidden"
               onClick={handleShare}
             >
               <Share2 className="w-4 h-4" />
@@ -662,7 +664,7 @@ const Today = () => {
                 <span className="hidden sm:inline">Hyrox Training</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto border border-border">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold flex items-center gap-2">
                   <Flame className="w-6 h-6" style={{ color: '#FFCC00' }} />
@@ -690,29 +692,29 @@ const Today = () => {
                 <div>
                   <h3 className="text-xl font-bold mb-3 text-foreground">Energy System Demands</h3>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse">
+                    <table className="w-full text-sm border-collapse text-center">
                       <thead>
                         <tr className="border-b-2" style={{ borderColor: '#FFCC00' }}>
-                          <th className="text-left p-2 font-bold text-foreground">System</th>
-                          <th className="text-left p-2 font-bold text-foreground">Duration</th>
-                          <th className="text-left p-2 font-bold text-foreground">HYROX Application</th>
+                          <th className="p-2 font-bold text-foreground">System</th>
+                          <th className="p-2 font-bold text-foreground">Duration</th>
+                          <th className="p-2 font-bold text-foreground">HYROX Application</th>
                         </tr>
                       </thead>
                       <tbody className="text-muted-foreground">
                         <tr className="border-b border-border">
-                          <td className="p-2 font-semibold">Phosphocreatine</td>
-                          <td className="p-2">0-10 seconds</td>
-                          <td className="p-2">Sled push initiation, explosive movements</td>
+                          <td className="p-2 font-semibold text-center">Phosphocreatine</td>
+                          <td className="p-2 text-center">0-10 seconds</td>
+                          <td className="p-2 text-center">Sled push initiation, explosive movements</td>
                         </tr>
                         <tr className="border-b border-border">
-                          <td className="p-2 font-semibold">Glycolytic</td>
-                          <td className="p-2">10s - 2 min</td>
-                          <td className="p-2">Station completion, SkiErg, rowing efforts</td>
+                          <td className="p-2 font-semibold text-center">Glycolytic</td>
+                          <td className="p-2 text-center">10s - 2 min</td>
+                          <td className="p-2 text-center">Station completion, SkiErg, rowing efforts</td>
                         </tr>
                         <tr>
-                          <td className="p-2 font-semibold">Oxidative</td>
-                          <td className="p-2">2+ minutes</td>
-                          <td className="p-2">Base for entire race, running between stations</td>
+                          <td className="p-2 font-semibold text-center">Oxidative</td>
+                          <td className="p-2 text-center">2+ minutes</td>
+                          <td className="p-2 text-center">Base for entire race, running between stations</td>
                         </tr>
                       </tbody>
                     </table>
@@ -814,27 +816,27 @@ const Today = () => {
                     Research-backed approach for optimal endurance development:
                   </p>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse">
+                    <table className="w-full text-sm border-collapse text-center">
                       <thead>
                         <tr className="border-b-2" style={{ borderColor: '#FFCC00' }}>
-                          <th className="text-left p-2 font-bold text-foreground">Intensity</th>
-                          <th className="text-left p-2 font-bold text-foreground">% of Training</th>
-                          <th className="text-left p-2 font-bold text-foreground">Heart Rate</th>
-                          <th className="text-left p-2 font-bold text-foreground">Purpose</th>
+                          <th className="p-2 font-bold text-foreground">Intensity</th>
+                          <th className="p-2 font-bold text-foreground">% of Training</th>
+                          <th className="p-2 font-bold text-foreground">Heart Rate</th>
+                          <th className="p-2 font-bold text-foreground">Purpose</th>
                         </tr>
                       </thead>
                       <tbody className="text-muted-foreground">
                         <tr className="border-b border-border">
-                          <td className="p-2 font-semibold">Low (Easy)</td>
-                          <td className="p-2">80%</td>
-                          <td className="p-2">&lt;70% HRmax</td>
-                          <td className="p-2">Aerobic base, recovery</td>
+                          <td className="p-2 font-semibold text-center">Low (Easy)</td>
+                          <td className="p-2 text-center">80%</td>
+                          <td className="p-2 text-center">&lt;70% HRmax</td>
+                          <td className="p-2 text-center">Aerobic base, recovery</td>
                         </tr>
                         <tr>
-                          <td className="p-2 font-semibold">High (Hard)</td>
-                          <td className="p-2">20%</td>
-                          <td className="p-2">&gt;80% HRmax</td>
-                          <td className="p-2">Race pace, power</td>
+                          <td className="p-2 font-semibold text-center">High (Hard)</td>
+                          <td className="p-2 text-center">20%</td>
+                          <td className="p-2 text-center">&gt;80% HRmax</td>
+                          <td className="p-2 text-center">Race pace, power</td>
                         </tr>
                       </tbody>
                     </table>
@@ -850,57 +852,57 @@ const Today = () => {
                 <div>
                   <h3 className="text-xl font-bold mb-3 text-foreground">Sample Weekly Training Structure</h3>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse">
+                    <table className="w-full text-sm border-collapse text-center">
                       <thead>
                         <tr className="border-b-2" style={{ borderColor: '#FFCC00' }}>
-                          <th className="text-left p-2 font-bold text-foreground">Day</th>
-                          <th className="text-left p-2 font-bold text-foreground">Session Type</th>
-                          <th className="text-left p-2 font-bold text-foreground">Intensity</th>
-                          <th className="text-left p-2 font-bold text-foreground">Duration</th>
+                          <th className="p-2 font-bold text-foreground">Day</th>
+                          <th className="p-2 font-bold text-foreground">Session Type</th>
+                          <th className="p-2 font-bold text-foreground">Intensity</th>
+                          <th className="p-2 font-bold text-foreground">Duration</th>
                         </tr>
                       </thead>
                       <tbody className="text-muted-foreground">
                         <tr className="border-b border-border">
-                          <td className="p-2 font-semibold">Monday</td>
-                          <td className="p-2">Strength + Stations</td>
-                          <td className="p-2">High</td>
-                          <td className="p-2">60-75 min</td>
+                          <td className="p-2 font-semibold text-center">Monday</td>
+                          <td className="p-2 text-center">Strength + Stations</td>
+                          <td className="p-2 text-center">High</td>
+                          <td className="p-2 text-center">60-75 min</td>
                         </tr>
                         <tr className="border-b border-border">
-                          <td className="p-2 font-semibold">Tuesday</td>
-                          <td className="p-2">Easy Run</td>
-                          <td className="p-2">Low</td>
-                          <td className="p-2">30-45 min</td>
+                          <td className="p-2 font-semibold text-center">Tuesday</td>
+                          <td className="p-2 text-center">Easy Run</td>
+                          <td className="p-2 text-center">Low</td>
+                          <td className="p-2 text-center">30-45 min</td>
                         </tr>
                         <tr className="border-b border-border">
-                          <td className="p-2 font-semibold">Wednesday</td>
-                          <td className="p-2">HIIT + Stations</td>
-                          <td className="p-2">High</td>
-                          <td className="p-2">45-60 min</td>
+                          <td className="p-2 font-semibold text-center">Wednesday</td>
+                          <td className="p-2 text-center">HIIT + Stations</td>
+                          <td className="p-2 text-center">High</td>
+                          <td className="p-2 text-center">45-60 min</td>
                         </tr>
                         <tr className="border-b border-border">
-                          <td className="p-2 font-semibold">Thursday</td>
-                          <td className="p-2">Active Recovery</td>
-                          <td className="p-2">Low</td>
-                          <td className="p-2">30 min</td>
+                          <td className="p-2 font-semibold text-center">Thursday</td>
+                          <td className="p-2 text-center">Active Recovery</td>
+                          <td className="p-2 text-center">Low</td>
+                          <td className="p-2 text-center">30 min</td>
                         </tr>
                         <tr className="border-b border-border">
-                          <td className="p-2 font-semibold">Friday</td>
-                          <td className="p-2">Intervals + Circuit</td>
-                          <td className="p-2">Moderate</td>
-                          <td className="p-2">60-75 min</td>
+                          <td className="p-2 font-semibold text-center">Friday</td>
+                          <td className="p-2 text-center">Intervals + Circuit</td>
+                          <td className="p-2 text-center">Moderate</td>
+                          <td className="p-2 text-center">60-75 min</td>
                         </tr>
                         <tr className="border-b border-border">
-                          <td className="p-2 font-semibold">Saturday</td>
-                          <td className="p-2">Long Run</td>
-                          <td className="p-2">Low</td>
-                          <td className="p-2">60-90 min</td>
+                          <td className="p-2 font-semibold text-center">Saturday</td>
+                          <td className="p-2 text-center">Long Run</td>
+                          <td className="p-2 text-center">Low</td>
+                          <td className="p-2 text-center">60-90 min</td>
                         </tr>
                         <tr>
-                          <td className="p-2 font-semibold">Sunday</td>
-                          <td className="p-2">Rest / Mobility</td>
-                          <td className="p-2">-</td>
-                          <td className="p-2">-</td>
+                          <td className="p-2 font-semibold text-center">Sunday</td>
+                          <td className="p-2 text-center">Rest / Mobility</td>
+                          <td className="p-2 text-center">-</td>
+                          <td className="p-2 text-center">-</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1045,44 +1047,6 @@ const Today = () => {
           <ExerciseListSkeleton count={6} />
         ) : (
           <>
-            {/* Intro Card (optional) */}
-            {(() => {
-              const introCard = exercises.find(ex => ex.type === "intro");
-              if (!introCard) return null;
-              
-              return (
-                <Card 
-                  className="p-4 mb-6 border-4 overflow-hidden"
-                  style={{ borderColor: "#FFCC00" }}
-                >
-                  <div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <ClipboardList className="w-8 h-8 flex-shrink-0" style={{ color: "#FFCC00" }} />
-                      <h3 className="text-3xl font-bold" style={{ color: "#FFCC00" }}>
-                        {introCard.name}
-                      </h3>
-                    </div>
-                    
-                    {/* Media (if available) - Full width with rounded corners */}
-                    {introCard.mediaUrl && (
-                      <div className="-mx-4 mb-4">
-                        <div className="rounded-lg overflow-hidden">
-                          <ExerciseMedia url={introCard.mediaUrl} alt={introCard.name} />
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Description */}
-                    {introCard.notes && (
-                      <p className="text-xl text-foreground leading-relaxed">
-                        {introCard.notes}
-                      </p>
-                    )}
-                  </div>
-                </Card>
-              );
-            })()}
-            
             <div className="space-y-4">
               {exercises.map((exercise) => {
                 // Skip intro cards - they're displayed above

@@ -13,10 +13,15 @@ interface TimerProps {
 
 export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete, onCancel }: TimerProps) {
   const [seconds, setSeconds] = useState(initialSeconds);
-  const [isRunning, setIsRunning] = useState(autoStart);
+  // Start paused; if autoStart is true we'll run a separate 5s ready phase then start.
+  const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<number>();
   const audioContextRef = useRef<AudioContext | null>(null);
   const mountedRef = useRef(true);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const hasStartedRef = useRef(false);
+  const [readyLeft, setReadyLeft] = useState<number>(0); // 5s pre-start
+  const readyIntervalRef = useRef<number>();
   
   console.log('⏱️ Timer render:', { mode, initialSeconds, autoStart, seconds, isRunning });
 
@@ -35,14 +40,74 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
         clearInterval(intervalRef.current);
         console.log('⏱️ Timer interval cleared on unmount');
       }
+      if (readyIntervalRef.current) {
+        clearInterval(readyIntervalRef.current);
+      }
     };
   }, []);
   
-  // Reset timer if initialSeconds changes
+  // External control via CustomEvents on the container
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const toggleHandler = (e: Event) => {
+      const action = (e as CustomEvent<{ action?: 'pause' | 'resume' | 'toggle' }>).detail?.action;
+      if (action === 'pause') {
+        setIsRunning(false);
+      } else if (action === 'resume') {
+        hasStartedRef.current = true;
+        setIsRunning(true);
+      } else {
+        setIsRunning((prev) => {
+          const next = !prev;
+          if (next) hasStartedRef.current = true;
+          return next;
+        });
+      }
+    };
+    const stopHandler = () => {
+      reset();
+    };
+    el.addEventListener('timer:toggle' as any, toggleHandler as any);
+    el.addEventListener('timer:stop' as any, stopHandler as any);
+    return () => {
+      el.removeEventListener('timer:toggle' as any, toggleHandler as any);
+      el.removeEventListener('timer:stop' as any, stopHandler as any);
+    };
+  }, []);
+  
+  // Reset timer if initialSeconds changes before first user start.
   useEffect(() => {
     console.log('⏱️ initialSeconds changed:', { old: seconds, new: initialSeconds });
-    setSeconds(initialSeconds);
+    if (!hasStartedRef.current) {
+      setSeconds(initialSeconds);
+    }
   }, [initialSeconds]);
+
+  // Auto-start with a 5s ready phase if requested
+  useEffect(() => {
+    if (autoStart && !hasStartedRef.current && readyLeft === 0) {
+      setReadyLeft(5);
+      readyIntervalRef.current = window.setInterval(() => {
+        setReadyLeft((prev) => {
+          const next = prev - 1;
+          if (next <= 0) {
+            if (readyIntervalRef.current) clearInterval(readyIntervalRef.current);
+            hasStartedRef.current = true;
+            setIsRunning(true);
+            // Best-effort start beep
+            ensureAudio().then(() => playBeep(60));
+            return 0;
+          } else {
+            // Countdown beeps
+            ensureAudio().then(() => playBeep(Math.min(5, next)));
+            return next;
+          }
+        });
+      }, 1000);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
   
   // Start/stop global workout session when timer runs
   // Also announce "GO!" when auto-starting
@@ -105,25 +170,25 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
         oscillator.start(context.currentTime);
         oscillator.stop(context.currentTime + 0.12);
       } else if (secondsLeft === 30) {
-        // 30 seconds warning: single beep
-        oscillator.frequency.value = 700;
-        oscillator.type = 'sine';
+        // Pause cue: slightly longer/warmer tone
+        oscillator.frequency.value = 640;
+        oscillator.type = 'triangle';
         
-        gainNode.gain.setValueAtTime(0.3, context.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15);
+        gainNode.gain.setValueAtTime(0.35, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.28);
         
         oscillator.start(context.currentTime);
-        oscillator.stop(context.currentTime + 0.15);
+        oscillator.stop(context.currentTime + 0.28);
       } else if (secondsLeft === 60) {
-        // 1 minute warning: single beep
-        oscillator.frequency.value = 650;
-        oscillator.type = 'sine';
+        // Start/Resume cue: fuller, longer tone
+        oscillator.frequency.value = 560;
+        oscillator.type = 'triangle';
         
-        gainNode.gain.setValueAtTime(0.3, context.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15);
+        gainNode.gain.setValueAtTime(0.45, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.4);
         
         oscillator.start(context.currentTime);
-        oscillator.stop(context.currentTime + 0.15);
+        oscillator.stop(context.currentTime + 0.4);
       }
     } catch (error) {
       console.error('Audio playback failed:', error);
@@ -188,10 +253,10 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
               handleComplete();
               return 0;
             }
-            return prev - 1;
+            return Math.max(0, Math.floor(prev - 1));
           } else {
             // Stopwatch mode - count up and announce milestones
-            const newTime = prev + 1;
+            const newTime = Math.floor(prev + 1);
             
             // Announce every minute
             if (newTime % 60 === 0 && newTime > 0) {
@@ -199,7 +264,7 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
               workoutCues.lapComplete(minutes); // e.g., "Lap 1 complete", "Lap 2 complete"
             }
             
-            return newTime;
+            return Math.max(0, newTime);
           }
         });
       }, 1000);
@@ -235,7 +300,10 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
       playBeep(1);
     }
     setIsRunning(false);
-    setSeconds(initialSeconds);
+    // Keep current display value so users can still see their elapsed/remaining time
+    // (Don't reset to initialSeconds here; parent can reset by remounting component)
+    // Notify parent so it can reveal follow-up inputs (e.g., distance entry)
+    onCancel?.();
   };
   
   // Handle page visibility changes (mobile browsers often pause timers when tab is hidden)
@@ -257,9 +325,16 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
   }, [isRunning, seconds]);
 
   const isLastFive = mode === "countdown" && seconds > 0 && seconds <= 5;
+  const progressPct = (() => {
+    if (mode !== "countdown" || !initialSeconds || initialSeconds <= 0) return 0;
+    const elapsed = Math.max(0, initialSeconds - seconds);
+    const pct = (elapsed / initialSeconds) * 100;
+    return Math.min(100, Math.max(0, pct));
+  })();
   
   return (
     <div 
+      ref={containerRef}
       className={`flex flex-col items-center gap-6 w-full transition-all p-6 ${
         isLastFive && isRunning ? 'animate-pulse' : ''
       }`}
@@ -275,6 +350,18 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
           </div>
         )}
       
+      {/* Progress bar (countdown only) */}
+      {mode === "countdown" && initialSeconds > 0 && (
+        <div className="w-full">
+          <div className="w-full h-2 rounded-full bg-secondary/20 overflow-hidden">
+            <div
+              className="h-full bg-green-500 transition-all"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+      )}
+      
       {/* Tap timer to start/pause */}
       <div 
         className={`font-bold tabular-nums cursor-pointer select-none active:scale-95 transition-all text-center ${
@@ -286,22 +373,28 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
           color: isLastFive && isRunning ? '#FFFFFF' : 'hsl(var(--primary))',
         }}
         onClick={() => {
+          if (readyLeft > 0) {
+            // Already in ready phase; ignore taps
+            return;
+          }
           if (!isRunning) {
             // Starting timer - say "GO!" (only on first start)
             if (!hasAnnouncedStart.current) {
               workoutCues.start();
               hasAnnouncedStart.current = true;
             }
+            hasStartedRef.current = true;
             // Unlock and play a short start beep
             ensureAudio().then(() => playBeep(60));
           } else {
             // Pausing timer
             workoutCues.pause();
+            ensureAudio().then(() => playBeep(30));
           }
           setIsRunning(!isRunning);
         }}
       >
-        {formatTime(seconds)}
+        {readyLeft > 0 ? readyLeft : formatTime(seconds)}
       </div>
       
       {/* Add CSS animation for subtle pulse effect - once every 10 seconds */}

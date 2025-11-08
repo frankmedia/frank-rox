@@ -1,6 +1,6 @@
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
 
-platform :ios, '13.0'
+platform :ios, '14.0'
 use_frameworks!
 
 # workaround to avoid Xcode caching of Pods that requires
@@ -11,8 +11,8 @@ install! 'cocoapods', :disable_input_output_paths => true
 def capacitor_pods
   pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
+  pod 'CapacitorCommunityTextToSpeech', :path => '../../node_modules/@capacitor-community/text-to-speech'
   pod 'CapacitorPreferences', :path => '../../node_modules/@capacitor/preferences'
-  pod 'CapgoCapacitorHealth', :path => '../../node_modules/@capgo/capacitor-health'
 end
 
 target 'App' do
@@ -21,5 +21,11 @@ target 'App' do
 end
 
 post_install do |installer|
+  # Keep Capacitor helper, then force all pods to the desired minimum target
   assertDeploymentTarget(installer)
+  installer.pods_project.targets.each do |t|
+    t.build_configurations.each do |c|
+      c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+    end
+  end
 end

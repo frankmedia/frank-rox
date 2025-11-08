@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -186,8 +186,11 @@ export function HIITWorkout({ exercise, onComplete }: HIITWorkoutProps) {
       {/* Content */}
       <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6">
         {/* Exercise Name */}
-        <Card className="p-6 border-4" style={{ borderColor: "#FF00B2" }}>
-          <h2 className="text-3xl font-bold text-center mb-2">{exercise.name}</h2>
+        <Card className="p-6 bg-black/5 border-0">
+          <h2 className="text-3xl font-bold text-center mb-2 flex items-center justify-center gap-2">
+            <Activity className="w-7 h-7 text-primary" />
+            {exercise.name}
+          </h2>
           <p className="text-center text-muted-foreground">
             {totalIntervals} intervals • {workSeconds}s work / {restSeconds}s rest
           </p>
