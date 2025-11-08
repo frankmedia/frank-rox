@@ -35,6 +35,9 @@ import ClientFeedback from "./pages/admin/ClientFeedback";
 import Templates from "./pages/admin/Templates";
 import TemplateEditorV2 from "./pages/admin/TemplateEditorV2";
 import TemplateCloner from "./pages/admin/TemplateCloner";
+import T1 from "./pages/T1";
+import T2 from "./pages/T2";
+import T3 from "./pages/T3";
 
 const queryClient = new QueryClient();
 
@@ -167,6 +170,43 @@ const App = () => (
                   <DataProvider>
                     <AuthenticatedLayout>
                       <ExerciseDetail />
+                    </AuthenticatedLayout>
+                  </DataProvider>
+                </ProtectedRoute>
+              }
+            />
+            {/* Test UI routes */}
+            <Route
+              path="/t1"
+              element={
+                <ProtectedRoute>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <T1 />
+                    </AuthenticatedLayout>
+                  </DataProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/t2"
+              element={
+                <ProtectedRoute>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <T2 />
+                    </AuthenticatedLayout>
+                  </DataProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/t3"
+              element={
+                <ProtectedRoute>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <T3 />
                     </AuthenticatedLayout>
                   </DataProvider>
                 </ProtectedRoute>
