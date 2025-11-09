@@ -20,6 +20,8 @@ import confetti from "canvas-confetti";
 import { Capacitor } from "@capacitor/core";
 import { AppHealth } from "@/services/appHealth";
 
+const AUTO_NAV_FLAG = "rox_auto_open_first_incomplete";
+
 const Today = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
@@ -217,6 +219,8 @@ const Today = () => {
     return "1";
   });
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
+  const [completedReady, setCompletedReady] = useState(false);
+  const autoNavTriggeredRef = useRef(false);
 
   // Refresh exercises when training day changes
   useEffect(() => {
@@ -239,6 +243,7 @@ const Today = () => {
 
   // Load completed exercises from today (user-specific) using hybrid cache
   const loadCompletedExercises = () => {
+    setCompletedReady(false);
     try {
       const userStr = localStorage.getItem("frank_rock_user");
       if (userStr) {
@@ -278,6 +283,7 @@ const Today = () => {
     } catch (e) {
       console.error("Error loading completed exercises:", e);
     }
+    setCompletedReady(true);
   };
 
   useEffect(() => {
@@ -293,6 +299,29 @@ const Today = () => {
     
     return () => window.removeEventListener("focus", handleFocus);
   }, []);
+
+  useEffect(() => {
+    if (autoNavTriggeredRef.current) return;
+    if (!sessionStorage.getItem(AUTO_NAV_FLAG)) return;
+    if (!completedReady) return;
+    if (exercises.length === 0) return;
+
+    const actionableExercises = exercises.filter((exercise) => exercise.type !== "intro");
+    if (actionableExercises.length === 0) {
+      autoNavTriggeredRef.current = true;
+      sessionStorage.removeItem(AUTO_NAV_FLAG);
+      return;
+    }
+
+    const nextExercise = actionableExercises.find((exercise) => !completedExercises.has(exercise.id)) || actionableExercises[0];
+
+    autoNavTriggeredRef.current = true;
+    sessionStorage.removeItem(AUTO_NAV_FLAG);
+
+    if (nextExercise) {
+      navigate(`/exercise/${nextExercise.id}`);
+    }
+  }, [completedReady, exercises, completedExercises, navigate]);
 
   // Auto-update to next incomplete day when current day is completed
   useEffect(() => {

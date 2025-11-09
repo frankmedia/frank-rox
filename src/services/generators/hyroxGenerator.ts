@@ -5,6 +5,53 @@ export type GenerateOptions = {
   trainingDays?: number; // how many training days in the visible period
 };
 
+// Shared helpers (extracted from admin logic)
+async function findRunExerciseId(supabase: SupabaseClient, preferredExact: string[] = ["Run"]) {
+  try {
+    for (const exact of preferredExact) {
+      const q = await supabase.from("exercises").select("id,name").eq("name", exact).limit(1);
+      if (!q.error && q.data && q.data.length > 0) return String(q.data[0].id);
+    }
+    const { data } = await supabase.from("exercises").select("id,name").ilike("name", "%run%").limit(20);
+    if (data && data.length > 0) {
+      const exactRun = data.find((ex: any) => (ex.name || "").trim().toLowerCase() === "run");
+      if (exactRun) return String(exactRun.id);
+      const sanitized = data.filter((ex: any) => {
+        const lower = (ex.name || "").toLowerCase();
+        return (
+          lower.includes("run") &&
+          !lower.includes("interval") &&
+          !lower.includes("tempo") &&
+          !lower.includes("pace") &&
+          !lower.includes("hyrox")
+        );
+      });
+      if (sanitized.length > 0) return String(sanitized[0].id);
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+async function findExerciseIdByTerms(
+  supabase: SupabaseClient,
+  terms: string[],
+  excluded: string[] = []
+): Promise<{ id: string; name: string } | null> {
+  for (const term of terms) {
+    const q = await supabase.from("exercises").select("id,name").ilike("name", `%${term}%`);
+    if (q.data && q.data.length > 0) {
+      const found = q.data.find((ex: any) => {
+        const lower = (ex.name || "").toLowerCase();
+        return !excluded.some((bad) => lower.includes(bad));
+      });
+      if (found) return { id: String(found.id), name: found.name };
+    }
+  }
+  return null;
+}
+
 // Helper to get or create a session for a plan day
 async function getOrCreateSession(supabase: SupabaseClient, planDayId: string, name: string): Promise<string> {
   const existing = await supabase.from("sessions").select("id").eq("plan_day_id", planDayId).limit(1);
@@ -309,6 +356,422 @@ export async function generateHyroxWeek(
       continue;
     }
   }
+}
+
+// Create a single HYROX Simulation day (same logic used by admin)
+export async function createHyroxSimInDay(
+  supabase: SupabaseClient,
+  planDayId: string
+) {
+  // Mark as non-rest with description (will update later as well)
+  await supabase.from("plan_days").update({ is_rest: false }).eq("id", planDayId);
+
+  // Create session with proper order_index
+  const existingSessions = await supabase
+    .from("sessions")
+    .select("order_index")
+    .eq("plan_day_id", planDayId)
+    .order("order_index", { ascending: false })
+    .limit(1);
+  const maxOrder = existingSessions.data?.[0]?.order_index ?? 0;
+  const sIns = await supabase
+    .from("sessions")
+    .insert({ plan_day_id: planDayId, name: "Hyrox Simulation (Open Men)", order_index: maxOrder + 1 })
+    .select("id")
+    .single();
+  if (sIns.error) throw sIns.error;
+  const sessionId = String(sIns.data!.id);
+
+  // Create simulation block with parameters the app expects
+  const bIns = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionId,
+      block_type: "simulation",
+      title: "Hyrox Sim - 8 Stations + Runs",
+      rounds: 1,
+      parameters: {
+        format: "simulation",
+        race_type: "hyrox",
+        sequential: true,
+        track_splits: true,
+      },
+      status: "draft",
+    })
+    .select("id")
+    .single();
+  if (bIns.error) throw bIns.error;
+  const blockId = String(bIns.data!.id);
+
+  // Determine a run exercise (prefer 1km/400m/600m, then any running)
+  let runExerciseId: string | null = null;
+  const runSearchTerms = ["1km Run Hyrox Pace", "1km", "400m Run", "600m Run"];
+  for (const term of runSearchTerms) {
+    const q = await supabase.from("exercises").select("id,name").ilike("name", `%${term}%`).limit(1);
+    if (q.data && q.data.length > 0) {
+      runExerciseId = String(q.data[0].id);
+      break;
+    }
+  }
+  if (!runExerciseId) {
+    const fb = await supabase.from("exercises").select("id").eq("modality", "running").limit(1);
+    if (fb.data && fb.data.length > 0) runExerciseId = String(fb.data[0].id);
+  }
+
+  // HYROX station spec used in admin
+  const hyroxStations: Array<
+    { name: string; searchTerms: string[]; distance?: number; reps?: number; unit?: string; weight?: string }
+  > = [
+    { name: "SkiErg", searchTerms: ["SkiErg"], distance: 1000, unit: "m" },
+    { name: "Sled Push", searchTerms: ["Sled Push"], distance: 50, unit: "m", weight: "152kg" },
+    { name: "Sled Pull", searchTerms: ["Sled Pull"], distance: 50, unit: "m", weight: "103kg" },
+    { name: "Burpee Broad Jump", searchTerms: ["Burpee Broad Jump", "Broad Jump", "Burpees"], distance: 80, unit: "m" },
+    { name: "RowErg", searchTerms: ["RowErg"], distance: 1000, unit: "m" },
+    { name: "Farmer Carry", searchTerms: ["Farmer Carry"], distance: 200, unit: "m", weight: "2x24kg" },
+    { name: "Walking Lunges", searchTerms: ["Walking Lunges", "Lunges"], distance: 80, unit: "m", weight: "20kg" },
+    { name: "Wall Balls", searchTerms: ["Wall Balls", "wall ball"], reps: 100, weight: "6kg" },
+  ];
+
+  let itemOrder = 0;
+  // Add run + station for all 8 stations (no final run after last station)
+  for (let i = 0; i < hyroxStations.length; i++) {
+    if (runExerciseId) {
+      await supabase.from("session_block_items").insert({
+        block_id: blockId,
+        exercise_id: runExerciseId,
+        status: "draft",
+        item_order: itemOrder++,
+        extra: { distance: 1 }, // 1km
+      });
+    }
+
+    // Find station exercise id
+    let stationExerciseId: string | null = null;
+    for (const term of hyroxStations[i].searchTerms) {
+      const q = await supabase.from("exercises").select("id,name").ilike("name", `%${term}%`).limit(1);
+      if (q.data && q.data.length > 0) {
+        stationExerciseId = String(q.data[0].id);
+        break;
+      }
+    }
+    if (stationExerciseId) {
+      const extra: any = {};
+      if (hyroxStations[i].distance !== undefined) extra.distance = hyroxStations[i].distance! / 1000; // store in km
+      if (hyroxStations[i].reps !== undefined) {
+        extra.reps = hyroxStations[i].reps;
+        extra.sets = 1;
+      }
+      if (hyroxStations[i].weight) extra.weight = hyroxStations[i].weight;
+      await supabase.from("session_block_items").insert({
+        block_id: blockId,
+        exercise_id: stationExerciseId,
+        status: "draft",
+        item_order: itemOrder++,
+        extra,
+      });
+    }
+  }
+
+  // Update description
+  await supabase
+    .from("plan_days")
+    .update({ description: "Hyrox Simulation: 8 stations with 1km runs between each (Open Men weights)" })
+    .eq("id", planDayId);
+}
+
+// George (For Time): 1km Run → 5 rounds (20 Squats, 20 Burpees, 20 Sit-ups, 20 Push-ups) → 1km Run
+export async function createGeorgeWorkoutInDay(supabase: SupabaseClient, planDayId: string) {
+  const { data: existingSessions } = await supabase
+    .from("sessions")
+    .select("order_index")
+    .eq("plan_day_id", planDayId)
+    .order("order_index", { ascending: false })
+    .limit(1);
+  const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+  const sIns = await supabase
+    .from("sessions")
+    .insert({ plan_day_id: planDayId, name: "George (For Time)", order_index: maxOrder + 1 })
+    .select("id")
+    .single();
+  if (sIns.error) throw sIns.error;
+  const sessionId = String(sIns.data!.id);
+  const bIns = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionId,
+      block_type: "simulation",
+      title: "George - For Time",
+      rounds: 1,
+      parameters: { format: "simulation", race_type: "george", sequential: true, track_splits: false },
+    })
+    .select("id")
+    .single();
+  if (bIns.error) throw bIns.error;
+  const blockId = String(bIns.data!.id);
+  const runExerciseId = await findRunExerciseId(supabase, ["1km Run", "Run", "1km"]);
+  let itemOrder = 0;
+  if (runExerciseId) {
+    await supabase.from("session_block_items").insert({
+      block_id: blockId,
+      exercise_id: runExerciseId,
+      status: "draft",
+      item_order: itemOrder++,
+      extra: { distance: 1 },
+    });
+  }
+  const george = [
+    { name: "Squats", terms: ["Air Squat", "Bodyweight Squat", "BW Squat"], reps: 20 },
+    { name: "Burpees", terms: ["Burpee", "Burpees"], reps: 20 },
+    { name: "Sit-ups", terms: ["Sit-up", "Situp", "Sit Up", "Abmat Sit-up"], reps: 20 },
+    { name: "Push-ups", terms: ["Push-up", "Pushup", "Push Up", "Standard Push"], reps: 20 },
+  ];
+  const exerciseIds: Record<string, string> = {};
+  for (const ex of george) {
+    const found = await findExerciseIdByTerms(supabase, ex.terms, ["hold", "knee", "assisted", "elevated", "deficit", "trx", "broad"]);
+    if (found) exerciseIds[ex.name] = found.id;
+  }
+  for (let round = 1; round <= 5; round++) {
+    for (const ex of george) {
+      const id = exerciseIds[ex.name];
+      if (!id) continue;
+      await supabase.from("session_block_items").insert({
+        block_id: blockId,
+        exercise_id: id,
+        status: "draft",
+        item_order: itemOrder++,
+        extra: { reps: ex.reps, sets: 1 },
+      });
+    }
+  }
+  if (runExerciseId) {
+    await supabase.from("session_block_items").insert({
+      block_id: blockId,
+      exercise_id: runExerciseId,
+      status: "draft",
+      item_order: itemOrder++,
+      extra: { distance: 1 },
+    });
+  }
+  await supabase
+    .from("plan_days")
+    .update({ description: "George (For Time): 1km Run, 5 Rounds of 20 Squats/20 Burpees/20 Sit-ups/20 Push-ups, 1km Run" })
+    .eq("id", planDayId);
+}
+
+// Domino (For Time): 1km run then 50 Squats, 50 Burpees, 50 Push-ups, 50 Sit-ups with 1km runs between blocks
+export async function createDominoWorkoutInDay(supabase: SupabaseClient, planDayId: string) {
+  const { data: existingSessions } = await supabase
+    .from("sessions")
+    .select("order_index")
+    .eq("plan_day_id", planDayId)
+    .order("order_index", { ascending: false })
+    .limit(1);
+  const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+  const sIns = await supabase
+    .from("sessions")
+    .insert({ plan_day_id: planDayId, name: "Domino (For Time)", order_index: maxOrder + 1 })
+    .select("id")
+    .single();
+  if (sIns.error) throw sIns.error;
+  const sessionId = String(sIns.data!.id);
+  const bIns = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionId,
+      block_type: "simulation",
+      title: "Domino - For Time",
+      rounds: 1,
+      parameters: { format: "simulation", race_type: "domino", sequential: true, track_splits: false },
+    })
+    .select("id")
+    .single();
+  if (bIns.error) throw bIns.error;
+  const blockId = String(bIns.data!.id);
+  const runId = await findRunExerciseId(supabase);
+  const ids: Record<string, string> = {};
+  ids["Squats"] = (await findExerciseIdByTerms(supabase, ["Air Squat", "Bodyweight Squat", "BW Squat"], ["hold", "assisted", "trx"]))?.id || "";
+  ids["Burpees"] = (await findExerciseIdByTerms(supabase, ["Burpee", "Burpees"], []))?.id || "";
+  ids["Push-ups"] = (await findExerciseIdByTerms(supabase, ["Push-up", "Pushup", "Push Up", "Standard Push"], []))?.id || "";
+  ids["Sit-ups"] = (await findExerciseIdByTerms(supabase, ["Sit-up", "Situp", "Sit Up", "Abmat Sit-up"], []))?.id || "";
+  let itemOrder = 0;
+  if (runId) {
+    await supabase.from("session_block_items").insert({
+      block_id: blockId,
+      exercise_id: runId,
+      status: "draft",
+      item_order: itemOrder++,
+      extra: { distance: 1 },
+    });
+  }
+  const seq = ["Squats", "Burpees", "Push-ups", "Sit-ups"];
+  for (let i = 0; i < seq.length; i++) {
+    const exId = ids[seq[i]];
+    if (exId) {
+      await supabase.from("session_block_items").insert({
+        block_id: blockId,
+        exercise_id: exId,
+        status: "draft",
+        item_order: itemOrder++,
+        extra: { reps: 50, sets: 1 },
+      });
+    }
+    if (runId && i < seq.length - 1) {
+      await supabase.from("session_block_items").insert({
+        block_id: blockId,
+        exercise_id: runId,
+        status: "draft",
+        item_order: itemOrder++,
+        extra: { distance: 1 },
+      });
+    }
+  }
+  await supabase
+    .from("plan_days")
+    .update({ description: "Domino: 1km Run between 50 Squats, 50 Burpees, 50 Push-Ups, 50 Sit-Ups (For Time)" })
+    .eq("id", planDayId);
+}
+
+// Combs (For Time): 60 squats → 400m run → 40 squats → 800m run → 20 squats → 1600m run
+export async function createCombsWorkoutInDay(supabase: SupabaseClient, planDayId: string) {
+  const { data: existingSessions } = await supabase
+    .from("sessions")
+    .select("order_index")
+    .eq("plan_day_id", planDayId)
+    .order("order_index", { ascending: false })
+    .limit(1);
+  const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+  const sIns = await supabase
+    .from("sessions")
+    .insert({ plan_day_id: planDayId, name: "Combs (For Time)", order_index: maxOrder + 1 })
+    .select("id")
+    .single();
+  if (sIns.error) throw sIns.error;
+  const sessionId = String(sIns.data!.id);
+  const bIns = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionId,
+      block_type: "simulation",
+      title: "Combs - For Time",
+      rounds: 1,
+      parameters: { format: "simulation", race_type: "combs", sequential: true, track_splits: false },
+    })
+    .select("id")
+    .single();
+  if (bIns.error) throw bIns.error;
+  const blockId = String(bIns.data!.id);
+  const runId = await findRunExerciseId(supabase);
+  const squatId =
+    (await findExerciseIdByTerms(supabase, ["Air Squat", "Bodyweight Squat", "BW Squat"], ["hold", "assisted", "trx"]))?.id || null;
+  const steps: Array<{ kind: "run"; distance: number } | { kind: "exercise"; reps: number }> = [
+    { kind: "exercise", reps: 60 },
+    { kind: "run", distance: 0.4 },
+    { kind: "exercise", reps: 40 },
+    { kind: "run", distance: 0.8 },
+    { kind: "exercise", reps: 20 },
+    { kind: "run", distance: 1.6 },
+  ];
+  let itemOrder = 0;
+  for (const step of steps) {
+    if (step.kind === "exercise" && squatId) {
+      await supabase.from("session_block_items").insert({
+        block_id: blockId,
+        exercise_id: squatId,
+        status: "draft",
+        item_order: itemOrder++,
+        extra: { reps: step.reps, sets: 1 },
+      });
+    }
+    if (step.kind === "run" && runId) {
+      await supabase.from("session_block_items").insert({
+        block_id: blockId,
+        exercise_id: runId,
+        status: "draft",
+        item_order: itemOrder++,
+        extra: { distance: step.distance },
+      });
+    }
+  }
+  await supabase
+    .from("plan_days")
+    .update({ description: "Combs: 60-40-20 Squats with 400m/800m/1600m runs between (For Time)" })
+    .eq("id", planDayId);
+}
+
+// Bennington (For Time): 2km Run, 100 Push-ups, 200 Squats, 2km Run
+export async function createBennigtonWorkoutInDay(supabase: SupabaseClient, planDayId: string) {
+  const { data: existingSessions } = await supabase
+    .from("sessions")
+    .select("order_index")
+    .eq("plan_day_id", planDayId)
+    .order("order_index", { ascending: false })
+    .limit(1);
+  const maxOrder = existingSessions?.[0]?.order_index ?? 0;
+  const sIns = await supabase
+    .from("sessions")
+    .insert({ plan_day_id: planDayId, name: "Bennigton (For Time)", order_index: maxOrder + 1 })
+    .select("id")
+    .single();
+  if (sIns.error) throw sIns.error;
+  const sessionId = String(sIns.data!.id);
+  const bIns = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionId,
+      block_type: "simulation",
+      title: "Bennigton - For Time",
+      rounds: 1,
+      parameters: { format: "simulation", race_type: "bennigton", sequential: true, track_splits: false },
+    })
+    .select("id")
+    .single();
+  if (bIns.error) throw bIns.error;
+  const blockId = String(bIns.data!.id);
+  const runId = await findRunExerciseId(supabase);
+  const pushId = (await findExerciseIdByTerms(supabase, ["Push-ups", "Push-up", "Pushup", "Standard Push"], []))?.id || null;
+  const squatId =
+    (await findExerciseIdByTerms(supabase, ["Air Squat", "Bodyweight Squat", "BW Squat"], ["hold", "assisted", "trx"]))?.id || null;
+  let itemOrder = 0;
+  if (runId) {
+    await supabase.from("session_block_items").insert({
+      block_id: blockId,
+      exercise_id: runId,
+      status: "draft",
+      item_order: itemOrder++,
+      extra: { distance: 2 },
+    });
+  }
+  if (pushId) {
+    await supabase.from("session_block_items").insert({
+      block_id: blockId,
+      exercise_id: pushId,
+      status: "draft",
+      item_order: itemOrder++,
+      extra: { reps: 100, sets: 1 },
+    });
+  }
+  if (squatId) {
+    await supabase.from("session_block_items").insert({
+      block_id: blockId,
+      exercise_id: squatId,
+      status: "draft",
+      item_order: itemOrder++,
+      extra: { reps: 200, sets: 1 },
+    });
+  }
+  if (runId) {
+    await supabase.from("session_block_items").insert({
+      block_id: blockId,
+      exercise_id: runId,
+      status: "draft",
+      item_order: itemOrder++,
+      extra: { distance: 2 },
+    });
+  }
+  await supabase
+    .from("plan_days")
+    .update({ description: "Bennigton: 2km Run, 100 Push-ups, 200 Squats, 2km Run (For Time)" })
+    .eq("id", planDayId);
 }
 
 

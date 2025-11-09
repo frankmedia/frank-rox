@@ -17,6 +17,7 @@ import { AppHealth } from "@/services/appHealth";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { T1Showcase } from "@/components/T1Showcase";
 
 interface ExerciseLog {
   exerciseName: string;
@@ -145,32 +146,37 @@ const getCompletedExerciseCount = (logs: ExerciseLog[], total: number) => {
   return Math.min(unique.size, total);
 };
 
+const AUTO_NAV_FLAG = "rox_auto_open_first_incomplete";
+
 const Overview = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [hydratedFromCache, setHydratedFromCache] = useState(false);
+  const [isFetchingDays, setIsFetchingDays] = useState(false);
   const [daySummaries, setDaySummaries] = useState<DaySummary[]>([]);
   const [maxDay, setMaxDay] = useState(14);
   const [allRaces, setAllRaces] = useState<Array<{ id: number; race_name: string; race_date: string }>>([]);
   const [healthConnected, setHealthConnected] = useState(false);
-const [healthData, setHealthData] = useState<{
-  steps: number;
-  heartRate: { average: number; max: number; min: number } | null;
-  distance: number;
-  calories: number;
-  sleep: number;
-  sleepScore: number;
-  readiness: number;
-  sleepEfficiency: number;
-  recoveryScore: number;
-  sleepStages: {
-    remMinutes: number;
-    deepMinutes: number;
-    lightMinutes: number;
-    awakeMinutes: number;
-    outOfBedMinutes: number;
-  };
-} | null>(null);
+  const [planRefreshToken, setPlanRefreshToken] = useState(0);
+  const [healthData, setHealthData] = useState<{
+    steps: number;
+    heartRate: { average: number; max: number; min: number } | null;
+    distance: number;
+    calories: number;
+    sleep: number;
+    sleepScore: number;
+    readiness: number;
+    sleepEfficiency: number;
+    recoveryScore: number;
+    sleepStages: {
+      remMinutes: number;
+      deepMinutes: number;
+      lightMinutes: number;
+      awakeMinutes: number;
+      outOfBedMinutes: number;
+    };
+  } | null>(null);
 
   const formatMetric = useCallback((value: number | null | undefined, formatter?: (value: number) => string) => {
     if (!value || Number.isNaN(value) || value <= 0) return "--";
@@ -367,12 +373,45 @@ const [healthData, setHealthData] = useState<{
   };
 
   useEffect(() => {
+    if (!authUser?.clientId) {
+      setHydratedFromCache(false);
+      setDaySummaries([]);
+      setLoading(false);
+      return;
+    }
+
+    const cacheKey = `overview_daySummaries_${authUser.clientId}`;
+
+    if (cacheKey && !hydratedFromCache) {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.summaries)) {
+            setDaySummaries(parsed.summaries);
+            if (typeof parsed.max === "number") {
+              setMaxDay(parsed.max);
+            }
+            setLoading(false);
+            setHydratedFromCache(true);
+          }
+        } catch (e) {
+          console.error("Failed to parse overview cache", e);
+        }
+      }
+    }
+
     const loadDays = async () => {
       try {
-        setLoading(true);
+        setIsFetchingDays(true);
+        if (!hydratedFromCache) {
+          setLoading(true);
+          setDaySummaries([]);
+        }
 
         if (!authUser?.clientId) {
           setLoading(false);
+          setIsFetchingDays(false);
           return;
         }
 
@@ -388,12 +427,14 @@ const [healthData, setHealthData] = useState<{
         if (planError) {
           console.error("Error loading plan:", planError);
           setLoading(false);
+          setIsFetchingDays(false);
           return;
         }
 
         if (!plans || plans.length === 0) {
           console.log("No active plan found");
           setLoading(false);
+          setIsFetchingDays(false);
           return;
         }
 
@@ -448,6 +489,7 @@ const [healthData, setHealthData] = useState<{
         if (planDaysError || !planDays || planDays.length === 0) {
           console.error("Error loading plan days:", planDaysError);
           setLoading(false);
+          setIsFetchingDays(false);
           return;
         }
 
@@ -550,6 +592,12 @@ const [healthData, setHealthData] = useState<{
             hasAMRAP,
             exerciseLogs,
           });
+
+          // Stream updates so UI responds faster
+          setDaySummaries(() => [...summaries]);
+          if (!hydratedFromCache && summaries.length === 1) {
+            setLoading(false);
+          }
         }
 
         // Restore original day
@@ -559,15 +607,22 @@ const [healthData, setHealthData] = useState<{
 
         setDaySummaries(summaries);
         console.log(`✅ Loaded ${summaries.length} days with exercises`);
+        if (cacheKey) {
+          localStorage.setItem(cacheKey, JSON.stringify({ summaries, max }));
+        }
+        setLoading(false);
       } catch (error) {
         console.error("Error loading days:", error);
+        if (!hydratedFromCache) {
+          setLoading(false);
+        }
       } finally {
-        setLoading(false);
+        setIsFetchingDays(false);
       }
     };
 
     loadDays();
-  }, [authUser?.clientId]);
+  }, [authUser?.clientId, planRefreshToken]);
 
   // Load all upcoming races
   useEffect(() => {
@@ -736,13 +791,39 @@ const [healthData, setHealthData] = useState<{
       console.log(`📅 Day ${day} selected, updated training day to: ${day}`);
     }
 
+    sessionStorage.setItem(AUTO_NAV_FLAG, "true");
+
     // Navigate to today page
     navigate("/today");
   };
 
+  const handleGoToToday = useCallback(() => {
+    const userStr = localStorage.getItem("frank_rock_user");
+    let targetDay: number | null = null;
+
+    if (daySummaries.length > 0) {
+      const firstIncomplete = daySummaries.find((summary) => !summary.isRestDay && summary.totalExercises > 0 && !summary.isCompleted);
+      const firstActive = daySummaries.find((summary) => !summary.isRestDay && summary.totalExercises > 0);
+      const fallback = daySummaries[0];
+
+      targetDay = (firstIncomplete || firstActive || fallback)?.day ?? null;
+    }
+
+    if (userStr && targetDay !== null) {
+      const user = JSON.parse(userStr);
+      const userKey = `currentTrainingDay_${user.username}`;
+      localStorage.setItem(userKey, String(targetDay));
+    }
+
+    sessionStorage.setItem(AUTO_NAV_FLAG, "true");
+    navigate("/today");
+  }, [daySummaries, navigate]);
+
+  const safeAreaTop = "env(safe-area-inset-top, 0px)";
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background pb-24" style={{ paddingTop: 0 }}>
+      <div className="min-h-screen bg-background pb-24" style={{ paddingTop: safeAreaTop }}>
         <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
           <div className="container max-w-2xl mx-auto px-4 py-4">
             <div 
@@ -765,26 +846,8 @@ const [healthData, setHealthData] = useState<{
   }
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-background pb-24 overflow-y-auto relative" style={{ paddingTop: 0 }}>
-      {/* Pull-to-Refresh Indicator */}
-      <div 
-        className="absolute top-0 left-0 right-0 flex items-center justify-center transition-all z-50 pointer-events-none"
-        style={{
-          height: `${pullDistance}px`,
-          opacity: Math.min(pullDistance / 150, 1),
-        }}
-      >
-        <div className="flex flex-col items-center gap-2 mt-4">
-          {isRefreshing ? (
-            <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#FFCC00' }} />
-          ) : (
-            <Flame className="w-8 h-8" style={{ color: '#FFCC00', transform: `rotate(${pullDistance * 2.4}deg)` }} />
-          )}
-          <span className="text-sm font-semibold text-muted-foreground">
-            {isRefreshing ? "Refreshing..." : "Pull down to refresh"}
-          </span>
-        </div>
-      </div>
+    <div ref={containerRef} className="min-h-screen bg-background pb-24 overflow-y-auto relative" style={{ paddingTop: safeAreaTop }}>
+      {/* Pull-to-Refresh Indicator removed for cleaner UI */}
 
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
@@ -1152,66 +1215,6 @@ const [healthData, setHealthData] = useState<{
 
       {/* Content */}
       <main className="container max-w-2xl mx-auto px-2 sm:px-4 pt-8 pb-14 sm:pt-10 sm:pb-16">
-        {/* Race Schedule */}
-        {allRaces.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Trophy className="w-5 h-5" style={{ color: '#FFCC00' }} />
-              Race Schedule
-            </h3>
-            <div className="space-y-2">
-              {allRaces.map((race, index) => {
-                const days = calculateDaysUntil(race.race_date);
-                const isNext = index === 0;
-                
-                return (
-                  <Card
-                    key={race.id}
-                    className={`${
-                      isNext
-                        ? 'p-4 border-2 bg-[#FFCC00]/10'
-                        : 'p-2 border'
-                    } border-border`}
-                    style={isNext ? { borderColor: '#FFCC00' } : {}}
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <h4 className={`${
-                          isNext ? 'text-xl font-bold' : 'text-sm font-medium'
-                        } text-foreground break-words`}>
-                          {race.race_name}
-                        </h4>
-                        <p className={`${
-                          isNext ? 'text-sm' : 'text-xs'
-                        } text-muted-foreground mt-0.5`}>
-                          {new Date(race.race_date).toLocaleDateString('en-GB', { 
-                            day: 'numeric', 
-                            month: 'long', 
-                            year: 'numeric' 
-                          })}
-                        </p>
-                      </div>
-                      <div className={`flex-shrink-0 text-right ${
-                        isNext ? 'min-w-[80px]' : 'min-w-[60px]'
-                      }`}>
-                        <div className={`${
-                          isNext ? 'text-3xl' : 'text-xl'
-                        } font-bold`} style={{ color: '#FFCC00' }}>
-                          {days}
-                        </div>
-                        <div className={`${
-                          isNext ? 'text-xs' : 'text-[10px]'
-                        } text-muted-foreground uppercase tracking-wider`}>
-                          days
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {healthConnected && readinessInsight && (
           <Card className="mb-4 p-5 bg-background/80 border border-orange-500/30 shadow-lg flex items-center gap-6">
@@ -1245,6 +1248,53 @@ const [healthData, setHealthData] = useState<{
           </div>
         )}
 
+        {/* Race Schedule */}
+        {allRaces.length > 0 && (
+          <div className="mt-10 sm:mt-12 mb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Trophy className="w-5 h-5" style={{ color: '#FFCC00' }} />
+              Race Schedule
+            </h3>
+            <div className="space-y-2">
+              {allRaces.map((race, index) => {
+                const days = calculateDaysUntil(race.race_date);
+                const isNext = index === 0;
+                
+                return (
+                  <Card
+                    key={race.id}
+                    className={`${isNext ? 'p-4 border-2 bg-[#FFCC00]/10' : 'p-2 border'} border-border`}
+                    style={isNext ? { borderColor: '#FFCC00' } : {}}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h4 className={`${isNext ? 'text-xl font-bold' : 'text-sm font-medium'} text-foreground break-words`}>
+                          {race.race_name}
+                        </h4>
+                        <p className={`${isNext ? 'text-sm' : 'text-xs'} text-muted-foreground mt-0.5`}>
+                          {new Date(race.race_date).toLocaleDateString('en-GB', { 
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric' 
+                          })}
+                        </p>
+                      </div>
+                      <div className={`flex-shrink-0 text-right ${isNext ? 'min-w-[80px]' : 'min-w-[60px]'}`}>
+                        <div className={`${isNext ? 'text-3xl' : 'text-xl'} font-bold`} style={{ color: '#FFCC00' }}>
+                          {days}
+                        </div>
+                        <div className={`${isNext ? 'text-xs' : 'text-[10px]'} text-muted-foreground uppercase tracking-wider`}>
+                          days
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Hero Image */}
         <motion.div 
           className="mb-6 rounded-lg overflow-hidden"
@@ -1258,6 +1308,18 @@ const [healthData, setHealthData] = useState<{
             className="w-full h-auto object-cover"
           />
         </motion.div>
+
+        <T1Showcase
+          className="mb-8"
+          onPlanGenerated={() => setPlanRefreshToken((token) => token + 1)}
+        />
+
+        {isFetchingDays && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Updating plan…
+          </div>
+        )}
 
         <div className="grid gap-3">
           {daySummaries.map((summary) => {
@@ -1398,7 +1460,7 @@ const [healthData, setHealthData] = useState<{
         <Button
           variant="outline"
           className="w-full mt-6"
-          onClick={() => navigate("/today")}
+          onClick={handleGoToToday}
         >
           Go to Today's Workout
         </Button>

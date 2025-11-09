@@ -8,7 +8,7 @@ interface ExerciseCardProps {
   exercise: {
     id: string;
     name: string;
-    type: "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap" | "intro" | "amrap_exercise" | "circuit_exercise" | "hiit_exercise" | "rehab";
+    type: "weights" | "cardio" | "bodyweight" | "mobility" | "running" | "hiit" | "circuit" | "amrap" | "intro" | "amrap_exercise" | "circuit_exercise" | "hiit_exercise" | "rehab" | "simulation";
     sets?: number;
     reps?: number;
     suggestedKg?: number;
