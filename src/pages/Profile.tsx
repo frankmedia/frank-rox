@@ -745,7 +745,7 @@ const Profile = () => {
                     name: "Starter",
                     price: "£24.44 / month",
                     color: "#d4d4d8",
-                    pill: "🥉 New to functional fitness",
+                    pill: "🥉 First Competition",
                     features: [
                       "Professionally designed functional‑fitness workouts (Gym Race, ATHX Games, Spartan, HYROX)",
                       "Structured weekly blocks",
@@ -778,27 +778,23 @@ const Profile = () => {
                       "Ongoing performance analytics",
                     ],
                   },
-                ].map((tier) => (
+                ].map((tier) => {
+                  const parts = String(tier.price).split('/');
+                  const amount = parts[0]?.trim() || String(tier.price);
+                  const badgePrice = `${amount}/mo`;
+                  return (
                   <CarouselItem key={tier.name} className="pl-3 basis-[72vw] sm:basis-[320px]">
-                    <Card className="p-5 bg-card/80 border flex flex-col justify-between min-h-[360px]">
+                    <Card className="relative p-5 bg-card/80 border flex flex-col justify-between min-h-[360px]">
                       <div className="space-y-2">
                         <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: tier.color }}>
                           {tier.pill}
                         </span>
                         <div className="flex items-center justify-between">
                           <h3 className="text-2xl font-extrabold">{tier.name}</h3>
-                          <span className="text-xl sm:text-2xl font-extrabold" style={{ color: "#FFCC00" }}>
-                            {(() => {
-                              const parts = String(tier.price).split("/");
-                              const amount = parts[0]?.trim() || String(tier.price);
-                              const period = parts[1]?.trim();
-                              return (
-                                <>
-                                  <span>{amount}</span>
-                                  {period && <span className="ml-1 text-[0.6em] font-bold opacity-90 align-top">/ {period}</span>}
-                                </>
-                              );
-                            })()}
+                        </div>
+                        <div className="absolute top-3 right-3">
+                          <span className="px-2.5 py-1 rounded-full border border-yellow-500/30 bg-yellow-500/15 text-yellow-300 text-xs font-bold">
+                            {badgePrice}
                           </span>
                         </div>
                         <ul className="mt-2 space-y-1">
@@ -815,12 +811,12 @@ const Profile = () => {
                             toast.info(`Selected ${tier.name}. Payment flow coming soon.`);
                           }}
                         >
-                          Select {tier.name}
+                          {`Select ${tier.name} — ${badgePrice}`}
                         </Button>
                       </div>
                     </Card>
                   </CarouselItem>
-                ))}
+                )})}
               </CarouselContent>
             </Carousel>
           </div>
