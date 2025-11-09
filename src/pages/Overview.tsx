@@ -202,6 +202,24 @@ const Overview = () => {
     };
   }, [healthData?.readiness]);
 
+  const sleepInsight = useMemo(() => {
+    const value = healthData?.sleepScore ?? 0;
+    if (!value || Number.isNaN(value) || value <= 0) {
+      return null;
+    }
+
+    const clamped = Math.max(0, Math.min(value, 100));
+    const fraction = clamped / 100;
+    const activeColor = '#a855f7'; // purple-500
+    const trackColor = '#1f2937';
+    const gradient = `conic-gradient(${activeColor} ${fraction * 100}%, ${trackColor} ${fraction * 100}% 100%)`;
+
+    return {
+      value: Math.round(clamped),
+      gradient,
+    };
+  }, [healthData?.sleepScore]);
+
   const quickStats = useMemo(() => {
     if (!healthData) return [] as Array<{ key: string; icon: JSX.Element; value: string }>;
 
@@ -249,13 +267,7 @@ const Overview = () => {
       });
     }
 
-    if (healthData.sleepScore > 0) {
-      stats.push({
-        key: 'sleepScore',
-        icon: <Gauge className="w-4 h-4 text-purple-300 flex-shrink-0" />,
-        value: `Sleep Score ${Math.round(healthData.sleepScore)}`,
-      });
-    }
+    // Sleep Score now shown as its own gauge card above; omit from quick stats row.
 
     return stats;
   }, [healthData, formatMetric]);
@@ -874,11 +886,11 @@ const Overview = () => {
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                  <DialogTitle className="flex items-center gap-2 text-2xl">
                     <Flame className="w-6 h-6" style={{ color: '#FFCC00' }} />
                     Hyrox Training Methodology
                   </DialogTitle>
-                  <DialogDescription className="text-base">
+                  <DialogDescription className="text-base text-white/70">
                     Understanding the science behind your training programme
                   </DialogDescription>
                 </DialogHeader>
@@ -1216,21 +1228,37 @@ const Overview = () => {
       {/* Content */}
       <main className="container max-w-2xl mx-auto px-2 sm:px-4 pt-8 pb-14 sm:pt-10 sm:pb-16">
 
-        {healthConnected && readinessInsight && (
-          <Card className="mb-4 p-5 bg-background/80 border border-orange-500/30 shadow-lg flex items-center gap-6">
-            <div className="relative w-36 h-36 sm:w-40 sm:h-40">
-              <div className="absolute inset-0 rounded-full" style={{ background: readinessInsight.gradient }} />
-              <div className="absolute inset-3 rounded-full bg-background flex items-center justify-center border border-white/5">
-                <span className="text-4xl font-bold text-foreground">{readinessInsight.value}</span>
-              </div>
-            </div>
-            <div className="flex-1">
-              <p className="text-xs uppercase font-semibold text-yellow-300 mb-1">24h Recovery Index</p>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                A science-backed recovery score from your sleep, HRV, and heart rate. Train harder when ready—recover deeper when not.
-              </p>
-            </div>
-          </Card>
+        {healthConnected && (readinessInsight || sleepInsight) && (
+          <div className="mb-4 grid grid-cols-2 gap-3">
+            {readinessInsight && (
+              <Card className="p-5 bg-background/80 border border-orange-500/30 shadow-lg flex flex-col items-center text-center gap-2">
+                <p className="text-xs uppercase font-semibold text-yellow-300">24h Recovery Index</p>
+                <div className="relative w-28 h-28 sm:w-32 sm:h-32 my-1">
+                  <div className="absolute inset-0 rounded-full" style={{ background: readinessInsight.gradient }} />
+                  <div className="absolute inset-2.5 rounded-full bg-background flex items-center justify-center border border-white/5">
+                    <span className="text-3xl font-bold text-foreground">{readinessInsight.value}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Composite of sleep, HRV, and heart rate.
+                </p>
+              </Card>
+            )}
+            {sleepInsight && (
+              <Card className="p-5 bg-background/80 border border-purple-500/30 shadow-lg flex flex-col items-center text-center gap-2">
+                <p className="text-xs uppercase font-semibold text-purple-300">Sleep Score</p>
+                <div className="relative w-28 h-28 sm:w-32 sm:h-32 my-1">
+                  <div className="absolute inset-0 rounded-full" style={{ background: sleepInsight.gradient }} />
+                  <div className="absolute inset-2.5 rounded-full bg-background flex items-center justify-center border border-white/5">
+                    <span className="text-3xl font-bold text-foreground">{sleepInsight.value}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Quality from duration and stages.
+                </p>
+              </Card>
+            )}
+          </div>
         )}
 
         {healthConnected && healthData && quickStats.length > 0 && (

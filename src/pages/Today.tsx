@@ -693,13 +693,13 @@ const Today = () => {
                 <span className="hidden sm:inline">Hyrox Training</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto border border-border">
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                <DialogTitle className="flex items-center gap-2 text-2xl">
                   <Flame className="w-6 h-6" style={{ color: '#FFCC00' }} />
                   Hyrox Training Methodology
                 </DialogTitle>
-                <DialogDescription className="text-base">
+                <DialogDescription className="text-base text-white/70">
                   Understanding the science behind your training programme
                 </DialogDescription>
               </DialogHeader>

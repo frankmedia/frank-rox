@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ExternalLink, LogOut, Mail, User as UserIcon, ClipboardCheck, HeartPulse, Link2, Smartphone, Trophy, Calendar, Save, Loader2, Trash2, Flame, Activity, Heart, Moon, MapPin, Footprints, RefreshCw, Gauge, Info, Ruler } from "lucide-react";
@@ -734,7 +735,97 @@ const Profile = () => {
           </div>
         </Card>
 
-        
+        {/* Membership Plans */}
+        <section className="mb-6">
+          <div className="relative -mx-2 px-2">
+            <Carousel opts={{ align: "center", loop: false }} className="w-full">
+              <CarouselContent className="-ml-3">
+                {[
+                  {
+                    name: "Starter",
+                    price: "£24.44 / month",
+                    color: "#d4d4d8",
+                    pill: "🥉 New to functional fitness",
+                    features: [
+                      "Professionally designed functional‑fitness workouts (Gym Race, ATHX Games, Spartan, HYROX)",
+                      "Structured weekly blocks",
+                      "Progress tracking via app",
+                    ],
+                  },
+                  {
+                    name: "Performance",
+                    price: "£49.99 / month",
+                    color: "#f59e0b",
+                    pill: "🥈 Push harder",
+                    features: [
+                      "Personalised training plan",
+                      "Monthly PT check-ins",
+                      "Refined nutrition guidance",
+                      "Strength & endurance balance",
+                      "Progress review & feedback",
+                    ],
+                  },
+                  {
+                    name: "Pro",
+                    price: "£99.99 / month",
+                    color: "#22c55e",
+                    pill: "🥇 Peak performance",
+                    features: [
+                      "Advanced, data-driven programming",
+                      "Bi‑weekly PT video calls",
+                      "Detailed nutrition & recovery plan",
+                      "Race‑day strategy sessions",
+                      "Ongoing performance analytics",
+                    ],
+                  },
+                ].map((tier) => (
+                  <CarouselItem key={tier.name} className="pl-3 basis-[72vw] sm:basis-[320px]">
+                    <Card className="p-5 bg-card/80 border flex flex-col justify-between min-h-[360px]">
+                      <div className="space-y-2">
+                        <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: tier.color }}>
+                          {tier.pill}
+                        </span>
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-2xl font-extrabold">{tier.name}</h3>
+                          <span className="text-xl sm:text-2xl font-extrabold" style={{ color: "#FFCC00" }}>
+                            {(() => {
+                              const parts = String(tier.price).split("/");
+                              const amount = parts[0]?.trim() || String(tier.price);
+                              const period = parts[1]?.trim();
+                              return (
+                                <>
+                                  <span>{amount}</span>
+                                  {period && <span className="ml-1 text-[0.6em] font-bold opacity-90 align-top">/ {period}</span>}
+                                </>
+                              );
+                            })()}
+                          </span>
+                        </div>
+                        <ul className="mt-2 space-y-1">
+                          {tier.features.map((f) => (
+                            <li key={f} className="text-[15px] sm:text-base text-foreground/80">• {f}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="mt-4">
+                        <Button
+                          className="w-full h-12 text-lg font-bold"
+                          style={{ backgroundColor: "#FFCC00", color: "#000" }}
+                          onClick={() => {
+                            toast.info(`Selected ${tier.name}. Payment flow coming soon.`);
+                          }}
+                        >
+                          Select {tier.name}
+                        </Button>
+                      </div>
+                    </Card>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+          </div>
+        </section>
+
         {/* Connections */}
         <Card className="p-6 mb-4 shadow-lg">
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">Connections</h3>

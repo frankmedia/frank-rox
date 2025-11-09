@@ -418,16 +418,26 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
       </div>
       {/* In-app leave confirmation dialog */}
       <Dialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Leave circuit?</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-white/70">
               You have unsaved circuit progress. Your progress is saved locally, but the circuit is not marked as complete.
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowLeaveConfirm(false)}>Cancel</Button>
-            <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#FFCC00", color: "#000" }}>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Button
+              variant="ghost"
+              className="w-full sm:w-auto border border-white/30 text-white hover:border-[#FFCC00]"
+              onClick={() => setShowLeaveConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => navigate(-1)}
+              className="w-full sm:w-auto"
+              style={{ backgroundColor: "#FFCC00", color: "#000" }}
+            >
               Leave
             </Button>
           </div>

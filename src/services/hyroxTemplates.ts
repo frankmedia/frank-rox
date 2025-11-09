@@ -183,11 +183,16 @@ export async function createHyroxHalfSimulationInDay(
 ): Promise<TemplateResult> {
   const warnings: string[] = [];
 
+  // ½ Hyrox specification: 500m run between stations, station distances/reps halved
   const stations = [
-    { name: "SkiErg 1000m", searchTerms: ["SkiErg", "Ski Erg"], distance: 1000 },
-    { name: "Sled Push", searchTerms: ["Sled Push"], distance: 50, weight: "102kg" },
-    { name: "Burpee Broad Jump", searchTerms: ["Burpee Broad Jump"], distance: 80 },
-    { name: "Row 1000m", searchTerms: ["Row 1000", "Row 1km"], distance: 1000 },
+    { name: "SkiErg 500m", searchTerms: ["SkiErg 500", "SkiErg", "Ski Erg"], distance: 500 },
+    { name: "Sled Push 25m", searchTerms: ["Sled Push", "Hyrox Sled Push"], distance: 25 },
+    { name: "Sled Pull 25m", searchTerms: ["Sled Pull", "Hyrox Sled Pull"], distance: 25 },
+    { name: "Burpee Broad Jump 40m", searchTerms: ["Burpee Broad Jump"], distance: 40 },
+    { name: "Row 500m", searchTerms: ["Row 500", "Row 500m", "Row 0.5km", "Row 1km", "Row 1000"], distance: 500 },
+    { name: "Farmer Carry 100m", searchTerms: ["Farmer Carry Hyrox", "KB Farmer Carry", "Farmer Carry"], distance: 100 },
+    { name: "Sandbag Lunges 50m", searchTerms: ["Sandbag Lunge Hyrox", "Sandbag Lunge"], distance: 50 },
+    { name: "Wall Balls 50", searchTerms: ["Wall Ball"], reps: 50 },
   ];
 
   const sessionId = await createSession(supabase, planDayId, "Hyrox Simulation (Half)");
@@ -195,25 +200,25 @@ export async function createHyroxHalfSimulationInDay(
     supabase,
     sessionId,
     "simulation",
-    "Hyrox Half Sim - 4 Stations",
+    "Hyrox Half Sim - 8 Stations + Runs",
     { format: "simulation", race_type: "hyrox-half", sequential: true, track_splits: true },
     1
   );
 
   const runId =
-    (await findExerciseId(supabase, ["1km Run", "1km"], [])) ??
-    (await findExerciseId(supabase, ["800m Run", "400m Run"], []));
+    (await findExerciseId(supabase, ["500m Run", "0.5km Run"], [])) ??
+    (await findExerciseId(supabase, ["400m Run", "600m Run", "1km Run"], []));
 
   if (!runId) {
-    warnings.push("Could not find a run exercise for the half simulation.");
+    warnings.push("Could not find a 500m run exercise for the half simulation.");
   }
 
   let itemOrder = 0;
   for (const station of stations) {
     if (runId) {
-      await addBlockItem(supabase, blockId, runId, itemOrder++, { distance: 1 });
+      await addBlockItem(supabase, blockId, runId, itemOrder++, { distance: 0.5 });
     }
-    const stationId = await findExerciseId(supabase, station.searchTerms, []);
+    const stationId = await findExerciseId(supabase, station.searchTerms, ["hold", "knees", "assisted", "trx", "deficit"]);
     if (!stationId) {
       warnings.push(`Missing station: ${station.name}`);
       continue;
@@ -221,6 +226,10 @@ export async function createHyroxHalfSimulationInDay(
     const extra: Record<string, any> = {};
     if (station.distance !== undefined) extra.distance = station.distance / 1000;
     if (station.weight) extra.weight = station.weight;
+    if (station.reps !== undefined) {
+      extra.reps = station.reps;
+      extra.sets = 1;
+    }
     await addBlockItem(supabase, blockId, stationId, itemOrder++, extra);
   }
 
@@ -228,7 +237,7 @@ export async function createHyroxHalfSimulationInDay(
     .from("plan_days")
     .update({
       is_rest: false,
-      description: "Hyrox Half Simulation: four key stations with 1km runs between.",
+      description: "Hyrox Half Simulation: 500m runs between 8 halved stations.",
     })
     .eq("id", planDayId);
 

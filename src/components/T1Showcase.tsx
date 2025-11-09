@@ -130,30 +130,56 @@ function inferModality(exerciseName: string): "strength" | "core" | "carry" {
 
 function inferEquipment(exerciseName: string, selectedEquipment: string[]): EquipmentKey {
   const lower = exerciseName.toLowerCase();
+  // 1) Always treat common bodyweight/core movements as bodyweight,
+  //    regardless of available equipment selections.
+  if (
+    lower.includes("plank") ||
+    lower.includes("push-up") ||
+    lower.includes("pushup") ||
+    lower.includes("handstand push-up") ||
+    lower.includes("hspu") ||
+    lower.includes("pull-up") ||
+    lower.includes("chin-up") ||
+    lower.includes("sit-up") ||
+    lower.includes("situp") ||
+    lower.includes("crunch") ||
+    lower.includes("dip") ||
+    lower.includes("burpee") ||
+    lower.includes("air squat") ||
+    lower.includes("box jump") ||
+    lower.includes("jumping jack") ||
+    lower.includes("mountain climber") ||
+    lower.includes("pistol squat") ||
+    lower.includes("l-sit") ||
+    lower.includes("ring") ||
+    lower.includes("leg raise") ||
+    lower.includes("hanging leg") ||
+    lower.includes("hollow") ||
+    lower.includes("v-up") ||
+    lower.includes("bodyweight")
+  ) {
+    return "bodyweight";
+  }
+
+  // 2) Carries
   if (lower.includes("carry") || lower.includes("farmer") || lower.includes("sled")) {
     return "carry";
   }
-  if (lower.includes("barbell") || selectedEquipment.includes("Barbell") || selectedEquipment.includes("Squat Rack")) {
-    return "barbell";
-  }
-  if (lower.includes("dumbbell") || lower.includes("db") || selectedEquipment.includes("Dumbbells")) {
-    return "dumbbell";
-  }
-  if (lower.includes("kettlebell") || lower.includes("kb") || selectedEquipment.includes("Kettlebells")) {
-    return "kettlebell";
-  }
-  if (
-    lower.includes("machine") ||
-    lower.includes("cable") ||
-    selectedEquipment.includes("Machines") ||
-    selectedEquipment.includes("Cables")
-  ) {
-    return "machine";
-  }
-  if (selectedEquipment.includes("Bodyweight")) {
-    return "bodyweight";
-  }
-  return "barbell";
+
+  // 3) Explicit mentions in the exercise name
+  if (lower.includes("barbell")) return "barbell";
+  if (lower.includes("dumbbell") || lower.includes("db")) return "dumbbell";
+  if (lower.includes("kettlebell") || lower.includes("kb")) return "kettlebell";
+  if (lower.includes("machine") || lower.includes("cable")) return "machine";
+
+  // 4) Fallback to user's available equipment only if not clearly bodyweight/core
+  if (selectedEquipment.includes("Barbell") || selectedEquipment.includes("Squat Rack")) return "barbell";
+  if (selectedEquipment.includes("Dumbbells")) return "dumbbell";
+  if (selectedEquipment.includes("Kettlebells")) return "kettlebell";
+  if (selectedEquipment.includes("Machines") || selectedEquipment.includes("Cables")) return "machine";
+
+  // 5) Default
+  return "bodyweight";
 }
 
 const HorizontalRow = ({
@@ -173,13 +199,14 @@ const HorizontalRow = ({
   configureMode?: boolean;
   onPlanGenerated?: () => void | Promise<void>;
 }) => {
-  const hyroxNames = ["HYROX Full Simulation", "George", "Domino", "Combs", "Bennington"];
+  const hyroxNames = ["HYROX Full Simulation", "HYROX Half Simulation", "George", "Domino", "Combs", "Bennington"];
   const items = customItems
     ? customItems
     : hyroxDownloads
     ? hyroxNames
     : Array.from({ length: itemCount }).map((_, i) => `${itemPrefix} ${i + 1}`);
   const hyroxDescriptions: Record<string, string> = {
+    "HYROX Half Simulation": "Half distances: 500m runs and halved station volumes across all 8 stations.",
     George: "For time chipper: 1km run, five rounds of 20 squats, burpees, sit‑ups, push‑ups, then a 1km run.",
     Domino: "For time: 5‑min run, 50 squats, 50 burpees, 5‑min run, 50 push-ups, 5‑min run, 50 sit-ups.",
     Combs: "For time ladder: 60/40/20 squats broken up by 400m, 800m and 1600m runs.",
@@ -412,7 +439,7 @@ const HorizontalRow = ({
                 <Card className="p-5 bg-card/80 border flex flex-col justify-between h-full">
                   <div className="space-y-2">
                     {hyroxDownloads && (
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-yellow-400">Official Workouts</p>
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-yellow-400">Simulation</p>
                     )}
                     <h4 className="text-2xl font-extrabold">{label}</h4>
                     <p className="text-foreground/80">
@@ -487,10 +514,10 @@ const HorizontalRow = ({
 
       {(configureMode || hyroxDownloads) && (
         <Dialog open={openConfig} onOpenChange={setOpenConfig}>
-          <DialogContent className="border w-[92vw] max-w-[92vw] sm:max-w-lg sm:w-full p-4 max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Configure {configTarget}</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-sm text-white/70">
                 {configStep === 1
                   ? "Select your equipment and preferred focus."
                   : configStep === 2
@@ -499,7 +526,7 @@ const HorizontalRow = ({
                   ? "Tell us about you so we can calibrate weights."
                   : configStep === 4
                   ? "Review your personalised prescription."
-                  : "Where do you want to drop this workout?"}
+                  : ""}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -516,8 +543,12 @@ const HorizontalRow = ({
                               <Button
                                 key={eq}
                                 type="button"
-                                variant={selected ? "default" : "outline"}
-                                className={`h-10 px-3 ${selected ? "bg-yellow-500 text-black border-yellow-500" : ""}`}
+                                variant="ghost"
+                                className={`h-10 px-3 border transition-colors ${
+                                  selected
+                                    ? "bg-[#FFCC00] text-black border-[#FFCC00]"
+                                    : "bg-black text-white border-white/30 hover:border-[#FFCC00]"
+                                }`}
                                 onClick={() => toggleEquipment(eq)}
                               >
                                 {eq}
@@ -536,8 +567,12 @@ const HorizontalRow = ({
                                 <Button
                                   key={opt}
                                   type="button"
-                                  variant={selected ? "default" : "outline"}
-                                  className={`h-10 px-3 ${selected ? "bg-yellow-500 text-black border-yellow-500" : ""}`}
+                                  variant="ghost"
+                                  className={`h-10 px-3 border transition-colors ${
+                                    selected
+                                      ? "bg-[#FFCC00] text-black border-[#FFCC00]"
+                                      : "bg-black text-white border-white/30 hover:border-[#FFCC00]"
+                                  }`}
                                   onClick={() => setPreference(opt)}
                                 >
                                   {opt}
@@ -749,7 +784,7 @@ const HorizontalRow = ({
                             {groupOrder
                               .filter((g) => grouped[g]?.length)
                               .map((g) => (
-                                <Card key={g} className="p-3 bg-background/60 border border-border/60">
+                                <Card key={g} className="p-3 bg-black border border-white/20 text-white">
                                   <div className="flex items-center gap-2 mb-2">
                                     {groupIcons[g] ? (
                                       <img src={groupIcons[g]!} alt="" className="w-6 h-6" aria-hidden="true" />
@@ -765,8 +800,12 @@ const HorizontalRow = ({
                                         <Button
                                           key={name}
                                           type="button"
-                                          variant={selected ? "default" : "outline"}
-                                          className={`h-10 px-3 ${selected ? "bg-yellow-500 text-black border-yellow-500" : ""}`}
+                                          variant="ghost"
+                                          className={`h-10 px-3 border transition-colors ${
+                                            selected
+                                              ? "bg-[#FFCC00] text-black border-[#FFCC00]"
+                                              : "bg-black text-white border-white/30 hover:border-[#FFCC00]"
+                                          }`}
                                           onClick={() => {
                                             setSelectedPrimary((prev) =>
                                               prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
@@ -802,40 +841,40 @@ const HorizontalRow = ({
                     <>
                       <div>
                         <p className="text-sm font-semibold mb-2">What best describes you?</p>
-                        <div className="flex flex-wrap gap-2">
-                          {sexOptions.map((option) => {
-                            const selected = selectedSex === option;
-                            return (
-                              <Button
-                                key={option}
-                                type="button"
-                                variant={selected ? "default" : "outline"}
-                                className={`h-10 px-3 ${selected ? "bg-yellow-500 text-black border-yellow-500" : ""}`}
-                                onClick={() => setSelectedSex(option)}
-                              >
-                                {option}
-                              </Button>
-                            );
-                          })}
+                        <div className="flex gap-3">
+                          {sexOptions.map((option) => (
+                            <Button
+                              key={option}
+                              variant="ghost"
+                              className={`flex-1 h-12 border transition-colors ${
+                                selectedSex === option
+                                  ? "bg-[#FFCC00] text-black border-[#FFCC00]"
+                                  : "bg-black text-white border-white/30 hover:border-[#FFCC00]"
+                              }`}
+                              onClick={() => setSelectedSex(option)}
+                            >
+                              {option}
+                            </Button>
+                          ))}
                         </div>
                       </div>
                       <div>
-                        <p className="text-sm font-semibold mb-2">What training level feels right for you?</p>
-                        <div className="flex flex-wrap gap-2">
-                          {levelOptions.map((option) => {
-                            const selected = selectedLevel === option;
-                            return (
-                              <Button
-                                key={option}
-                                type="button"
-                                variant={selected ? "default" : "outline"}
-                                className={`h-10 px-3 ${selected ? "bg-yellow-500 text-black border-yellow-500" : ""}`}
-                                onClick={() => setSelectedLevel(option)}
-                              >
-                                {option}
-                              </Button>
-                            );
-                          })}
+                        <p className="text-sm font-semibold mb-2">Select your experience level</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {levelOptions.map((level) => (
+                            <Button
+                              key={level}
+                              variant="ghost"
+                              className={`h-12 border transition-colors ${
+                                selectedLevel === level
+                                  ? "bg-[#FFCC00] text-black border-[#FFCC00]"
+                                  : "bg-black text-white border-white/30 hover:border-[#FFCC00]"
+                              }`}
+                              onClick={() => setSelectedLevel(level)}
+                            >
+                              {level}
+                            </Button>
+                          ))}
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
                           We'll use this to set smarter suggested weights across barbells, dumbbells, kettlebells, and machines.
@@ -934,10 +973,12 @@ const HorizontalRow = ({
                             return (
                               <Button
                                 key={day.id}
-                                variant={selected ? "default" : "outline"}
-                                className={`h-12 text-sm ${selected ? "bg-green-500 text-black border-green-500" : ""} ${
-                                  disabled ? "opacity-50" : ""
-                                }`}
+                                variant="ghost"
+                                className={`h-12 text-sm border transition-colors ${
+                                  selected
+                                    ? "bg-[#FFCC00] text-black border-[#FFCC00]"
+                                    : "bg-black text-white border-white/30 hover:border-[#FFCC00]"
+                                } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
                                 onClick={() => {
                                   if (disabled) return;
                                   setSelectedPlanDayState({ id: day.id, label: day.label });
@@ -960,7 +1001,11 @@ const HorizontalRow = ({
                       )}
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="outline" onClick={() => setOpenConfig(false)}>
+                      <Button
+                        variant="ghost"
+                        className="border border-white/30 text-white bg-black hover:border-[#FFCC00]"
+                        onClick={() => setOpenConfig(false)}
+                      >
                         Cancel
                       </Button>
                       <Button

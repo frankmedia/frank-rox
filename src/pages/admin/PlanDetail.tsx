@@ -7,6 +7,7 @@ import { DndContext, useDraggable, useDroppable, DragEndEvent } from "@dnd-kit/c
 import { useSortable, SortableContext, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { generateHyroxWeek, clearDay as clearHyroxDay } from "@/services/generators/hyroxGenerator";
+import { createHyroxFullSimulationInDay, createHyroxHalfSimulationInDay } from "@/services/hyroxTemplates";
 import AIAssistant from "@/components/AIAssistant";
 
 interface Plan { id: string; name: string; cycle_days?: number; client_id?: string; }
@@ -3308,6 +3309,42 @@ const PlanDetail = () => {
                 className={`w-8 h-8 rounded-full border ${generating ? 'opacity-40 cursor-not-allowed' : 'hover:bg-yellow-500/10'} ${trainingDaysSel===n ? 'border-yellow-500 text-yellow-400 bg-yellow-500/10' : 'border-zinc-700'}`}
               >{n}</button>
             ))}
+            <div className="ml-2 flex items-center gap-1">
+              <button
+                title="Add HYROX Full Simulation to selected day"
+                className="px-2 py-1 rounded border border-yellow-600 text-yellow-400 hover:bg-yellow-500/10 text-xs"
+                onClick={async ()=>{
+                  if (!selectedDayId) { toast({ description: "Select a day first" }); return; }
+                  try {
+                    setSavingDayId(selectedDayId);
+                    await createHyroxFullSimulationInDay(supabase as any, selectedDayId);
+                    await reloadDayItems(selectedDayId);
+                    toast({ description: "Added HYROX Full Simulation" });
+                  } catch(e:any) {
+                    toast({ description: e?.message || "Failed to add full simulation", variant: "destructive" as any });
+                  } finally {
+                    setSavingDayId(null);
+                  }
+                }}
+              >Full Sim</button>
+              <button
+                title="Add ½ HYROX Simulation to selected day"
+                className="px-2 py-1 rounded border border-purple-600 text-purple-300 hover:bg-purple-500/10 text-xs"
+                onClick={async ()=>{
+                  if (!selectedDayId) { toast({ description: "Select a day first" }); return; }
+                  try {
+                    setSavingDayId(selectedDayId);
+                    await createHyroxHalfSimulationInDay(supabase as any, selectedDayId);
+                    await reloadDayItems(selectedDayId);
+                    toast({ description: "Added HYROX ½ Simulation" });
+                  } catch(e:any) {
+                    toast({ description: e?.message || "Failed to add half simulation", variant: "destructive" as any });
+                  } finally {
+                    setSavingDayId(null);
+                  }
+                }}
+              >½ Sim</button>
+            </div>
           </div>
         </div>
 
