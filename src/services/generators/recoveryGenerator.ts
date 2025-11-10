@@ -208,12 +208,12 @@ async function buildPostWorkoutMobility(
       });
     }
 
-    // World's Greatest Stretch
-    const worldsGreatest = await findExercise(supabase, ["World's Greatest Stretch"]);
-    if (worldsGreatest) {
-      await addItem(supabase, foamBlock.id, worldsGreatest.id, order++, {
+    // Thoracic Rotation (Open Book)
+    const thoracic = await findExercise(supabase, ["Thoracic Rotation (Open Book)"]);
+    if (thoracic) {
+      await addItem(supabase, foamBlock.id, thoracic.id, order++, {
         duration: "90s",
-        notes: "Flow slowly, breathe deeply"
+        notes: "Slow rotations, breathe into stretch"
       });
     }
   }
@@ -263,12 +263,12 @@ async function buildActiveRecovery(
       });
     }
 
-    // World's Greatest Stretch
-    const worldsGreatest = await findExercise(supabase, ["World's Greatest Stretch"]);
-    if (worldsGreatest) {
-      await addItem(supabase, worldsGreatest.id, worldsGreatest.id, order++, {
-        duration: "180s",
-        notes: "Flow slowly, breathe deeply, each side"
+    // Inchworms (dynamic stretch)
+    const inchworms = await findExercise(supabase, ["Inchworms"]);
+    if (inchworms) {
+      await addItem(supabase, yogaBlock.id, inchworms.id, order++, {
+        duration: "120s",
+        notes: "Dynamic stretch for hamstrings and shoulders"
       });
     }
 
