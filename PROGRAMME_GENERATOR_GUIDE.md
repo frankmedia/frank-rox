@@ -433,17 +433,36 @@ The system uses a **priority-based allocation** to fill the athlete's training w
 - Introduce volume/intensity
 - Build movement patterns
 
-### Week 2: Progression (~10% increase)
-- **Long Run**: +1-2km distance
-- **Intervals**: +2 reps
+### Week 2: Progressive Overload
+
+**Strength Training:**
+- **Main Work Sets**: +2 reps (e.g., 4×6 → 4×8)
+- **Warm-up Sets**: NO CHANGE (stay at 10 reps for consistency)
+- **Timed Exercises** (Plank/Holds): +15 seconds (capped at 2 minutes)
+- **Weight**: Same as Week 1 (weight increases in Block 2)
+
+**Running:**
+- **Intervals**: SAME rounds (e.g., 6×500m stays 6×500m)
+  - Progression via RPE: 8/10 effort naturally gets faster
+  - Respects time constraints
+- **Long Run**: +1km distance
 - **Tempo Run**: +1km distance
 - **Hill Repeats**: +2 reps
-- **Strength**: Maintain or slight increase
 
-**Progressive Overload Principle:**
-- Volume increases by ~10%
-- Intensity maintained or slightly increased
-- Recovery sessions remain consistent
+**Cardio/Conditioning:**
+- **Circuits**: +1 round
+- **Erg Workouts**: +100-200m distance
+
+**Recovery/Mobility:**
+- **NO PROGRESSION**: Same duration and exercises
+- Purpose: Recovery, not adaptation
+
+**Progressive Overload Principles:**
+- Systematic, predictable progression
+- Respects time constraints (no +2 intervals)
+- RPE-based for running (8/10 effort improves naturally)
+- Warm-ups don't progress (saves time/energy)
+- Plank capped at 2 min (diminishing returns beyond this)
 
 ---
 
@@ -465,9 +484,9 @@ The system uses a **priority-based allocation** to fill the athlete's training w
 - Sunday: Active Recovery (yoga/stretching)
 
 **Week 2:**
-- Tuesday: Intervals (8×500m @ race pace)
-- Saturday: Long Run (7-10km @ Z2)
-- Sunday: Active Recovery
+- Tuesday: Intervals (6×500m @ race pace) ← SAME rounds, but faster at RPE 8/10
+- Saturday: Long Run (7km @ Z2) ← +1km
+- Sunday: Active Recovery ← NO CHANGE
 
 ---
 
@@ -489,11 +508,11 @@ The system uses a **priority-based allocation** to fill the athlete's training w
 - Saturday: Long Run (8-10km @ Z2)
 
 **Week 2:**
-- Monday: Strength Lower + Easy Engine
-- Tuesday: Intervals (10×500m @ race pace)
-- Thursday: Tempo Run (6-7km @ Z3)
-- Friday: Strength Upper + Short Engine
-- Saturday: Long Run (9-12km @ Z2)
+- Monday: Strength Lower + Easy Engine ← +2 reps on all main sets
+- Tuesday: Intervals (8×500m @ race pace) ← SAME rounds, RPE 8/10
+- Thursday: Tempo Run (6km @ Z3) ← +1km
+- Friday: Strength Upper + Short Engine ← +2 reps on all main sets
+- Saturday: Long Run (9km @ Z2) ← +1km
 
 ---
 
@@ -516,12 +535,12 @@ The system uses a **priority-based allocation** to fill the athlete's training w
 - Saturday: Long Run (10-12km @ Z2)
 
 **Week 2:**
-- Monday: Hill Repeats (8×200m)
-- Tuesday: Intervals (8×1km @ race pace)
-- Wednesday: Recovery Run (3-4km @ Z1)
-- Thursday: Tempo Run (7km @ Z3) + Strength Upper
-- Friday: Race Simulation (4 rounds hybrid)
-- Saturday: Long Run (11-14km @ Z2)
+- Monday: Hill Repeats (8×200m) ← +2 reps
+- Tuesday: Intervals (6×1km @ race pace) ← SAME rounds, RPE 8/10
+- Wednesday: Recovery Run (3-4km @ Z1) ← NO CHANGE
+- Thursday: Tempo Run (7km @ Z3) + Strength Upper ← +1km, +2 reps on strength
+- Friday: Race Simulation (4 rounds hybrid) ← +1 round
+- Saturday: Long Run (11km @ Z2) ← +1km
 
 ---
 
@@ -807,14 +826,205 @@ The system uses a **hybrid storage approach** combining local device storage and
 
 ---
 
-## Questions for Review
+## Advanced Programming Features
 
-1. **Volume Progression**: Is 10% increase appropriate for all athletes?
-2. **Session Spacing**: Should we enforce minimum rest between hard sessions?
-3. **Deload Weeks**: Should we add a deload every 3-4 blocks?
-4. **Taper Protocol**: How should we adjust final 2 weeks before event?
-5. **Beginner Modifications**: Should we cap volume for athletes with low scores?
-6. **Advanced Options**: Should we add double-day sessions for 6-day athletes?
+### Deload Weeks (After 12 Weeks)
+
+**Trigger:** After Block 6 (12 weeks of training)
+
+**Purpose:** 
+- Reduce accumulated fatigue
+- Allow supercompensation
+- Prevent overtraining
+- Maintain fitness while recovering
+
+**Implementation:**
+- Reduce volume by 30%
+- Maintain intensity (same weights/paces)
+- Reduce sets by 1 (e.g., 4 sets → 3 sets)
+- Keep reps the same
+- Reduce running volume by 30% (e.g., 8km → 6km)
+- No max efforts or testing
+
+**Example Deload Week:**
+```
+Normal Week:
+- Goblet Squat 4×8 @ 55kg
+- Long Run 8km
+
+Deload Week:
+- Goblet Squat 3×8 @ 55kg ← One less set
+- Long Run 6km ← 30% less distance
+```
+
+**Note:** Serious long-distance runners may need deloads every 3-5 weeks (PT discretion).
+
+---
+
+### Taper Protocol (2 Weeks Before Event)
+
+**Trigger:** When event date is ≤14 days away
+
+**Purpose:**
+- Reduce fatigue while maintaining fitness
+- Peak for race day
+- Minimize injury risk
+- Sharpen neuromuscular coordination
+
+**Week -2 (14-8 days before event):**
+- Reduce volume by 20%
+- Keep 1-2 quality sessions (short, sharp)
+- Replace high-impact runs with low-impact alternatives (rower, ski erg, bike)
+- Reduce strength sets by 1
+- No new exercises or heavy lifts
+
+**Week -1 (7-1 days before event):**
+- Reduce volume by 40%
+- Only 1 quality session (early in week)
+- Mostly low-impact cardio
+- Light strength maintenance (2×8 instead of 4×8)
+- Short shakeout runs (2-3km) to maintain feel
+- Emphasize sleep and nutrition
+
+**Example Taper:**
+```
+Normal Week:
+- Intervals 6×500m
+- Long Run 8km
+- Strength 4×8
+
+Taper Week -2:
+- Intervals 4×500m ← Reduced volume
+- Long Run 6km (or 30min bike) ← Low impact
+- Strength 3×8 ← One less set
+
+Taper Week -1:
+- Easy 3km shakeout
+- 20min bike Z2
+- Strength 2×8 ← Light maintenance
+```
+
+---
+
+### Session Spacing Logic
+
+**Purpose:** Optimize recovery and prevent overtraining
+
+**Rules:**
+
+1. **After Hard Lower Body (RPE 8+):**
+   - Next day: Upper body OR Zone 2 cardio
+   - Example: Squats Monday → Bench Press Tuesday OR Easy bike
+
+2. **After Hard Upper Body (RPE 8+):**
+   - Next day: Lower body OR Zone 2 cardio
+   - Example: Bench Press Tuesday → Tempo Run Wednesday OR Easy row
+
+3. **After HIIT/Intervals (RPE 9+):**
+   - Next day: Easy/Recovery session
+   - Example: Intervals Tuesday → Recovery Run Wednesday
+
+4. **No Back-to-Back RPE 9+ Days:**
+   - Minimum 48 hours between max effort sessions
+   - Example: HYROX Sim Friday → Rest/Easy Saturday → Strength Sunday
+
+**Intensity Scale (RPE 1-10):**
+- 1-3: Easy (recovery, Zone 2)
+- 4-6: Moderate (tempo, hypertrophy)
+- 7-8: Hard (heavy strength, intervals)
+- 9-10: Very Hard (max effort, race simulation)
+
+---
+
+### Double-Day Sessions (Advanced)
+
+**Eligibility:** Athletes training 4+ days per week
+
+**Purpose:**
+- Increase training volume without adding days
+- Separate strength and cardio for better adaptation
+- Maximize training stimulus
+
+**Implementation:**
+- Maximum 2 double-day sessions per week
+- Separate sessions by 6+ hours
+- AM: Zone 2 cardio (30 min, low intensity)
+- PM: Strength or HIIT (45-60 min)
+
+**Example Double-Day:**
+```
+Tuesday:
+- AM (7:00): 30min Zone 2 bike
+- PM (18:00): Strength Lower + Easy Engine (60min)
+
+Thursday:
+- AM (7:00): 30min Zone 2 row
+- PM (18:00): Intervals 6×500m (45min total)
+```
+
+**Considerations:**
+- Time constraints (biggest limitation)
+- Recovery capacity
+- Nutrition timing (fuel both sessions)
+- Sleep quality (7-9 hours minimum)
+
+---
+
+### PT Check-In Points
+
+**Purpose:** Manual adjustments that algorithms cannot make
+
+**Every 2 Weeks (After Each Block):**
+1. Review athlete feedback
+2. Check completion rates
+3. Assess recovery quality (sleep, soreness, motivation)
+4. Adjust volume/intensity for next block
+5. Modify focus areas if needed
+
+**Red Flags Requiring PT Intervention:**
+- Persistent fatigue (not resolved by rest day)
+- Declining performance (slower times, lower weights)
+- Poor sleep quality (< 6 hours, frequent waking)
+- Elevated resting HR (>10 bpm above baseline)
+- Loss of motivation or enjoyment
+- Recurring injuries or pain
+
+**PT Adjustments (Cannot Be Automated):**
+- Trigger early deload (before 12 weeks)
+- Adjust progression rate based on "feel"
+- Modify exercises for injury management
+- Change focus areas based on life stress
+- Prescribe extra recovery based on subjective fatigue
+
+**Why These Cannot Be Automated:**
+> "Humans and situations have so many variables" - Age, experience, starting point, fatigue accumulation, life stress, sleep quality, nutrition, and "feel on the day" all require human judgment.
+
+**Philosophy:**
+- Use **simple, consistent rules** for 80% of athletes
+- PT adjusts the other 20% in check-ins
+- Better to be **predictable and adjustable** than "smart" and wrong
+
+---
+
+## Questions Answered (PT Feedback)
+
+1. **Volume Progression**: ~~Is 10% increase appropriate for all athletes?~~
+   - **Answer:** NO. Too many variables (age, experience, feel on the day). Use fixed progression rules (+2 reps, +15 sec, +1km) instead. PT adjusts in check-ins.
+
+2. **Session Spacing**: ~~Should we enforce minimum rest between hard sessions?~~
+   - **Answer:** YES. Alternate upper/lower, add Zone 2 after hard sessions, prevent back-to-back RPE 9+ days.
+
+3. **Deload Weeks**: ~~Should we add a deload every 3-4 blocks?~~
+   - **Answer:** YES, after 12 weeks (6 blocks). Reduce volume 30%. Runners may need every 3-5 weeks (PT discretion).
+
+4. **Taper Protocol**: ~~How should we adjust final 2 weeks before event?~~
+   - **Answer:** YES. Week -2: -20% volume. Week -1: -40% volume. Use low-impact machines, keep quality short.
+
+5. **Beginner Modifications**: ~~Should we cap volume for athletes with low scores?~~
+   - **Answer:** NO! Beginners might need MORE volume to progress. Use conservative starting weights, PT adjusts.
+
+6. **Advanced Options**: ~~Should we add double-day sessions for 6-day athletes?~~
+   - **Answer:** YES, for 4+ day athletes. Max 2 double-days/week. AM cardio + PM strength. Time constraints biggest issue.
 
 ---
 
