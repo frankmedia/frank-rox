@@ -1474,7 +1474,7 @@ const Overview = () => {
                   <div className="overflow-hidden rounded-xl border border-zinc-800/60 bg-black/40">
                     {displayExercises.length === 0 ? (
                       <div className="px-3 py-2 text-sm text-muted-foreground">
-                        {summary.isRestDay ? "Enjoy the rest—coach suggests light mobility." : "Exercises will populate soon."}
+                        Recovery
                       </div>
                     ) : (
                       <div className="divide-y divide-zinc-800/70">
