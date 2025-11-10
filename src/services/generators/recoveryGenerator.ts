@@ -147,73 +147,30 @@ async function buildPostWorkoutMobility(
   if (stretchBlock) {
     let order = 0;
 
+    // Cat-Cow (spine mobility)
+    const catCow = await findExercise(supabase, ["Cat-Cow"]);
+    if (catCow) {
+      await addItem(supabase, stretchBlock.id, catCow.id, order++, {
+        duration: "60s",
+        notes: "Slow breathing, gentle spinal movement"
+      });
+    }
+
     // Hip Flexor Stretch
     const hipFlexor = await findExercise(supabase, ["Hip Flexor Stretch"]);
     if (hipFlexor) {
       await addItem(supabase, stretchBlock.id, hipFlexor.id, order++, {
+        duration: "45s",
+        notes: "Each side, posterior pelvic tilt"
+      });
+    }
+
+    // Glute Bridge (activation + stretch)
+    const gluteBridge = await findExercise(supabase, ["Glute Bridge"]);
+    if (gluteBridge) {
+      await addItem(supabase, stretchBlock.id, gluteBridge.id, order++, {
         duration: "60s",
-        notes: "Posterior pelvic tilt, each side"
-      });
-    }
-
-    // Hamstring Stretch
-    const hamstring = await findExercise(supabase, ["Hamstring Stretch"]);
-    if (hamstring) {
-      await addItem(supabase, stretchBlock.id, hamstring.id, order++, {
-        duration: "60s",
-        notes: "Keep back straight, each side"
-      });
-    }
-
-    // Quad Stretch
-    const quad = await findExercise(supabase, ["Quad Stretch"]);
-    if (quad) {
-      await addItem(supabase, stretchBlock.id, quad.id, order++, {
-        duration: "60s",
-        notes: "Pull heel to glute, each side"
-      });
-    }
-
-    // Figure 4 Glute Stretch
-    const glute = await findExercise(supabase, ["Figure of 4 Stretch", "Figure 4 Glute Stretch (Left)"]);
-    if (glute) {
-      await addItem(supabase, stretchBlock.id, glute.id, order++, {
-        duration: "60s",
-        notes: "Seated or lying, each side"
-      });
-    }
-  }
-
-  // Create foam rolling block
-  const { data: foamBlock } = await supabase
-    .from("session_blocks")
-    .insert({
-      session_id: sessionData.id,
-      block_type: "mobility",
-      title: "Foam Rolling",
-      parameters: { format: "standard" },
-    })
-    .select()
-    .single();
-
-  if (foamBlock) {
-    let order = 0;
-
-    // Cat-Cow (spine mobility)
-    const catCow = await findExercise(supabase, ["Cat-Cow"]);
-    if (catCow) {
-      await addItem(supabase, foamBlock.id, catCow.id, order++, {
-        duration: "90s",
-        notes: "Slow breathing, gentle movement"
-      });
-    }
-
-    // Thoracic Rotation (Open Book)
-    const thoracic = await findExercise(supabase, ["Thoracic Rotation (Open Book)"]);
-    if (thoracic) {
-      await addItem(supabase, foamBlock.id, thoracic.id, order++, {
-        duration: "90s",
-        notes: "Slow rotations, breathe into stretch"
+        notes: "10-15 reps, squeeze at top"
       });
     }
   }
@@ -254,48 +211,39 @@ async function buildActiveRecovery(
   if (yogaBlock) {
     let order = 0;
 
-    // Cat-Cow
-    const catCow = await findExercise(supabase, ["Cat-Cow"]);
-    if (catCow) {
-      await addItem(supabase, yogaBlock.id, catCow.id, order++, {
-        duration: "120s",
-        notes: "Slow breathing, gentle spinal flexion/extension"
-      });
-    }
-
-    // Inchworms (dynamic stretch)
+    // Inchworms (dynamic stretch) - NOT in post-workout
     const inchworms = await findExercise(supabase, ["Inchworms"]);
     if (inchworms) {
       await addItem(supabase, yogaBlock.id, inchworms.id, order++, {
         duration: "120s",
-        notes: "Dynamic stretch for hamstrings and shoulders"
+        notes: "6-8 reps, dynamic stretch for hamstrings and shoulders"
       });
     }
 
-    // Thoracic Rotation
+    // Thoracic Rotation - NOT in post-workout
     const thoracic = await findExercise(supabase, ["Thoracic Rotation (Open Book)"]);
     if (thoracic) {
       await addItem(supabase, yogaBlock.id, thoracic.id, order++, {
         duration: "120s",
-        notes: "Slow rotations, breathe into stretch"
+        notes: "10 reps each side, slow rotations, breathe into stretch"
       });
     }
 
-    // Standing Hip CARs
+    // Standing Hip CARs - NOT in post-workout
     const hipCars = await findExercise(supabase, ["Standing Hip CARs"]);
     if (hipCars) {
       await addItem(supabase, yogaBlock.id, hipCars.id, order++, {
         duration: "120s",
-        notes: "Slow joint circles, each side"
+        notes: "5 circles each direction, each leg"
       });
     }
 
-    // 90/90 Hip Switches
+    // 90/90 Hip Switches - NOT in post-workout
     const hipSwitches = await findExercise(supabase, ["90/90 Hip Switches"]);
     if (hipSwitches) {
       await addItem(supabase, yogaBlock.id, hipSwitches.id, order++, {
         duration: "120s",
-        notes: "Control, no pain, breathe"
+        notes: "10-12 switches, control, no pain, breathe"
       });
     }
   }
@@ -315,16 +263,7 @@ async function buildActiveRecovery(
   if (stretchBlock) {
     let order = 0;
 
-    // Hip Flexor Stretch
-    const hipFlexor = await findExercise(supabase, ["Hip Flexor Stretch"]);
-    if (hipFlexor) {
-      await addItem(supabase, stretchBlock.id, hipFlexor.id, order++, {
-        duration: "90s",
-        notes: "Posterior pelvic tilt, deep hold, each side"
-      });
-    }
-
-    // Hamstring Stretch
+    // Hamstring Stretch - NOT in post-workout
     const hamstring = await findExercise(supabase, ["Hamstring Stretch"]);
     if (hamstring) {
       await addItem(supabase, stretchBlock.id, hamstring.id, order++, {
@@ -333,16 +272,25 @@ async function buildActiveRecovery(
       });
     }
 
-    // Cossack Squat
+    // Quad Stretch - NOT in post-workout
+    const quad = await findExercise(supabase, ["Quad Stretch"]);
+    if (quad) {
+      await addItem(supabase, stretchBlock.id, quad.id, order++, {
+        duration: "90s",
+        notes: "Pull heel to glute, keep knees together, each side"
+      });
+    }
+
+    // Cossack Squat - NOT in post-workout
     const cossack = await findExercise(supabase, ["Cossack Squat"]);
     if (cossack) {
       await addItem(supabase, stretchBlock.id, cossack.id, order++, {
         duration: "120s",
-        notes: "Heel down, upright chest, side to side"
+        notes: "8-10 reps, heel down, upright chest, side to side"
       });
     }
 
-    // Figure 4 Glute Stretch
+    // Figure 4 Glute Stretch - NOT in post-workout
     const glute = await findExercise(supabase, ["Figure of 4 Stretch"]);
     if (glute) {
       await addItem(supabase, stretchBlock.id, glute.id, order++, {
@@ -367,30 +315,30 @@ async function buildActiveRecovery(
   if (coreBlock) {
     let order = 0;
 
-    // Bird Dog
+    // Bird Dog - NOT in post-workout
     const birdDog = await findExercise(supabase, ["Bird Dog"]);
     if (birdDog) {
       await addItem(supabase, coreBlock.id, birdDog.id, order++, {
         duration: "90s",
-        notes: "Reach long, hips level, controlled"
+        notes: "10 reps each side, reach long, hips level, controlled"
       });
     }
 
-    // Dead Bug
+    // Dead Bug - NOT in post-workout
     const deadBug = await findExercise(supabase, ["Dead Bug"]);
     if (deadBug) {
       await addItem(supabase, coreBlock.id, deadBug.id, order++, {
         duration: "90s",
-        notes: "Low back gently down, breathe"
+        notes: "10 reps each side, low back gently down, breathe"
       });
     }
 
-    // Glute Bridge
-    const gluteBridge = await findExercise(supabase, ["Glute Bridge"]);
-    if (gluteBridge) {
-      await addItem(supabase, coreBlock.id, gluteBridge.id, order++, {
-        duration: "90s",
-        notes: "Squeeze glutes at top, slow tempo"
+    // Plank - NOT in post-workout (replaces Glute Bridge to avoid duplication)
+    const plank = await findExercise(supabase, ["Plank"]);
+    if (plank) {
+      await addItem(supabase, coreBlock.id, plank.id, order++, {
+        duration: "60s",
+        notes: "Hold strong position, breathe steadily"
       });
     }
   }
