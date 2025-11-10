@@ -386,8 +386,13 @@ const ExerciseDetail = () => {
       data.reps = exercise.reps;
     } else if (exercise.type === "bodyweight") {
       // Bodyweight exercises track sets and reps, but no weight
-      data.sets = exercise.sets;
-      data.reps = exercise.reps;
+      // Timed bodyweight exercises (e.g., Plank) track duration instead
+      if (exercise.durationMin && exercise.durationMin > 0) {
+        data.duration = todaysDuration ? parseFloat(todaysDuration) : exercise.durationMin;
+      } else {
+        data.sets = exercise.sets;
+        data.reps = exercise.reps;
+      }
     }
 
     console.log('💾 Saving exercise data:', {
@@ -1224,14 +1229,30 @@ const ExerciseDetail = () => {
               </>
             ) : (
               <>
-                <p className="text-7xl font-bold text-foreground mb-4">
-                  {exercise.sets} × {exercise.reps}
-                </p>
-                {/* Suggested weight now displayed inline in the header */}
-                {exercise.type === "bodyweight" && (
-                  <p className="text-xl text-muted-foreground font-medium">
-                    Bodyweight Exercise
-                  </p>
+                {/* Timed bodyweight exercises (e.g., Plank) */}
+                {exercise.type === "bodyweight" && exercise.durationMin && exercise.durationMin > 0 ? (
+                  <>
+                    <p className="text-7xl font-bold text-foreground mb-4">
+                      {exercise.durationMin < 1 
+                        ? `${Math.round(exercise.durationMin * 60)} sec` 
+                        : `${Math.round(exercise.durationMin)} min`}
+                    </p>
+                    <p className="text-xl text-muted-foreground font-medium">
+                      Hold Position
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-7xl font-bold text-foreground mb-4">
+                      {exercise.sets} × {exercise.reps}
+                    </p>
+                    {/* Suggested weight now displayed inline in the header */}
+                    {exercise.type === "bodyweight" && (
+                      <p className="text-xl text-muted-foreground font-medium">
+                        Bodyweight Exercise
+                      </p>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -1389,7 +1410,7 @@ const ExerciseDetail = () => {
                     {runStats || todaysDuration ? (
                       <>
                         <RotateCcw className="w-6 h-6 mr-3" />
-                        START RECORDING
+                        mahe this text 200% bonnSTART RECORDING
                       </>
                     ) : (
                       'START RECORDING'
@@ -1769,7 +1790,13 @@ const ExerciseDetail = () => {
           
           {exercise.type === "bodyweight" && (
             <div className="text-center py-4">
-              <p className="text-muted-foreground">Bodyweight exercise - no weight to track</p>
+              {exercise.durationMin && exercise.durationMin > 0 ? (
+                <p className="text-muted-foreground">
+                  Timed hold - use timer above to track your hold time
+                </p>
+              ) : (
+                <p className="text-muted-foreground">Bodyweight exercise - no weight to track</p>
+              )}
             </div>
           )}
 
@@ -1794,7 +1821,10 @@ const ExerciseDetail = () => {
                 />
               </Card>
             ) : (
-              <RestTimer onSelectDuration={handleRestTimer} exerciseType={exercise.type} />
+              <RestTimer 
+                onSelectDuration={handleRestTimer} 
+                exerciseType={exercise.type as "weights" | "cardio" | "bodyweight" | "mobility" | "running"} 
+              />
             )}
           </>
         )}
