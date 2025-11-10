@@ -802,20 +802,36 @@ async function generateCardioWorkout(
     return;
   }
 
-  await supabase
-    .from("session_blocks")
-    .insert({
-      session_id: sessionData.id,
-      block_type: "cardio",
-      title: session.title,
-      rounds: 1,
-      parameters: {
-        detail: session.detail,
-        effort: session.effort,
-      },
+  // Import and use cardio generator
+  try {
+    const { createCardioSession } = await import("./generators/cardioGenerator");
+    
+    // Determine session type based on title
+    let sessionType: "race-simulation" | "engine-work" | "hiit" = "engine-work";
+    
+    if (session.title.toLowerCase().includes("race") || session.title.toLowerCase().includes("simulation")) {
+      sessionType = "race-simulation";
+    } else if (session.title.toLowerCase().includes("hiit") || session.title.toLowerCase().includes("conditioning")) {
+      sessionType = "hiit";
+    } else if (session.title.toLowerCase().includes("engine")) {
+      sessionType = "engine-work";
+    }
+    
+    // Delete the placeholder session we just created
+    await supabase.from("sessions").delete().eq("id", sessionData.id);
+    
+    // Create proper cardio session
+    await createCardioSession(supabase, planDayId, {
+      sessionType,
+      intensity: session.effort as "easy" | "moderate" | "hard",
+      duration: 30,
     });
-
-  warnings.push(`Cardio workout "${session.title}" created as placeholder - full implementation pending`);
+    
+    console.log(`✅ Generated ${sessionType} cardio workout`);
+  } catch (error: any) {
+    console.error("❌ Error generating cardio workout:", error);
+    warnings.push(`Failed to create cardio session: ${error.message}`);
+  }
 }
 
 /**
