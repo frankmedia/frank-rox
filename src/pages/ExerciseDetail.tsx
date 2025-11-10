@@ -1144,8 +1144,9 @@ const ExerciseDetail = () => {
           })()}
         </div>
 
-        {/* Target Card - Hide for cardio/running (shown in timer section), hide when timer running for mobility */}
-        {exercise.type !== "cardio" && exercise.type !== "running" && !(exercise.type === "mobility" && showWorkoutTimer) && (
+        {/* Target Card - Hide for cardio/running (shown in timer section), hide when timer running for mobility/timed bodyweight */}
+        {exercise.type !== "cardio" && exercise.type !== "running" && 
+         !((exercise.type === "mobility" || (exercise.type === "bodyweight" && exercise.durationMin && exercise.durationMin > 0)) && showWorkoutTimer) && (
         <Card className="p-6 bg-secondary/10 border-secondary">
           <div className="text-center">
             {exercise.type === "mobility" ? (
@@ -1260,8 +1261,8 @@ const ExerciseDetail = () => {
         </Card>
         )}
 
-        {/* Workout Countdown Timer (for mobility exercises only - right after Duration card) */}
-        {exercise.type === "mobility" && (
+        {/* Workout Countdown Timer (for mobility and timed bodyweight exercises - right after Duration card) */}
+        {(exercise.type === "mobility" || (exercise.type === "bodyweight" && exercise.durationMin && exercise.durationMin > 0)) && (
           <>
             {showWorkoutTimer ? (
               <>
@@ -1788,15 +1789,9 @@ const ExerciseDetail = () => {
             </>
           )}
           
-          {exercise.type === "bodyweight" && (
+          {exercise.type === "bodyweight" && !(exercise.durationMin && exercise.durationMin > 0) && (
             <div className="text-center py-4">
-              {exercise.durationMin && exercise.durationMin > 0 ? (
-                <p className="text-muted-foreground">
-                  Timed hold - use timer above to track your hold time
-                </p>
-              ) : (
-                <p className="text-muted-foreground">Bodyweight exercise - no weight to track</p>
-              )}
+              <p className="text-muted-foreground">Bodyweight exercise - no weight to track</p>
             </div>
           )}
 
