@@ -835,7 +835,7 @@ async function generateCardioWorkout(
 }
 
 /**
- * Generate a recovery workout (placeholder - to be implemented)
+ * Generate a recovery workout
  */
 async function generateRecoveryWorkout(
   supabase: SupabaseClient,
@@ -843,33 +843,30 @@ async function generateRecoveryWorkout(
   session: SessionBlock,
   warnings: string[]
 ) {
-  const { data: sessionData, error } = await supabase
-    .from("sessions")
-    .insert({
-      plan_day_id: planDayId,
-      name: session.title,
-      order_index: 1,
-    })
-    .select()
-    .single();
-
-  if (error || !sessionData) {
-    warnings.push(`Failed to create recovery session: ${error?.message}`);
-    return;
-  }
-
-  await supabase
-    .from("session_blocks")
-    .insert({
-      session_id: sessionData.id,
-      block_type: "cardio",
-      title: session.title,
-      rounds: 1,
-      parameters: {
-        detail: session.detail,
-        effort: session.effort,
-      },
+  try {
+    // Import recovery generator
+    const { createRecoverySession } = await import("./generators/recoveryGenerator");
+    
+    // Determine session type based on title
+    let sessionType: "post-workout" | "active-recovery" = "active-recovery";
+    
+    if (session.title.toLowerCase().includes("post-workout") || session.title.toLowerCase().includes("post workout")) {
+      sessionType = "post-workout";
+    } else if (session.title.toLowerCase().includes("active") || session.title.toLowerCase().includes("recovery")) {
+      sessionType = "active-recovery";
+    }
+    
+    // Create recovery session
+    await createRecoverySession(supabase, planDayId, {
+      sessionType,
+      duration: sessionType === "post-workout" ? 15 : 30,
     });
+    
+    console.log(`✅ Generated ${sessionType} recovery workout`);
+  } catch (error: any) {
+    console.error("❌ Error generating recovery workout:", error);
+    warnings.push(`Failed to create recovery session: ${error.message}`);
+  }
 }
 
 /**

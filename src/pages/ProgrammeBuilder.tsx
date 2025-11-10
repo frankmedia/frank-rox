@@ -199,17 +199,36 @@ function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
     }
   }
 
-  // 4. Add Recovery/Mobility if there's room
-  if (usedDays.size < trainingDays) {
-    const recoveryDay = getNextDay(["Sunday", "Wednesday"]);
+  // 4. Add Mobility/Recovery sessions
+  // Strategy: Add mobility to EVERY training day (10-15 min post-workout)
+  // Add full recovery days on rest days
+  
+  // Get all training days
+  const trainingDaysUsed = Array.from(usedDays);
+  
+  // Add short mobility to each training day (10-15 min)
+  for (const day of trainingDaysUsed) {
+    sessions.push({
+      day: day, // Same day as main workout
+      type: "recovery",
+      title: "Post-Workout Mobility",
+      detail: "10-15min stretching and foam rolling",
+      effort: "easy"
+    });
+  }
+  
+  // Add full recovery days on rest days (if any)
+  const restDays = availableDays.filter(d => !usedDays.has(d));
+  if (restDays.length > 0) {
+    // Add one full recovery day (prefer Sunday)
+    const recoveryDay = restDays.includes("Sunday") ? "Sunday" : restDays[0];
     sessions.push({
       day: recoveryDay,
       type: "recovery",
       title: "Active Recovery",
-      detail: "20–30min yoga, foam rolling, dynamic stretching",
+      detail: "30min yoga, foam rolling, dynamic stretching",
       effort: "easy"
     });
-    usedDays.add(recoveryDay);
   }
 
   return sessions.sort((a, b) => {
