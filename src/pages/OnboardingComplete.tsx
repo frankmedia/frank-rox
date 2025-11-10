@@ -115,7 +115,7 @@ export default function OnboardingComplete() {
       <main className="flex-1 overflow-y-auto pb-32">
         <div className="container max-w-3xl mx-auto px-4 py-8 space-y-6">
           {/* Success Message */}
-          <Card className="p-6 bg-zinc-900 border-zinc-800 text-center">
+          <Card className="mt-10 p-6 bg-zinc-900 border-zinc-800 text-center">
             <div className="mb-4">
               <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-4">
                 <span className="text-4xl">🎉</span>
@@ -191,8 +191,8 @@ export default function OnboardingComplete() {
       </main>
 
       {/* Fixed Bottom Button */}
-      <div className="fixed left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40">
-        <div className="container max-w-3xl mx-auto px-4 pb-2">
+      <div className="fixed left-0 right-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]">
+        <div className="container max-w-3xl mx-auto px-4 pb-4">
           <div className="bg-background/95 backdrop-blur border border-border rounded-xl p-2 shadow-lg">
             <Button
               className="w-full h-14 text-lg font-bold"

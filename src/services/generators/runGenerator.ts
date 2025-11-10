@@ -576,7 +576,9 @@ async function buildProgressionRun(
   options: RunSessionOptions,
   warnings: string[]
 ) {
-  const distance = options.distance || "7km";
+  // Randomize between 5-6km if no distance provided
+  const randomKm = Math.random() < 0.5 ? 5 : 6;
+  const distance = options.distance || `${randomKm}km`;
   const startPace = options.startPace || "Easy";
   const endPace = options.endPace || "Tempo";
 

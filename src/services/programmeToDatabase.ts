@@ -270,7 +270,7 @@ async function generateRunWorkout(
 }
 
 /**
- * Generate a strength workout (placeholder - to be implemented)
+ * Generate a strength workout
  */
 async function generateStrengthWorkout(
   supabase: SupabaseClient,
@@ -278,9 +278,81 @@ async function generateStrengthWorkout(
   session: SessionBlock,
   warnings: string[]
 ) {
-  // TODO: Implement strength workout generation
-  // For now, create a placeholder session
-  const { data: sessionData, error } = await supabase
+  console.log(`💪 Generating strength workout: ${session.title}`);
+  
+  // Get the plan to find the client_id
+  const { data: planDay } = await supabase
+    .from("plan_days")
+    .select("plan_id, plans!inner(client_id)")
+    .eq("id", planDayId)
+    .single();
+
+  let onboardingData: any = null;
+  let strengthData = {
+    bench5rm: 40, // defaults
+    squat5rm: 60,
+    deadlift5rm: 80,
+    ohp5rm: 20,
+  };
+
+  // Fetch onboarding data if available
+  if (planDay?.plans?.client_id) {
+    const { data: client } = await supabase
+      .from("clients")
+      .select("onboarding_answers")
+      .eq("id", planDay.plans.client_id)
+      .single();
+
+    if (client?.onboarding_answers) {
+      onboardingData = client.onboarding_answers;
+      console.log("📊 Onboarding data:", onboardingData);
+
+      // Parse strength data from onboarding
+      if (onboardingData.bench5rm) {
+        strengthData.bench5rm = parseWeight(onboardingData.bench5rm);
+      }
+      if (onboardingData.squat5rm) {
+        strengthData.squat5rm = parseWeight(onboardingData.squat5rm);
+      }
+      if (onboardingData.deadlift5rm) {
+        strengthData.deadlift5rm = parseWeight(onboardingData.deadlift5rm);
+      }
+      if (onboardingData.ohp5rm) {
+        strengthData.ohp5rm = parseWeight(onboardingData.ohp5rm);
+      }
+    }
+  }
+
+  console.log("💪 Strength data:", strengthData);
+
+  // Helper: Parse weight from onboarding (e.g., "80", "120+", "Not sure")
+  function parseWeight(value: string): number {
+    if (!value || value === "Not sure") return 40; // default moderate weight
+    const num = parseInt(value.replace("+", ""));
+    return isNaN(num) ? 40 : num;
+  }
+
+  // Helper: Calculate 1RM from 5RM
+  function calculate1RM(fiveRM: number): number {
+    return Math.round(fiveRM * 1.15);
+  }
+
+  // Helper: Calculate working weight based on percentage of 1RM
+  function calculateWeight(fiveRM: number, percentage: number): number {
+    const oneRM = calculate1RM(fiveRM);
+    return Math.round(oneRM * percentage);
+  }
+
+  // Determine the split type from the title
+  let split: "lower" | "upper" | "full_body" = "full_body";
+  if (session.title.toLowerCase().includes("lower")) {
+    split = "lower";
+  } else if (session.title.toLowerCase().includes("upper")) {
+    split = "upper";
+  }
+  
+  // Create the session
+  const { data: sessionData, error: sessionError } = await supabase
     .from("sessions")
     .insert({
       plan_day_id: planDayId,
@@ -290,26 +362,390 @@ async function generateStrengthWorkout(
     .select()
     .single();
 
-  if (error || !sessionData) {
-    warnings.push(`Failed to create strength session: ${error?.message}`);
+  if (sessionError || !sessionData) {
+    warnings.push(`Failed to create strength session: ${sessionError?.message}`);
     return;
   }
 
-  // Create a simple block with notes
-  await supabase
-    .from("session_blocks")
-    .insert({
-      session_id: sessionData.id,
-      block_type: "strength",
-      title: session.title,
-      rounds: 1,
-      parameters: {
-        detail: session.detail,
-        effort: session.effort,
-      },
-    });
+  // Helper function to find exercise by name
+  const findExercise = async (names: string[]) => {
+    for (const name of names) {
+      const { data } = await supabase
+        .from("exercises")
+        .select("id, name")
+        .ilike("name", `%${name}%`)
+        .limit(1)
+        .single();
+      if (data) return data;
+    }
+    return null;
+  };
 
-  warnings.push(`Strength workout "${session.title}" created as placeholder - full implementation pending`);
+  try {
+    if (split === "lower") {
+      // LOWER BODY WORKOUT
+      
+      // Warm-up Block
+      const { data: warmupBlock } = await supabase
+        .from("session_blocks")
+        .insert({
+          session_id: sessionData.id,
+          block_type: "strength",
+          title: "Warm-up",
+          rounds: 1,
+          block_order: 0,
+        })
+        .select()
+        .single();
+
+      if (warmupBlock) {
+        // Goblet Squat warm-up
+        const gobletSquat = await findExercise(["Goblet Squat", "Dumbbell Goblet Squat"]);
+        if (gobletSquat) {
+          const warmupWeight = Math.round(strengthData.squat5rm * 0.3); // 30% of 5RM for warm-up
+          await supabase.from("session_block_items").insert({
+            block_id: warmupBlock.id,
+            exercise_id: gobletSquat.id,
+            item_order: 0,
+            sets: 2,
+            reps: 10,
+            weight_kg: warmupWeight,
+            notes: "Warm-up - Light weight, focus on form and depth",
+          });
+        }
+      }
+
+      // Main Work Block
+      const { data: mainBlock } = await supabase
+        .from("session_blocks")
+        .insert({
+          session_id: sessionData.id,
+          block_type: "strength",
+          title: "Lower Body Strength",
+          rounds: 1,
+          block_order: 1,
+        })
+        .select()
+        .single();
+
+      if (mainBlock) {
+        let order = 0;
+        
+        // 1. Back Squat or Squat - STRENGTH (4×6 @ 80%)
+        const squat = await findExercise(["Squat", "Back Squat", "Barbell Squat"]);
+        if (squat) {
+          const squatWeight = calculateWeight(strengthData.squat5rm, 0.80); // 80% of 1RM
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: squat.id,
+            item_order: order++,
+            sets: 4,
+            reps: 6,
+            weight_kg: squatWeight,
+            notes: "Strength - 80% 1RM, focus on depth and explosive drive",
+          });
+        }
+
+        // 2. Bulgarian Split Squat - HYPERTROPHY (3×8 @ 70%)
+        const bulgarian = await findExercise(["Rear-Foot Elevated Split Squat", "Split Squat", "DB Split Squat"]);
+        if (bulgarian) {
+          const bulgarianWeight = calculateWeight(strengthData.squat5rm, 0.70); // 70% of squat 1RM
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: bulgarian.id,
+            item_order: order++,
+            sets: 3,
+            reps: 8,
+            weight_kg: Math.round(bulgarianWeight * 0.6), // Split between legs, so lighter
+            notes: "Hypertrophy - Each leg, controlled 3-0-1 tempo, maintain upright torso",
+          });
+        }
+
+        // 3. Romanian Deadlift - HYPERTROPHY (3×10 @ 70%)
+        const rdl = await findExercise(["Romanian Deadlift", "RDL", "DB Romanian Deadlift"]);
+        if (rdl) {
+          const rdlWeight = calculateWeight(strengthData.deadlift5rm, 0.70); // 70% of deadlift 1RM
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: rdl.id,
+            item_order: order++,
+            sets: 3,
+            reps: 10,
+            weight_kg: rdlWeight,
+            notes: "Hypertrophy - Feel the hamstring stretch, keep bar close to legs",
+          });
+        }
+
+        // 4. Leg Press - ENDURANCE (3×12 @ 65%)
+        const legPress = await findExercise(["Leg Press"]);
+        if (legPress) {
+          const legPressWeight = calculateWeight(strengthData.squat5rm, 0.65); // 65% of squat 1RM
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: legPress.id,
+            item_order: order++,
+            sets: 3,
+            reps: 12,
+            weight_kg: Math.round(legPressWeight * 1.5), // Leg press typically heavier
+            notes: "Endurance - Full ROM, don't lock knees at top",
+          });
+        }
+      }
+
+      // Core Finisher Block
+      const { data: coreBlock } = await supabase
+        .from("session_blocks")
+        .insert({
+          session_id: sessionData.id,
+          block_type: "strength",
+          title: "Core Finisher",
+          rounds: 3,
+          block_order: 2,
+        })
+        .select()
+        .single();
+
+      if (coreBlock) {
+        // Plank
+        const plank = await findExercise(["Plank"]);
+        if (plank) {
+          await supabase.from("session_block_items").insert({
+            block_id: coreBlock.id,
+            exercise_id: plank.id,
+            item_order: 0,
+            duration_sec: 45,
+            notes: "Hold strong position",
+          });
+        }
+      }
+
+    } else if (split === "upper") {
+      // UPPER BODY WORKOUT
+      
+      // Warm-up Block
+      const { data: warmupBlock } = await supabase
+        .from("session_blocks")
+        .insert({
+          session_id: sessionData.id,
+          block_type: "strength",
+          title: "Warm-up",
+          rounds: 1,
+          block_order: 0,
+        })
+        .select()
+        .single();
+
+      if (warmupBlock) {
+        // Band Pull-Aparts
+        const bandPull = await findExercise(["Band Pull-Apart", "Band Pull Apart"]);
+        if (bandPull) {
+          await supabase.from("session_block_items").insert({
+            block_id: warmupBlock.id,
+            exercise_id: bandPull.id,
+            item_order: 0,
+            sets: 2,
+            reps: 15,
+            notes: "Warm-up - Light resistance, scapular retraction focus",
+          });
+        }
+      }
+
+      // Main Work Block
+      const { data: mainBlock } = await supabase
+        .from("session_blocks")
+        .insert({
+          session_id: sessionData.id,
+          block_type: "strength",
+          title: "Upper Body Strength",
+          rounds: 1,
+          block_order: 1,
+        })
+        .select()
+        .single();
+
+      if (mainBlock) {
+        let order = 0;
+        
+        // 1. Bench Press - STRENGTH (4×6 @ 80%)
+        const bench = await findExercise(["Bench Press", "DB Chest Press", "Chest Press"]);
+        if (bench) {
+          const benchWeight = calculateWeight(strengthData.bench5rm, 0.80); // 80% of 1RM
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: bench.id,
+            item_order: order++,
+            sets: 4,
+            reps: 6,
+            weight_kg: benchWeight,
+            notes: "Strength - 80% 1RM, control the descent (3s), explosive press",
+          });
+        }
+
+        // 2. Bent Over Row - STRENGTH/HYPERTROPHY (4×8 @ 75%)
+        const row = await findExercise(["Bent Over Row", "DB Bent-Over Row", "Single Arm DB Row"]);
+        if (row) {
+          const rowWeight = calculateWeight(strengthData.bench5rm, 0.75); // 75% of bench 1RM (approximate)
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: row.id,
+            item_order: order++,
+            sets: 4,
+            reps: 8,
+            weight_kg: Math.round(rowWeight * 0.9), // Rows typically slightly lighter than bench
+            notes: "Strength/Hypertrophy - Pull to ribs, squeeze scapulae at top, 2s hold",
+          });
+        }
+
+        // 3. DB Shoulder Press - HYPERTROPHY (3×10 @ 70%)
+        const shoulderPress = await findExercise(["DB Shoulder Press", "Shoulder Press", "DB Overhead Press"]);
+        if (shoulderPress) {
+          const shoulderWeight = calculateWeight(strengthData.ohp5rm, 0.70); // 70% of OHP 1RM
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: shoulderPress.id,
+            item_order: order++,
+            sets: 3,
+            reps: 10,
+            weight_kg: shoulderWeight,
+            notes: "Hypertrophy - Full ROM, controlled tempo, avoid arching back",
+          });
+        }
+
+        // 4. Lat Pulldown - HYPERTROPHY (3×10 @ 70%)
+        const lat = await findExercise(["Lat Pulldown", "Wide Grip Pull Up", "Pull Up"]);
+        if (lat) {
+          const latWeight = calculateWeight(strengthData.bench5rm, 0.70); // 70% of bench 1RM (approximate)
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: lat.id,
+            item_order: order++,
+            sets: 3,
+            reps: 10,
+            weight_kg: Math.round(latWeight * 0.85), // Lats typically lighter
+            notes: "Hypertrophy - Pull to upper chest, squeeze lats, slow eccentric",
+          });
+        }
+      }
+
+      // Accessory Block
+      const { data: accessoryBlock } = await supabase
+        .from("session_blocks")
+        .insert({
+          session_id: sessionData.id,
+          block_type: "strength",
+          title: "Accessory Work",
+          rounds: 1,
+          block_order: 2,
+        })
+        .select()
+        .single();
+
+      if (accessoryBlock) {
+        let order = 0;
+        
+        // DB Bicep Curl - ENDURANCE (3×12 @ 60%)
+        const curl = await findExercise(["DB Bicep Curl", "Bicep Curl"]);
+        if (curl) {
+          const bicepWeight = calculateWeight(strengthData.bench5rm, 0.60); // 60% of bench 1RM
+          await supabase.from("session_block_items").insert({
+            block_id: accessoryBlock.id,
+            exercise_id: curl.id,
+            item_order: order++,
+            sets: 3,
+            reps: 12,
+            weight_kg: Math.round(bicepWeight * 0.3), // Biceps much lighter than bench
+            notes: "Endurance - Controlled tempo, no swinging, squeeze at top",
+          });
+        }
+
+        // Tricep Extension - ENDURANCE (3×12 @ 60%)
+        const tricep = await findExercise(["Overhead DB Tricep Extension", "DB Skull Crusher", "Tricep Dips"]);
+        if (tricep) {
+          const tricepWeight = calculateWeight(strengthData.bench5rm, 0.60); // 60% of bench 1RM
+          await supabase.from("session_block_items").insert({
+            block_id: accessoryBlock.id,
+            exercise_id: tricep.id,
+            item_order: order++,
+            sets: 3,
+            reps: 12,
+            weight_kg: Math.round(tricepWeight * 0.35), // Triceps lighter than bench
+            notes: "Endurance - Elbows stay in position, full extension, control the weight",
+          });
+        }
+      }
+
+    } else {
+      // FULL BODY WORKOUT
+      const { data: mainBlock } = await supabase
+        .from("session_blocks")
+        .insert({
+          session_id: sessionData.id,
+          block_type: "strength",
+          title: "Full Body Strength",
+          rounds: 1,
+          block_order: 0,
+        })
+        .select()
+        .single();
+
+      if (mainBlock) {
+        let order = 0;
+        
+        // Squat
+        const squat = await findExercise(["Squat", "Goblet Squat"]);
+        if (squat) {
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: squat.id,
+            item_order: order++,
+            sets: 3,
+            reps: 10,
+          });
+        }
+
+        // Bench or Press
+        const press = await findExercise(["Bench Press", "DB Chest Press"]);
+        if (press) {
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: press.id,
+            item_order: order++,
+            sets: 3,
+            reps: 10,
+          });
+        }
+
+        // Deadlift or RDL
+        const deadlift = await findExercise(["Deadlift", "RDL"]);
+        if (deadlift) {
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: deadlift.id,
+            item_order: order++,
+            sets: 3,
+            reps: 8,
+          });
+        }
+
+        // Row
+        const row = await findExercise(["Bent Over Row", "DB Row"]);
+        if (row) {
+          await supabase.from("session_block_items").insert({
+            block_id: mainBlock.id,
+            exercise_id: row.id,
+            item_order: order++,
+            sets: 3,
+            reps: 10,
+          });
+        }
+      }
+    }
+
+    console.log(`✅ Strength workout "${session.title}" generated successfully`);
+  } catch (error: any) {
+    console.error(`❌ Error generating strength exercises:`, error);
+    warnings.push(`Error generating strength exercises: ${error.message}`);
+  }
 }
 
 /**

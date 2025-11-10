@@ -283,8 +283,8 @@ const ProgramCustomize = () => {
           )}
         </Card>
       </main>
-      <div className="fixed left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40">
-        <div className="container max-w-2xl mx-auto px-4 pb-2">
+      <div className="fixed left-0 right-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]">
+        <div className="container max-w-2xl mx-auto px-4 pb-4">
           <div className="bg-background/95 backdrop-blur border border-border rounded-xl p-2 shadow-lg">
             <div className="flex items-center gap-2">
               <Button

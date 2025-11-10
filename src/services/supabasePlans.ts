@@ -94,6 +94,7 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
             item_order,
             sets,
             reps,
+            weight_kg,
             duration_sec,
             distance_m,
             rest_sec,
@@ -344,17 +345,27 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                 targetDistanceKm = extra.distance;
               }
 
+              // Prioritize programmatic notes from session_block_items over default exercise notes
+              const finalNotes = item.notes || ex.notes || undefined;
+              if (item.notes && ex.notes && item.notes !== ex.notes) {
+                console.log(`📝 Using programmatic notes for ${ex.name}:`, {
+                  programmatic: item.notes.substring(0, 50) + '...',
+                  default: ex.notes.substring(0, 50) + '...',
+                  source: 'session_block_items (OVERRIDE)'
+                });
+              }
+
               const exerciseObj = {
                 id: String(item.id), // USE session_block_items.id, NOT exercises.id!
                 name: extra.custom_name || ex.name, // Use custom name if set, otherwise use base exercise name
                 type: exerciseType,
-                notes: item.notes || ex.notes || undefined,
+                notes: finalNotes, // Programmatic notes ALWAYS override default notes
                 mediaUrl: ex.media?.youtube || ex.media?.video || undefined,
                 
                 // Extract workout parameters - prefer DB columns over extra
                 sets: item.sets || extra.sets || undefined,
                 reps: item.reps || extra.reps || undefined,
-                suggestedKg: parseWeight(extra.weight), // Parse weight to handle "kg" suffix
+                suggestedKg: item.weight_kg || parseWeight(extra.weight), // Prioritize weight_kg column over extra
                 durationMin,
                 targetDistanceKm,
                 

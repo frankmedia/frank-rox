@@ -146,7 +146,7 @@ const steps = [
       <div className="space-y-5">
         <Card className="bg-zinc-900 border border-zinc-800 p-4 sm:p-5">
           <Label className="text-white text-xl font-bold">Bench Press (best recent 5 reps)</Label>
-          <div className="grid grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-4 gap-2 mt-2">
             {["20","40","60","80","100","120+","Not sure"].map(v=>(
               <Button
                 key={`bench-${v}`}
@@ -161,7 +161,7 @@ const steps = [
         </Card>
         <Card className="bg-zinc-900 border border-zinc-800 p-4 sm:p-5">
           <Label className="text-white text-xl font-bold">Back Squat (best recent 5 reps)</Label>
-          <div className="grid grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-4 gap-2 mt-2">
             {["20","40","60","80","100","120","120+","Not sure"].map(v=>(
               <Button
                 key={`squat-${v}`}
@@ -176,7 +176,7 @@ const steps = [
         </Card>
         <Card className="bg-zinc-900 border border-zinc-800 p-4 sm:p-5">
           <Label className="text-white text-xl font-bold">Deadlift (best recent 5 reps)</Label>
-          <div className="grid grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-4 gap-2 mt-2">
             {["20","40","60","80","100","120","140+","Not sure"].map(v=>(
               <Button
                 key={`dead-${v}`}
@@ -191,7 +191,7 @@ const steps = [
         </Card>
         <Card className="bg-zinc-900 border border-zinc-800 p-4 sm:p-5">
           <Label className="text-white text-xl font-bold">Overhead Press (best recent 5 reps)</Label>
-          <div className="grid grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-4 gap-2 mt-2">
             {["5","10","20","30","40","50","60+","Not sure"].map(v=>(
               <Button
                 key={`ohp-${v}`}
@@ -260,63 +260,31 @@ const steps = [
         <div>
           <Label className="text-white text-xl font-bold">Best 5km time</Label>
           <div className="grid grid-cols-2 gap-2 mt-2">
-            <>
-              <Input
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder="mm"
-                value={a.best5k_mm ?? ""}
-                onChange={(e) => {
-                  const digits = (e.target.value || "").replace(/\D/g, "").slice(0, 2);
-                  set("best5k_mm", digits);
-                }}
-                className="h-12 text-lg"
-              />
-              <Input
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder="ss"
-                value={a.best5k_ss ?? ""}
-                onChange={(e) => {
-                  const digits = (e.target.value || "").replace(/\D/g, "").slice(0, 2);
-                  set("best5k_ss", digits);
-                }}
-                className="h-12 text-lg"
-              />
-            </>
+            {["<20min", "20-25min", "25-30min", "30min+"].map(v => (
+              <Button
+                key={`5k-${v}`}
+                variant="ghost"
+                className={`w-full h-12 text-lg border ${a.best5k_mm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                onClick={()=>set("best5k_mm", v)}
+              >
+                {v}
+              </Button>
+            ))}
           </div>
         </div>
         <div>
           <Label className="text-white text-xl font-bold">Best 10km time</Label>
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            <>
-              <Input
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder="hh"
-                value={a.best10k_hh ?? ""}
-                onChange={(e) => {
-                  const digits = (e.target.value || "").replace(/\D/g, "").slice(0, 2);
-                  set("best10k_hh", digits);
-                }}
-                className="h-12 text-lg"
-              />
-              <Input
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder="mm"
-                value={a.best10k_mm ?? ""}
-                onChange={(e) => {
-                  const digits = (e.target.value || "").replace(/\D/g, "").slice(0, 2);
-                  set("best10k_mm", digits);
-                }}
-                className="h-12 text-lg"
-              />
-            </>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            {["<45min", "45-50min", "50-55min", "55-60min", "60min+"].map(v => (
+              <Button
+                key={`10k-${v}`}
+                variant="ghost"
+                className={`w-full h-12 text-lg border ${a.best10k_hh===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                onClick={()=>set("best10k_hh", v)}
+              >
+                {v}
+              </Button>
+            ))}
           </div>
         </div>
         {/* Removed 'Where do you usually run?' as not used in the algorithm */}
@@ -353,9 +321,9 @@ const steps = [
             </div>
           </div>
           <div>
-            <Label className="text-white text-xl font-bold">Which modalities do you use most often?</Label>
+            <Label className="text-white text-xl font-bold">Which workout do you do most often?</Label>
             <div className="grid grid-cols-2 gap-2 mt-2">
-              {["RowErg","SkiErg","Assault Bike","Circuits","Other"].map(mod => {
+              {["RowErg","SkiErg","Assault Bike","Circuits"].map(mod => {
                 const active = (a.cardioModalities ?? []).includes(mod);
                 return (
                   <Button
@@ -568,16 +536,16 @@ const Onboarding = () => {
 
       {/* Centered content area; page is frozen (no global scrolling) */}
       <main className="container max-w-2xl mx-auto px-4 pt-12 pb-40 h-[calc(100vh-4rem)] overflow-y-auto">
-        <Card className="p-5 bg-zinc-900 border-zinc-800">
+        <Card className="mt-10 p-5 bg-zinc-900 border-zinc-800">
           <div className="text-white space-y-4">
             {typeof step.render === "function" ? step.render(answers, set) : step.render}
           </div>
         </Card>
       </main>
 
-      {/* Fixed action bar above the global bottom nav */}
-      <div className="fixed left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40">
-        <div className="container max-w-2xl mx-auto px-4 pb-2">
+      {/* Fixed action bar at the bottom of the screen */}
+      <div className="fixed left-0 right-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]">
+        <div className="container max-w-2xl mx-auto px-4 pb-4">
           <div className="bg-background/95 backdrop-blur border border-border rounded-xl p-2 shadow-lg">
             <div className="flex items-center gap-2">
               <Button variant="ghost" className="basis-1/3 h-14 text-lg font-bold border border-white/20 text-white" onClick={prev} disabled={idx===0}>
