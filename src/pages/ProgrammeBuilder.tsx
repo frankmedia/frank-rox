@@ -29,6 +29,11 @@ type UserPreferences = {
   focusAreas: string[];
   hasHills: boolean;
   focus: "base" | "build" | "race-prep";
+  blockNumber?: number;
+  weeksToEvent?: number | null;
+  isDeload?: boolean;
+  isTaper?: boolean;
+  taperWeek?: 1 | 2; // Week -2 or Week -1
 };
 
 function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
@@ -37,6 +42,29 @@ function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
   const runs = prefs.runSessionsPerWeek || 2;
   const focus = prefs.focus || "base";
   const focusAreas = new Set(prefs.focusAreas.map(f => f.toLowerCase()));
+  
+  // Volume modifiers for deload/taper
+  let volumeModifier = 1.0; // Normal = 100%
+  let useLowImpact = false;
+  
+  // DELOAD LOGIC: Block 6 (after 12 weeks)
+  if (prefs.isDeload) {
+    volumeModifier = 0.7; // -30% volume
+    console.log("🔄 DELOAD WEEK: Reducing volume by 30%");
+  }
+  
+  // TAPER LOGIC: 2 weeks before event
+  if (prefs.isTaper && prefs.taperWeek) {
+    if (prefs.taperWeek === 1) {
+      volumeModifier = 0.8; // Week -2: -20% volume
+      useLowImpact = true;
+      console.log("🏁 TAPER WEEK -2: Reducing volume by 20%, using low-impact alternatives");
+    } else if (prefs.taperWeek === 2) {
+      volumeModifier = 0.6; // Week -1: -40% volume
+      useLowImpact = true;
+      console.log("🏁 TAPER WEEK -1: Reducing volume by 40%, using low-impact alternatives");
+    }
+  }
   
   // Available days for training
   const availableDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -57,40 +85,67 @@ function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
   if (focusAreas.has("running") || runs > 0) {
     // Long run (always on Saturday if available)
     const longRunDay = getNextDay(["Saturday", "Sunday"]);
+    
+    // Calculate adjusted distance based on volume modifier
+    let baseDistance = focus === "base" ? 7 : focus === "build" ? 9 : 11; // km
+    let adjustedDistance = Math.round(baseDistance * volumeModifier);
+    
+    // For taper, suggest low-impact alternative
+    const runTitle = useLowImpact ? "Long Cardio (Low Impact)" : "Long Run";
+    const runDetail = useLowImpact 
+      ? `${adjustedDistance}km equivalent on bike or rower (low impact for taper)`
+      : "Build aerobic base with steady-state running";
+    
     sessions.push({
       day: longRunDay,
-      type: "run",
-      title: "Long Run",
-      distance: focus === "base" ? "6–8km" : focus === "build" ? "8–10km" : "10–12km",
+      type: useLowImpact ? "cardio" : "run",
+      title: runTitle,
+      distance: `${adjustedDistance}km`,
       pace: "Zone 2 (conversational)",
       effort: "easy",
-      detail: "Build aerobic base with steady-state running"
+      detail: runDetail
     });
     usedDays.add(longRunDay);
 
     // Intervals
     if (runs >= 2) {
       const intervalDay = getNextDay(["Tuesday", "Wednesday"]);
+      
+      // Reduce interval volume for deload/taper
+      let baseReps = focus === "race-prep" ? 6 : focus === "build" ? 8 : 6;
+      let adjustedReps = Math.max(2, Math.round(baseReps * volumeModifier)); // Min 2 reps
+      let repDistance = focus === "race-prep" ? "1km" : "500m";
+      
+      // For taper week -1, make it very short
+      if (prefs.isTaper && prefs.taperWeek === 2) {
+        adjustedReps = Math.min(adjustedReps, 3); // Max 3 reps in week -1
+      }
+      
       sessions.push({
         day: intervalDay,
         type: "run",
         title: "Intervals",
-        distance: focus === "race-prep" ? "6×1km" : focus === "build" ? "8×500m" : "6×500m",
+        distance: `${adjustedReps}×${repDistance}`,
         pace: "Race pace",
-        effort: "hard",
-        detail: "90sec rest between reps, focus on maintaining pace"
+        effort: prefs.isTaper ? "moderate" : "hard",
+        detail: prefs.isTaper 
+          ? "Short, sharp quality session - keep it controlled"
+          : "90sec rest between reps, focus on maintaining pace"
       });
       usedDays.add(intervalDay);
     }
 
     // Tempo run
-    if (runs >= 3) {
+    if (runs >= 3 && !prefs.isTaper) { // Skip tempo in taper
       const tempoDay = getNextDay(["Thursday", "Friday"]);
+      let baseTempoDistance = focus === "build" ? 5.5 : 4;
+      let adjustedTempoDistance = Math.round(baseTempoDistance * volumeModifier);
+      
       sessions.push({
         day: tempoDay,
         type: "run",
         title: "Tempo Run",
-        distance: focus === "build" ? "5–6km" : "4km",
+        distance: `${adjustedTempoDistance}km`,
         pace: "Steady (Zone 3)",
         effort: "moderate",
         detail: "Continuous run at comfortably hard pace"
@@ -298,12 +353,38 @@ export default function ProgrammeBuilder() {
       else if (weeksToEvent <= 8) focus = "build";
     }
 
+    // Get current block number from localStorage (or default to 1)
+    const lastProgramme = localStorage.getItem("current_programme");
+    let blockNumber = 1;
+    if (lastProgramme) {
+      try {
+        const parsed = JSON.parse(lastProgramme);
+        blockNumber = (parsed.blockNumber || 0) + 1; // Increment block number
+      } catch (e) {
+        console.warn("Could not parse last programme, defaulting to block 1");
+      }
+    }
+
+    // Determine if this is a DELOAD block (Block 6, 12, 18, etc.)
+    const isDeload = blockNumber % 6 === 0;
+
+    // Determine if this is a TAPER block (2 weeks before event)
+    const isTaper = weeksToEvent !== null && weeksToEvent <= 2;
+    const taperWeek = weeksToEvent === 1 ? 2 : weeksToEvent === 2 ? 1 : undefined;
+
+    console.log(`📊 Block ${blockNumber}: ${isDeload ? 'DELOAD' : isTaper ? `TAPER (Week -${taperWeek})` : 'NORMAL'}`);
+
     const userPrefs: UserPreferences = {
       trainingDaysPerWeek: prefs.trainingDaysPerWeek || 5,
       runSessionsPerWeek: prefs.runSessionsPerWeek || 2,
       focusAreas: prefs.focusAreas || ["Running"],
       hasHills: prefs.hillsOrSprints === "Yes",
-      focus
+      focus,
+      blockNumber,
+      weeksToEvent,
+      isDeload,
+      isTaper,
+      taperWeek: taperWeek as 1 | 2 | undefined
     };
 
     // Generate full personalized programme
@@ -314,8 +395,10 @@ export default function ProgrammeBuilder() {
       sessions: allSessions,
       preferences: userPrefs,
       generatedAt: new Date().toISOString(),
-      blockNumber: 1,
-      focus
+      blockNumber,
+      focus,
+      isDeload,
+      isTaper
     };
     localStorage.setItem("current_programme", JSON.stringify(programme));
 
