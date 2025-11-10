@@ -910,13 +910,20 @@ async function duplicateWeekWithProgression(
       for (const block of session.session_blocks || []) {
         const progressedParams = applyProgression(block.parameters, block.block_type);
 
+        // PROGRESSIVE OVERLOAD: +2 rounds for interval circuits
+        let progressedRounds = block.rounds;
+        if (block.parameters?.format === "circuit" && block.rounds) {
+          progressedRounds = block.rounds + 2; // +2 intervals per week
+          console.log(`📈 Interval progression: ${block.rounds} → ${progressedRounds} rounds`);
+        }
+
         const { data: newBlock, error: blockError } = await supabase
           .from("session_blocks")
           .insert({
             session_id: newSession.id,
             block_type: block.block_type,
             title: block.title,
-            rounds: block.rounds,
+            rounds: progressedRounds, // Use progressed rounds
             parameters: progressedParams,
           })
           .select()
@@ -937,19 +944,25 @@ async function duplicateWeekWithProgression(
           let progressedSets = item.sets;
           let progressedReps = item.reps;
 
+          // Check if this is a warm-up block (skip progression for warm-ups)
+          const isWarmup = block.title?.toLowerCase().includes("warm") || 
+                          block.title?.toLowerCase().includes("activation");
+
           // PROGRESSIVE OVERLOAD: +2 reps for ALL exercises (strength, hypertrophy, endurance)
-          if (item.reps && block.block_type === "strength") {
+          // BUT NOT for warm-ups!
+          if (item.reps && block.block_type === "strength" && !isWarmup) {
             progressedReps = item.reps + 2; // +2 reps per week
           }
 
           // PROGRESSIVE OVERLOAD: +10 seconds for timed exercises (plank, holds)
-          if (item.duration_sec && !item.distance_m && block.block_type === "strength") {
+          if (item.duration_sec && !item.distance_m && block.block_type === "strength" && !isWarmup) {
             progressedDuration = item.duration_sec + 10; // +10 seconds for holds/planks
           }
 
-          // RUNNING: Increase sets by +2 for intervals
-          if (item.sets && block.block_type === "intervals") {
-            progressedSets = item.sets + 2; // +2 intervals per week
+          // RUNNING: Increase rounds by +2 for intervals (circuit format)
+          if (block.parameters?.format === "circuit" && block.rounds) {
+            // This is handled at the block level, not item level
+            // We'll update the block.rounds below
           }
 
           // RUNNING: Increase distance by standard increments (not percentage)

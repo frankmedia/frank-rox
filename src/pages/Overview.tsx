@@ -135,7 +135,13 @@ const getExerciseMeta = (exercise: Exercise) => {
     meta.push(`${exercise.suggestedKg}kg`);
   }
   if (exercise.durationMin) {
-    meta.push(`${exercise.durationMin} min`);
+    // Display seconds if less than 1 minute, otherwise minutes
+    if (exercise.durationMin < 1) {
+      const seconds = Math.round(exercise.durationMin * 60);
+      meta.push(`${seconds} sec`);
+    } else {
+      meta.push(`${Math.round(exercise.durationMin)} min`);
+    }
   }
   if (exercise.targetDistanceKm && !meta.some(m => m.includes('km') || m.includes('m'))) {
     // Only show distance if not already shown in interval format

@@ -341,7 +341,14 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
               // Prefer database columns over extra object
               let durationMin = undefined;
               if (item.duration_sec) {
-                durationMin = item.duration_sec; // Already stored as minutes
+                // Check if this is a cardio/running exercise (duration stored as minutes)
+                // or a strength exercise (duration stored as seconds)
+                if (exerciseType === "cardio" || modality === "running" || modality === "cardio") {
+                  durationMin = item.duration_sec; // Running: stored as minutes
+                } else {
+                  // Strength exercises: stored as seconds, convert to minutes for display
+                  durationMin = item.duration_sec / 60;
+                }
               } else if (extra.duration) {
                 durationMin = extra.duration;
               }
