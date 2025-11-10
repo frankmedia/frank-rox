@@ -39,7 +39,7 @@ type UserPreferences = {
 function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
   const sessions: SessionBlock[] = [];
   const trainingDays = prefs.trainingDaysPerWeek || 5;
-  const runs = prefs.runSessionsPerWeek || 2;
+  const runs = prefs.runSessionsPerWeek ?? 2; // Use ?? to allow 0
   const focus = prefs.focus || "base";
   const focusAreas = new Set(prefs.focusAreas.map(f => f.toLowerCase()));
   
@@ -408,7 +408,7 @@ export default function ProgrammeBuilder() {
 
     const userPrefs: UserPreferences = {
       trainingDaysPerWeek: prefs.trainingDaysPerWeek || 5,
-      runSessionsPerWeek: prefs.runSessionsPerWeek || 2,
+      runSessionsPerWeek: prefs.runSessionsPerWeek ?? 2, // Use ?? instead of || to allow 0
       focusAreas: prefs.focusAreas || ["Running"],
       hasHills: prefs.hillsOrSprints === "Yes",
       focus,
