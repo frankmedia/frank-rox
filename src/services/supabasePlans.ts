@@ -486,16 +486,8 @@ export async function getTodayExercises(clientId: string): Promise<Exercise[]> {
     console.log("📦 Fetched", exercises.length, "exercises for today");
     console.log("📋 Exercise types:", exercises.map(ex => ({ name: ex.name, type: ex.type })));
     
-    // If the day has a description, add it as an intro card at the beginning
-    if (todayDay.description) {
-      exercises.unshift({
-        id: `day-intro-${todayDay.id}`,
-        name: todayDay.label || `Day ${currentDayNumber}`,
-        type: "intro",
-        notes: todayDay.description,
-      } as any);
-      console.log("📝 Added day description as intro card:", todayDay.description);
-    }
+    // DON'T add day description card - user doesn't want day-of-week cards
+    // Session intro cards (with workout purpose) are added in getDayExercises()
     
     return exercises;
   } catch (err) {

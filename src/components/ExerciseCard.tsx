@@ -17,6 +17,7 @@ interface ExerciseCardProps {
     personalBest?: string;
     completed?: boolean;
     mediaUrl?: string;
+    notes?: string;
     exercises?: any[]; // Child exercises for grouped types
     totalRounds?: number;
     timeCap?: number;
@@ -150,7 +151,15 @@ export function ExerciseCard({ exercise, onClick, isCompleted, loggedDuration, l
                   {exercise.sets} × {exercise.reps}
                 </span>
               )}
-              {exercise.type === "bodyweight" && (
+              {/* Show duration for timed exercises (e.g., Plank) */}
+              {exercise.durationMin && exercise.durationMin > 0 && (
+                <span className="text-4xl font-bold text-foreground">
+                  {exercise.durationMin < 1 
+                    ? `${Math.round(exercise.durationMin * 60)} sec` 
+                    : `${Math.round(exercise.durationMin)} min`}
+                </span>
+              )}
+              {exercise.type === "bodyweight" && !exercise.durationMin && (
               <span className="flex items-center gap-2 text-4xl font-bold text-foreground">
                 <PersonStanding className="w-8 h-8 text-primary" />
               </span>
