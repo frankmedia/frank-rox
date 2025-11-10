@@ -82,7 +82,7 @@ function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
   };
 
   // 1. Add Running Sessions
-  if (focusAreas.has("running") || runs > 0) {
+  if (runs > 0) { // Only add runs if user wants them
     // Long run (always on Saturday if available)
     const longRunDay = getNextDay(["Saturday", "Sunday"]);
     
@@ -186,7 +186,9 @@ function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
 
   // 2. Add Strength Sessions
   if (focusAreas.has("strength")) {
-    const strengthDays = Math.min(3, trainingDays - usedDays.size);
+    // Calculate how many strength days we can fit
+    const remainingDays = trainingDays - usedDays.size;
+    const strengthDays = Math.min(3, remainingDays);
     
     if (strengthDays >= 1) {
       const lowerDay = getNextDay(["Monday", "Thursday"]);
@@ -222,6 +224,36 @@ function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
         effort: "moderate"
       });
       usedDays.add(fullBodyDay);
+    }
+  }
+  
+  // 2b. Fill remaining training days with cardio (if not already at capacity)
+  // This ensures people with 5+ training days get enough sessions
+  const remainingAfterStrength = trainingDays - usedDays.size;
+  if (remainingAfterStrength > 0 && focusAreas.has("strength") && !focusAreas.has("cardio")) {
+    // Add cardio to fill gaps for strength-focused athletes
+    if (remainingAfterStrength >= 1) {
+      const cardioDay = getNextDay(["Tuesday", "Thursday", "Saturday"]);
+      sessions.push({
+        day: cardioDay,
+        type: "cardio",
+        title: "Conditioning",
+        detail: "30min mixed: RowErg, SkiErg, or Bike intervals",
+        effort: "moderate"
+      });
+      usedDays.add(cardioDay);
+    }
+    
+    if (remainingAfterStrength >= 2) {
+      const cardioDay2 = getNextDay(["Friday", "Wednesday", "Sunday"]);
+      sessions.push({
+        day: cardioDay2,
+        type: "cardio",
+        title: "Engine Work",
+        detail: "20min steady-state on erg of choice",
+        effort: "easy"
+      });
+      usedDays.add(cardioDay2);
     }
   }
 
