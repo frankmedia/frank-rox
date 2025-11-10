@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Dumbbell, Clock, Target, Repeat } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Timer } from "@/components/Timer";
+import { IntervalTimer } from "@/components/IntervalTimer";
 import { toast } from "sonner";
 import type { Exercise } from "@/types/workout";
 import { triggerSuccessHaptic } from "@/utils/haptics";
@@ -28,6 +29,122 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
   const { user: authUser } = useAuth();
   const totalRounds = exercise.totalRounds || 3;
   const exercises = exercise.exercises || [];
+  
+  // Detect if this is a running interval workout
+  const isRunningInterval = 
+    exercises.length === 1 && 
+    exercises[0]?.type === "cardio" && 
+    exercises[0]?.targetDistanceKm && 
+    exercises[0]?.targetDistanceKm > 0 &&
+    totalRounds > 1;
+  
+  // Get rest duration (in seconds)
+  const restBetweenRounds = (exercise as any).rest_between_rounds_s || 90;
+  
+  console.log('🏃 Circuit Workout Detection:', {
+    isRunningInterval,
+    exercises: exercises.length,
+    firstExerciseType: exercises[0]?.type,
+    targetDistance: exercises[0]?.targetDistanceKm,
+    totalRounds,
+    restBetweenRounds,
+  });
+  
+  // If it's a running interval, use IntervalTimer instead
+  if (isRunningInterval) {
+    // Get training day for saving
+    const userStr = localStorage.getItem("frank_rock_user");
+    const user = userStr ? JSON.parse(userStr) : null;
+    const username = user?.username || "";
+    const userKey = `currentTrainingDay_${username}`;
+    const trainingDay = parseInt(localStorage.getItem(userKey) || "1");
+    
+    const handleIntervalComplete = async (intervalTimes: number[], rating: number) => {
+      console.log('✅ Interval workout complete:', { intervalTimes, rating });
+      
+      if (!username) {
+        toast.error("User not found");
+        onComplete();
+        return;
+      }
+      
+      triggerSuccessHaptic();
+      
+      // Mark this exercise as complete in the cache
+      markExerciseComplete(username, trainingDay, exercise.id, authUser?.clientId);
+      
+      // Sync to Supabase immediately (hybrid approach)
+      if (authUser?.clientId) {
+        const { data: plan } = await supabase
+          .from("plans")
+          .select("id")
+          .eq("client_id", authUser.clientId)
+          .eq("status", "active")
+          .single();
+        
+        // Convert interval times to completed rounds format
+        // Each interval is treated as a "round" with the time recorded
+        const completedRounds: Record<string, number[]> = {
+          [exercises[0].id]: intervalTimes
+        };
+        
+        const result = await syncCircuitToSupabase(
+          authUser.clientId,
+          plan?.id || null,
+          trainingDay,
+          exercise.name,
+          exercises,
+          completedRounds,
+          rating
+        );
+        
+        if (result.success) {
+          toast.success("✅ Interval Workout Complete!", {
+            description: `${totalRounds} intervals synced to cloud!`,
+          });
+        } else {
+          toast.success("✅ Interval Workout Complete!", {
+            description: "Saved locally, will sync when online",
+          });
+        }
+      } else {
+        toast.success("✅ Interval Workout Complete!", {
+          description: `${totalRounds} intervals finished!`,
+        });
+      }
+      
+      onComplete();
+    };
+    
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container flex h-16 items-center px-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="mr-4"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </Button>
+            <h1 className="text-2xl font-bold">{exercise.name}</h1>
+          </div>
+        </header>
+        
+        <main className="container max-w-2xl mx-auto px-4 pt-6 pb-24">
+          <IntervalTimer
+            totalRounds={totalRounds}
+            targetDistance={exercises[0].targetDistanceKm!}
+            restSeconds={restBetweenRounds}
+            exerciseName={exercises[0].name}
+            onComplete={handleIntervalComplete}
+            onCancel={() => navigate(-1)}
+          />
+        </main>
+      </div>
+    );
+  }
   
   // Get user data for caching
   const [username, setUsername] = useState<string>("");

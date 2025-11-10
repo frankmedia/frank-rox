@@ -201,6 +201,21 @@ const Login = () => {
                 )}
               </motion.button>
             </form>
+
+            {/* Sign Up link */}
+            <div className="mt-6 text-center">
+              <p className="text-gray-300">
+                New here?{" "}
+                <button
+                  type="button"
+                  onClick={() => navigate("/register")}
+                  className="underline font-semibold"
+                  style={{ color: '#FFCC00' }}
+                >
+                  Create an account
+                </button>
+              </p>
+            </div>
           </motion.div>
         ) : (
           <motion.div

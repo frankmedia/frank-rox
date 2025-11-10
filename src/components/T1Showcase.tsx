@@ -260,6 +260,7 @@ const HorizontalRow = ({
   const [selectedPrimary, setSelectedPrimary] = useState<string[]>([]);
   const [selectedSex, setSelectedSex] = useState<SexSelection>(null);
   const [selectedLevel, setSelectedLevel] = useState<TrainingLevel | null>(null);
+  const [selectedIntensity, setSelectedIntensity] = useState<"Easy" | "Moderate" | "Hard">("Moderate");
   const equipmentOptions = [
     "Barbell",
     "Dumbbells",
@@ -341,6 +342,27 @@ const HorizontalRow = ({
   const toggleEquipment = (eq: string) => {
     setSelectedEquipment((prev) => (prev.includes(eq) ? prev.filter((e) => e !== eq) : [...prev, eq]));
   };
+
+  useEffect(() => {
+    // Prefill defaults from onboarding if available
+    try {
+      const raw = localStorage.getItem("onboarding_profile");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const answers = parsed?.answers || {};
+        if (!selectedSex) {
+          const g = answers.gender;
+          if (g === "Male" || g === "Female") setSelectedSex(g);
+        }
+        if (!selectedLevel) {
+          const exp = answers.experience;
+          if (exp === "Beginner" || exp === "Intermediate" || exp === "Advanced") {
+            setSelectedLevel(exp);
+          }
+        }
+      }
+    } catch {}
+  }, [openConfig]);  
 
   useEffect(() => {
     const fetchPrimary = async () => {
@@ -839,6 +861,25 @@ const HorizontalRow = ({
                   const levelOptions: TrainingLevel[] = ["Beginner", "Intermediate", "Advanced"];
                   return (
                     <>
+                      <div className="mb-3">
+                        <p className="text-sm font-semibold mb-2">Preferred intensity</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(["Easy","Moderate","Hard"] as const).map((opt) => (
+                            <Button
+                              key={opt}
+                              variant="ghost"
+                              className={`h-12 border transition-colors ${
+                                selectedIntensity === opt
+                                  ? "bg-[#FFCC00] text-black border-[#FFCC00]"
+                                  : "bg-black text-white border-white/30 hover:border-[#FFCC00]"
+                              }`}
+                              onClick={() => setSelectedIntensity(opt)}
+                            >
+                              {opt}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
                       <div>
                         <p className="text-sm font-semibold mb-2">What best describes you?</p>
                         <div className="flex gap-3">
@@ -1063,6 +1104,7 @@ const HorizontalRow = ({
                                 focus: preference,
                                 sex: selectedSex ?? undefined,
                                 level: selectedLevel ?? undefined,
+                                intensity: selectedIntensity,
                                 exercises: prescriptions,
                               });
                               warnings = result.warnings ?? [];

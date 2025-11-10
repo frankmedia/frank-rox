@@ -118,16 +118,27 @@ const getExerciseIcon = (exercise: Exercise) => {
 
 const getExerciseMeta = (exercise: Exercise) => {
   const meta: string[] = [];
-  if (exercise.sets && exercise.reps) {
+  
+  // For interval training (cardio with sets, distance, and rest)
+  if (exercise.type === "cardio" && exercise.sets && exercise.targetDistanceKm) {
+    const distanceM = Math.round(exercise.targetDistanceKm * 1000);
+    const distanceStr = distanceM >= 1000 
+      ? `${(distanceM / 1000).toFixed(1)}km` 
+      : `${distanceM}m`;
+    meta.push(`${exercise.sets}×${distanceStr}`);
+  } else if (exercise.sets && exercise.reps) {
+    // Regular strength training
     meta.push(`${exercise.sets}×${exercise.reps}`);
   }
+  
   if (exercise.suggestedKg) {
     meta.push(`${exercise.suggestedKg}kg`);
   }
   if (exercise.durationMin) {
     meta.push(`${exercise.durationMin} min`);
   }
-  if (exercise.targetDistanceKm) {
+  if (exercise.targetDistanceKm && !meta.some(m => m.includes('km') || m.includes('m'))) {
+    // Only show distance if not already shown in interval format
     meta.push(`${exercise.targetDistanceKm} km`);
   }
   if (exercise.workRestRatio) {
@@ -507,10 +518,9 @@ const Overview = () => {
 
         console.log(`📋 Loaded ${planDays.length} plan days`);
 
-        // Calculate max day
+        // Calculate max day (day_index is 1-based: 1, 2, 3...)
         const maxDayIndex = Math.max(...planDays.map(pd => pd.day_index));
-        const max = maxDayIndex + 1; // day_index is 0-based
-        setMaxDay(max);
+        setMaxDay(maxDayIndex);
 
         // Get completed days from BOTH localStorage AND Supabase
         if (!userStr) {
@@ -526,8 +536,8 @@ const Overview = () => {
           .eq('client_id', authUser.clientId)
           .eq('plan_id', plan.id);
         
-        // day_index is 0-based, convert to 1-based day numbers
-        const completedDaysFromDB = completedDaysData?.map(cd => cd.day_index + 1) || [];
+        // day_index is already 1-based (1, 2, 3...)
+        const completedDaysFromDB = completedDaysData?.map(cd => cd.day_index) || [];
         
         // Also check localStorage as backup
         const completedDaysKey = `completedDays_${userData.username}`;
@@ -546,7 +556,7 @@ const Overview = () => {
 
         for (let dayIdx = 0; dayIdx < planDays.length; dayIdx++) {
           const planDay = planDays[dayIdx];
-          const day = planDay.day_index + 1; // Convert to 1-based
+          const day = planDay.day_index; // Already 1-based (1, 2, 3...)
           const isRestDay = planDay.is_rest || false;
 
           // Temporarily set day in localStorage to fetch exercises
@@ -620,7 +630,7 @@ const Overview = () => {
         setDaySummaries(summaries);
         console.log(`✅ Loaded ${summaries.length} days with exercises`);
         if (cacheKey) {
-          localStorage.setItem(cacheKey, JSON.stringify({ summaries, max }));
+          localStorage.setItem(cacheKey, JSON.stringify({ summaries, max: maxDay }));
         }
         setLoading(false);
       } catch (error) {
@@ -1063,7 +1073,7 @@ const Overview = () => {
                     </div>
                     <Card className="p-3 bg-secondary/10 mt-3">
                       <p className="text-sm text-foreground">
-                        <strong>Common Mistake:</strong> Training too much in the "gray zone" (70-80% HRmax) reduces both aerobic base and high-end power development.
+                        <strong>Common Mistake:</strong> Training too much in the "RED zone" (70-80% HRmax) reduces both aerobic base and high-end power development.
                       </p>
                     </Card>
                   </div>
@@ -1331,7 +1341,7 @@ const Overview = () => {
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
           <img 
-            src="/hyrox-home.webp" 
+            src="https://my.roxpt.app/hyrox-home.webp" 
             alt="Hyrox Training" 
             className="w-full h-auto object-cover"
           />

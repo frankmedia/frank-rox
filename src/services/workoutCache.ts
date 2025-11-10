@@ -404,7 +404,8 @@ export async function syncCircuitToSupabase(
     durationMin?: number;
     targetDistanceKm?: number;
   }>,
-  completedRounds: Record<string, number[]>
+  completedRounds: Record<string, number[]>,
+  rating?: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const timestamp = new Date().toISOString();
@@ -414,22 +415,56 @@ export async function syncCircuitToSupabase(
       const rounds = completedRounds[exercise.id] || [];
       
       if (rounds.length > 0) {
-        // Log each completed exercise with the number of rounds
-        logsToInsert.push({
-          client_id: clientId,
-          plan_id: planId,
-          training_day: trainingDay,
-          exercise_name: `${circuitName} - ${exercise.name}`,
-          logged_at: timestamp,
-          sets: rounds.length, // Number of rounds completed
-          reps: exercise.reps || null,
-          weight: exercise.suggestedKg || null,
-          duration_min: exercise.durationMin || null,
-          distance_km: exercise.targetDistanceKm || null,
-          notes: `Completed rounds: ${rounds.join(", ")}`,
-          rating: null,
-          is_pb: false,
-        });
+        // Check if this is an interval workout (rounds contain times in seconds)
+        const isIntervalWorkout = exercise.targetDistanceKm && exercise.targetDistanceKm > 0 && rounds.length > 1;
+        
+        if (isIntervalWorkout) {
+          // For interval workouts, calculate total time and distance
+          const totalTimeSeconds = rounds.reduce((sum, time) => sum + time, 0);
+          const totalTimeMins = totalTimeSeconds / 60;
+          const totalDistanceKm = (exercise.targetDistanceKm || 0) * rounds.length;
+          
+          // Format interval times for notes
+          const formatTime = (seconds: number) => {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+          };
+          const intervalTimesFormatted = rounds.map(formatTime).join(", ");
+          
+          logsToInsert.push({
+            client_id: clientId,
+            plan_id: planId,
+            training_day: trainingDay,
+            exercise_name: `${circuitName}`,
+            logged_at: timestamp,
+            sets: rounds.length, // Number of intervals
+            reps: null,
+            weight: null,
+            duration_min: Math.round(totalTimeMins * 10) / 10, // Total time in minutes
+            distance_km: totalDistanceKm, // Total distance
+            notes: `Interval times: ${intervalTimesFormatted}`,
+            rating: rating || null,
+            is_pb: false,
+          });
+        } else {
+          // Regular circuit workout
+          logsToInsert.push({
+            client_id: clientId,
+            plan_id: planId,
+            training_day: trainingDay,
+            exercise_name: `${circuitName} - ${exercise.name}`,
+            logged_at: timestamp,
+            sets: rounds.length, // Number of rounds completed
+            reps: exercise.reps || null,
+            weight: exercise.suggestedKg || null,
+            duration_min: exercise.durationMin || null,
+            distance_km: exercise.targetDistanceKm || null,
+            notes: `Completed rounds: ${rounds.join(", ")}`,
+            rating: null,
+            is_pb: false,
+          });
+        }
       }
     }
 

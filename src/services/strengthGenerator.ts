@@ -15,6 +15,7 @@ export type StrengthPlanOptions = {
   focus?: string | null;
   sex?: string | null;
   level?: string | null;
+  intensity?: string | null;
   exercises: StrengthPrescription[];
 };
 
@@ -162,7 +163,7 @@ export async function createStrengthPlanDay(
     sessionId,
     "strength",
     `Strength — ${options.template}`,
-    { focus: options.focus, level: options.level, sex: options.sex }
+    { focus: options.focus, level: options.level, sex: options.sex, intensity: options.intensity }
   );
 
   let order = 0;

@@ -92,6 +92,12 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
             id,
             exercise_id,
             item_order,
+            sets,
+            reps,
+            duration_sec,
+            distance_m,
+            rest_sec,
+            notes,
             extra,
             exercises (
               id,
@@ -171,33 +177,61 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
               };
               
               // Add workout parameters based on type
+              // Prefer database columns over extra object
               if (childType === "cardio") {
-                if (extra.duration) childExercise.durationMin = extra.duration;
-                // Only set distance if reasonable (0.01km to 100km)
-                if (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) {
+                // Use duration_sec column (stored as minutes), fallback to extra
+                if (item.duration_sec) {
+                  childExercise.durationMin = item.duration_sec;
+                } else if (extra.duration) {
+                  childExercise.durationMin = extra.duration;
+                }
+                
+                // Use distance_m column (convert to km), fallback to extra
+                if (item.distance_m) {
+                  const distanceKm = item.distance_m / 1000;
+                  if (distanceKm >= 0.01 && distanceKm <= 100) {
+                    childExercise.targetDistanceKm = distanceKm;
+                    childExercise.distance = distanceKm;
+                  }
+                } else if (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) {
                   childExercise.targetDistanceKm = extra.distance;
-                  childExercise.distance = extra.distance; // Also add for SimulationWorkout
+                  childExercise.distance = extra.distance;
                 }
               } else if (childType === "mobility") {
                 // Mobility/core exercises can have reps too (e.g., sit-ups, planks)
-                if (extra.sets) childExercise.sets = extra.sets;
-                if (extra.reps) childExercise.reps = extra.reps;
-                if (extra.duration) childExercise.durationMin = extra.duration;
+                childExercise.sets = item.sets || extra.sets;
+                childExercise.reps = item.reps || extra.reps;
+                if (item.duration_sec) {
+                  childExercise.durationMin = item.duration_sec;
+                } else if (extra.duration) {
+                  childExercise.durationMin = extra.duration;
+                }
               } else {
                 // weights or bodyweight
-                if (extra.sets) childExercise.sets = extra.sets;
-                if (extra.reps) childExercise.reps = extra.reps;
+                childExercise.sets = item.sets || extra.sets;
+                childExercise.reps = item.reps || extra.reps;
                 if (extra.weight) {
                   childExercise.weight = extra.weight; // For SimulationWorkout
                   if (childType === "weights" && typeof extra.weight === 'number') {
                     childExercise.suggestedKg = extra.weight;
                   }
                 }
-                if (extra.duration) childExercise.durationMin = extra.duration;
-                // Only set distance if reasonable (0.01km to 100km)
-                if (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) {
+                if (item.duration_sec) {
+                  childExercise.durationMin = item.duration_sec;
+                } else if (extra.duration) {
+                  childExercise.durationMin = extra.duration;
+                }
+                
+                // Use distance_m column (convert to km), fallback to extra
+                if (item.distance_m) {
+                  const distanceKm = item.distance_m / 1000;
+                  if (distanceKm >= 0.01 && distanceKm <= 100) {
+                    childExercise.targetDistanceKm = distanceKm;
+                    childExercise.distance = distanceKm;
+                  }
+                } else if (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) {
                   childExercise.targetDistanceKm = extra.distance;
-                  childExercise.distance = extra.distance; // Also add for SimulationWorkout
+                  childExercise.distance = extra.distance;
                 }
               }
               
@@ -292,20 +326,37 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                 exerciseType = "weights";
               }
 
+              // Prefer database columns over extra object
+              let durationMin = undefined;
+              if (item.duration_sec) {
+                durationMin = item.duration_sec; // Already stored as minutes
+              } else if (extra.duration) {
+                durationMin = extra.duration;
+              }
+
+              let targetDistanceKm = undefined;
+              if (item.distance_m) {
+                const distanceKm = item.distance_m / 1000;
+                if (distanceKm >= 0.01 && distanceKm <= 100) {
+                  targetDistanceKm = distanceKm;
+                }
+              } else if (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) {
+                targetDistanceKm = extra.distance;
+              }
+
               const exerciseObj = {
                 id: String(item.id), // USE session_block_items.id, NOT exercises.id!
                 name: extra.custom_name || ex.name, // Use custom name if set, otherwise use base exercise name
                 type: exerciseType,
-                notes: ex.notes || undefined,
+                notes: item.notes || ex.notes || undefined,
                 mediaUrl: ex.media?.youtube || ex.media?.video || undefined,
                 
-                // Extract workout parameters from extra (matching Google Sheets format)
-                sets: extra.sets || undefined,
-                reps: extra.reps || undefined,
+                // Extract workout parameters - prefer DB columns over extra
+                sets: item.sets || extra.sets || undefined,
+                reps: item.reps || extra.reps || undefined,
                 suggestedKg: parseWeight(extra.weight), // Parse weight to handle "kg" suffix
-                durationMin: extra.duration || undefined,
-                // Only set distance if it's reasonable (0.01km to 100km)
-                targetDistanceKm: (extra.distance && extra.distance >= 0.01 && extra.distance <= 100) ? extra.distance : undefined,
+                durationMin,
+                targetDistanceKm,
                 
                 // Format-specific parameters (for HIIT/Circuit/AMRAP)
                 workRestRatio: extra.workRestRatio || blockParams.workRestRatio || undefined,
@@ -391,12 +442,11 @@ export async function getTodayExercises(clientId: string): Promise<Exercise[]> {
       console.log("⚠️ Could not read localStorage, using plan.current_day:", currentDayNumber);
     }
 
-    // Find today's day based on day_index
-    const currentDayIndex = currentDayNumber - 1; // Convert to 0-based index
-    const todayDay = days.find(d => d.day_index === currentDayIndex);
+    // Find today's day based on day_index (day_index is 1-based: 1, 2, 3...)
+    const todayDay = days.find(d => d.day_index === currentDayNumber);
     
     if (!todayDay) {
-      console.log("❌ Day not found for index:", currentDayIndex, "- Available days:", days.map(d => d.day_index));
+      console.log("❌ Day not found for day_index:", currentDayNumber, "- Available days:", days.map(d => d.day_index));
       return [];
     }
 

@@ -1389,7 +1389,7 @@ const ExerciseDetail = () => {
                     {runStats || todaysDuration ? (
                       <>
                         <RotateCcw className="w-6 h-6 mr-3" />
-                        RESTART RECORDING
+                        START RECORDING
                       </>
                     ) : (
                       'START RECORDING'

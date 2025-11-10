@@ -12,6 +12,7 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { TopProgressBar } from "@/components/TopProgressBar";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Overview from "./pages/Overview";
 import Today from "./pages/Today";
 import ExerciseDetail from "./pages/ExerciseDetail";
@@ -19,6 +20,12 @@ import History from "./pages/History";
 import Profile from "./pages/Profile";
 import Assessment from "./pages/Assessment";
 import AssessmentResults from "./pages/AssessmentResults";
+import Onboarding from "./pages/Onboarding";
+import ProgramCustomize from "./pages/ProgramCustomize";
+import ProgramPreview from "./pages/ProgramPreview";
+import OnboardingComplete from "./pages/OnboardingComplete";
+import ProgrammeBuilder from "./pages/ProgrammeBuilder";
+import ProgrammeOverview from "./pages/ProgrammeOverview";
 import PTCheckIn from "./pages/PTCheckIn";
 import AccessDenied from "./pages/AccessDenied";
 import NotFound from "./pages/NotFound";
@@ -63,6 +70,7 @@ const App = () => (
             <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/access-denied" element={<AccessDenied />} />
             <Route path="/auth/strava/callback" element={<AuthStravaCallback />} />
             
@@ -139,6 +147,12 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/program-customize" element={<ProgramCustomize />} />
+            <Route path="/program-preview" element={<ProgramPreview />} />
+            <Route path="/onboarding-complete" element={<OnboardingComplete />} />
+            <Route path="/programme-builder" element={<ProgrammeBuilder />} />
+            <Route path="/programme-overview" element={<ProgrammeOverview />} />
             <Route
               path="/assessment-results"
               element={

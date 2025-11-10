@@ -68,6 +68,7 @@ const Profile = () => {
   const [allRaces, setAllRaces] = useState<Array<{ id: number; race_name: string; race_date: string }>>([]);
   const [showAllRaces, setShowAllRaces] = useState<boolean>(false);
   const [sleepInsightOpen, setSleepInsightOpen] = useState<boolean>(false);
+  const [onboardingProfile, setOnboardingProfile] = useState<any>(null);
 
   const triggerInsightHaptic = useCallback(async () => {
     if (!Capacitor.isNativePlatform()) return;
@@ -106,6 +107,14 @@ const Profile = () => {
       setSleepInsightOpen(false);
     }
   }, [searchParams, sleepInsightOpen, triggerInsightHaptic]);
+
+  // Load onboarding profile (sex/age) from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("onboarding_profile");
+      if (raw) setOnboardingProfile(JSON.parse(raw));
+    } catch {}
+  }, []);
 
   const formatMetric = useCallback((value: number, formatter?: (value: number) => string) => {
     if (!value || Number.isNaN(value) || value <= 0) return "--";
@@ -532,6 +541,12 @@ const Profile = () => {
         return;
       }
       
+      // Guard in case the native plugin isn't installed on the device build
+      const canRequest = typeof (AppHealth as any)?.requestHealthPermissions === 'function';
+      if (!canRequest) {
+        toast.error("Health plugin unavailable", { description: "Install or enable Health Connect, then try again." });
+        return;
+      }
       const result = await AppHealth.requestHealthPermissions();
       
       if (!result.granted) {
@@ -732,6 +747,20 @@ const Profile = () => {
               <Mail className="w-3 h-3 mr-1" />
               {user.email}
             </Badge>
+            {onboardingProfile?.answers && (
+              <div className="mt-3 flex items-center gap-2 flex-wrap justify-center">
+                {onboardingProfile.answers.gender && (
+                  <span className="px-3 py-1 rounded-full border border-white/20 text-white/90 text-xs">
+                    {onboardingProfile.answers.gender}
+                  </span>
+                )}
+                {typeof onboardingProfile.answers.age === "number" && onboardingProfile.answers.age > 0 && (
+                  <span className="px-3 py-1 rounded-full border border-white/20 text-white/90 text-xs">
+                    {onboardingProfile.answers.age} yrs
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </Card>
 
@@ -784,7 +813,7 @@ const Profile = () => {
                   const badgePrice = `${amount}/mo`;
                   return (
                   <CarouselItem key={tier.name} className="pl-3 basis-[72vw] sm:basis-[320px]">
-                    <Card className="relative p-5 bg-card/80 border flex flex-col justify-between min-h-[360px]">
+                    <Card className="relative p-5 bg-card/80 border flex flex-col justify-between min-h-[440px]">
                       <div className="space-y-2">
                         <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: tier.color }}>
                           {tier.pill}
@@ -811,7 +840,7 @@ const Profile = () => {
                             toast.info(`Selected ${tier.name}. Payment flow coming soon.`);
                           }}
                         >
-                          {`Select ${tier.name} — ${badgePrice}`}
+                          {`Select ${tier.name}`}
                         </Button>
                       </div>
                     </Card>
@@ -850,7 +879,7 @@ const Profile = () => {
                         </Button>
                       </>
                     ) : (
-                      <Button size="sm" onClick={handleConnectHealth} disabled={!healthSupported}>
+                      <Button size="sm" onClick={handleConnectHealth} disabled={false}>
                         Connect
                       </Button>
                     )}
