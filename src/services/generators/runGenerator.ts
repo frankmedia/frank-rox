@@ -338,7 +338,7 @@ async function buildIntervals(
     reps: 1,
     distance: repDistance, // e.g., "500m"
     pace,
-    notes: `${repDistance} at ${pace}. Complete ${reps} rounds with ${restDuration} rest between.`,
+    notes: `${repDistance} at ${pace}. Target RPE 8/10 (hard effort). Week 2: Same rounds, but your 8/10 effort will naturally be faster as you adapt. Focus on consistent pacing across all intervals.`,
   });
 
   // Cool-down

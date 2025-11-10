@@ -962,21 +962,21 @@ async function duplicateWeekWithProgression(
                           block.title?.toLowerCase().includes("activation");
 
           // PROGRESSIVE OVERLOAD: +2 reps for ALL exercises (strength, hypertrophy, endurance)
-          // BUT NOT for warm-ups!
+          // BUT NOT for warm-ups! (warm-ups stay at 10 reps for consistency)
           if (item.reps && block.block_type === "strength" && !isWarmup) {
             progressedReps = item.reps + 2; // +2 reps per week
           }
 
-          // PROGRESSIVE OVERLOAD: +10 seconds for timed exercises (plank, holds)
+          // PROGRESSIVE OVERLOAD: +15 seconds for timed exercises (plank, holds)
+          // BUT NOT for warm-ups! Cap at 2 minutes (120 seconds)
           if (item.duration_sec && !item.distance_m && block.block_type === "strength" && !isWarmup) {
-            progressedDuration = item.duration_sec + 10; // +10 seconds for holds/planks
+            const newDuration = item.duration_sec + 15; // +15 seconds for holds/planks
+            progressedDuration = Math.min(newDuration, 120); // Cap at 2 minutes
           }
 
-          // RUNNING: Increase rounds by +2 for intervals (circuit format)
-          if (block.parameters?.format === "circuit" && block.rounds) {
-            // This is handled at the block level, not item level
-            // We'll update the block.rounds below
-          }
+          // RUNNING: Keep intervals the same (no +2 rounds)
+          // Progression comes from natural RPE improvement (8/10 effort gets faster over time)
+          // This respects time constraints and prevents overtraining
 
           // RUNNING: Increase distance by standard increments (not percentage)
           if (item.distance_m && block.block_type === "cardio") {
