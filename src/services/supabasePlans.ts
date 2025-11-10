@@ -75,6 +75,7 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
       .select(`
         id,
         name,
+        notes,
         order_index,
         session_blocks (
           id,
@@ -123,6 +124,17 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
       for (const session of sessions) {
         const blocks = (session as any).session_blocks || [];
         console.log(`📦 Session "${session.name}": ${blocks.length} blocks`);
+        
+        // Add session notes as an intro card if they exist
+        const sessionNotes = (session as any).notes;
+        if (sessionNotes) {
+          exercises.push({
+            id: `session-intro-${session.id}`,
+            name: session.name,
+            type: "intro",
+            notes: sessionNotes,
+          } as Exercise);
+        }
         // Ensure blocks are processed in defined order
         blocks.sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0));
         

@@ -360,12 +360,23 @@ async function generateStrengthWorkout(
     split = "upper";
   }
   
+  // Create session-level educational notes
+  let sessionNotes = "";
+  if (split === "lower") {
+    sessionNotes = "Building foundational leg strength with compound movements. Focus on depth, explosive drive, and maintaining proper form to improve power output for running and functional movements. Progressive overload each week builds strength systematically.";
+  } else if (split === "upper") {
+    sessionNotes = "Developing upper body strength and muscular balance. Compound pressing and pulling movements build functional strength for everyday activities and sports performance. Focus on controlled tempo and full range of motion.";
+  } else {
+    sessionNotes = "Full body strength session targeting major muscle groups. Balanced approach to build overall strength, improve movement patterns, and enhance athletic performance across all domains.";
+  }
+
   // Create the session
   const { data: sessionData, error: sessionError } = await supabase
     .from("sessions")
     .insert({
       plan_day_id: planDayId,
       name: session.title,
+      notes: sessionNotes,
       order_index: 1,
     })
     .select()
@@ -457,12 +468,12 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 4,
             reps: 6,
-            notes: "Strength - 80% 1RM, focus on depth and explosive drive",
+            notes: "Strength (4-6 reps) - 80% 1RM, focus on depth and explosive drive",
             extra: { weight_kg: squatWeight },
           });
         }
 
-        // 2. Bulgarian Split Squat - HYPERTROPHY (3×8 @ 70%)
+        // 2. Bulgarian Split Squat - HYPERTROPHY (3×10 @ 70%)
         const bulgarian = await findExercise(["Rear-Foot Elevated Split Squat", "Split Squat", "DB Split Squat"]);
         if (bulgarian) {
           const bulgarianWeight = calculateWeight(strengthData.squat5rm, 0.70); // 70% of squat 1RM
@@ -471,8 +482,8 @@ async function generateStrengthWorkout(
             exercise_id: bulgarian.id,
             item_order: order++,
             sets: 3,
-            reps: 8,
-            notes: "Hypertrophy - Each leg, controlled 3-0-1 tempo, maintain upright torso",
+            reps: 10,
+            notes: "Hypertrophy (8-12 reps) - Each leg, controlled 3-0-1 tempo, maintain upright torso",
             extra: { weight_kg: Math.round(bulgarianWeight * 0.6) }, // Split between legs, so lighter
           });
         }
@@ -487,7 +498,7 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 10,
-            notes: "Hypertrophy - Feel the hamstring stretch, keep bar close to legs",
+            notes: "Hypertrophy (8-12 reps) - Feel the hamstring stretch, keep bar close to legs",
             extra: { weight_kg: rdlWeight },
           });
         }
@@ -502,7 +513,7 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 12,
-            notes: "Endurance - Full ROM, don't lock knees at top",
+            notes: "Endurance (12-15 reps) - Full ROM, don't lock knees at top",
             extra: { weight_kg: Math.round(legPressWeight * 1.5) }, // Leg press typically heavier
           });
         }
@@ -601,7 +612,7 @@ async function generateStrengthWorkout(
           });
         }
 
-        // 2. Bent Over Row - STRENGTH/HYPERTROPHY (4×8 @ 75%)
+        // 2. Bent Over Row - HYPERTROPHY (4×10 @ 75%)
         const row = await findExercise(["Bent Over Row", "DB Bent-Over Row", "Single Arm DB Row"]);
         if (row) {
           const rowWeight = calculateWeight(strengthData.bench5rm, 0.75); // 75% of bench 1RM (approximate)
@@ -610,8 +621,8 @@ async function generateStrengthWorkout(
             exercise_id: row.id,
             item_order: order++,
             sets: 4,
-            reps: 8,
-            notes: "Strength/Hypertrophy - Pull to ribs, squeeze scapulae at top, 2s hold",
+            reps: 10,
+            notes: "Hypertrophy (8-12 reps) - Pull to ribs, squeeze scapulae at top, 2s hold",
             extra: { weight_kg: Math.round(rowWeight * 0.9) }, // Rows typically slightly lighter than bench
           });
         }
@@ -626,7 +637,7 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 10,
-            notes: "Hypertrophy - Full ROM, controlled tempo, avoid arching back",
+            notes: "Hypertrophy (8-12 reps) - Full ROM, controlled tempo, avoid arching back",
             extra: { weight_kg: shoulderWeight },
           });
         }
@@ -641,7 +652,7 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 10,
-            notes: "Hypertrophy - Pull to upper chest, squeeze lats, slow eccentric",
+            notes: "Hypertrophy (8-12 reps) - Pull to upper chest, squeeze lats, slow eccentric",
             extra: { weight_kg: Math.round(latWeight * 0.85) }, // Lats typically lighter
           });
         }
@@ -672,7 +683,7 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 12,
-            notes: "Endurance - Controlled tempo, no swinging, squeeze at top",
+            notes: "Endurance (12-15 reps) - Controlled tempo, no swinging, squeeze at top",
             extra: { weight_kg: Math.round(bicepWeight * 0.3) }, // Biceps much lighter than bench
           });
         }
@@ -687,7 +698,7 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 12,
-            notes: "Endurance - Elbows stay in position, full extension, control the weight",
+            notes: "Endurance (12-15 reps) - Elbows stay in position, full extension, control the weight",
             extra: { weight_kg: Math.round(tricepWeight * 0.35) }, // Triceps lighter than bench
           });
         }
@@ -884,6 +895,7 @@ async function duplicateWeekWithProgression(
         .insert({
           plan_day_id: week2Day.id,
           name: session.name,
+          notes: session.notes, // Copy session notes to Week 2
           order_index: session.order_index,
         })
         .select()
@@ -919,13 +931,29 @@ async function duplicateWeekWithProgression(
         for (const item of block.session_block_items || []) {
           const progressedExtra = applyItemProgression(item.extra, block.block_type);
 
-          // Apply progression to numeric columns too
+          // Apply progression to numeric columns
           let progressedDistance = item.distance_m;
           let progressedDuration = item.duration_sec;
           let progressedSets = item.sets;
+          let progressedReps = item.reps;
 
-          // Increase distance by standard increments (not percentage)
-          if (item.distance_m) {
+          // PROGRESSIVE OVERLOAD: +2 reps for ALL exercises (strength, hypertrophy, endurance)
+          if (item.reps && block.block_type === "strength") {
+            progressedReps = item.reps + 2; // +2 reps per week
+          }
+
+          // PROGRESSIVE OVERLOAD: +10 seconds for timed exercises (plank, holds)
+          if (item.duration_sec && !item.distance_m && block.block_type === "strength") {
+            progressedDuration = item.duration_sec + 10; // +10 seconds for holds/planks
+          }
+
+          // RUNNING: Increase sets by +2 for intervals
+          if (item.sets && block.block_type === "intervals") {
+            progressedSets = item.sets + 2; // +2 intervals per week
+          }
+
+          // RUNNING: Increase distance by standard increments (not percentage)
+          if (item.distance_m && block.block_type === "cardio") {
             // Round to nearest km, then add 1km
             const currentKm = Math.round(item.distance_m / 1000);
             if (currentKm >= 10) {
@@ -937,8 +965,8 @@ async function duplicateWeekWithProgression(
             }
           }
 
-          // Increase duration by standard increments (5 or 10 min)
-          if (item.duration_sec) {
+          // RUNNING: Increase duration for warm-ups/cool-downs
+          if (item.duration_sec && item.distance_m && block.block_type === "cardio") {
             if (item.duration_sec >= 30) {
               progressedDuration = item.duration_sec + 10; // +10 min for long runs
             } else if (item.duration_sec >= 10) {
@@ -946,11 +974,6 @@ async function duplicateWeekWithProgression(
             } else {
               progressedDuration = item.duration_sec; // Keep same for short durations
             }
-          }
-
-          // Increase sets by +2 for intervals
-          if (item.sets && block.block_type === "intervals") {
-            progressedSets = item.sets + 2;
           }
 
           await supabase
@@ -961,7 +984,7 @@ async function duplicateWeekWithProgression(
               status: "draft",
               item_order: item.item_order,
               sets: progressedSets,
-              reps: item.reps,
+              reps: progressedReps, // Use progressed reps (+2)
               distance_m: progressedDistance,
               duration_sec: progressedDuration,
               rest_sec: item.rest_sec,

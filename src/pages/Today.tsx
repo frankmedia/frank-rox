@@ -872,7 +872,7 @@ const Today = () => {
                   </div>
                   <Card className="p-3 bg-secondary/10 mt-3">
                     <p className="text-sm text-foreground">
-                      <strong>Common Mistake:</strong> Training too much in the "gray zone" (70-80% HRmax) reduces both aerobic base and high-end power development.
+                      <strong>Common Mistake:</strong> Training too much in the "RED zone" (70-80% HRmax) reduces both aerobic base and high-end power development.
                     </p>
                   </Card>
                 </div>
@@ -1076,6 +1076,21 @@ const Today = () => {
           <ExerciseListSkeleton count={6} />
         ) : (
           <>
+            {/* Session Intro Cards */}
+            {exercises.filter(ex => ex.type === "intro").map((intro) => (
+              <Card key={intro.id} className="p-6 bg-primary/5 border-primary/20">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-primary/20 rounded-full">
+                    <Info className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-2">{intro.name}</h3>
+                    <p className="text-sm text-foreground/70 leading-relaxed">{intro.notes}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+            
             <div className="space-y-4">
               {exercises.map((exercise) => {
                 // Skip intro cards - they're displayed above
