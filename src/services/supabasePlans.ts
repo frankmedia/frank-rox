@@ -94,7 +94,6 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
             item_order,
             sets,
             reps,
-            weight_kg,
             duration_sec,
             distance_m,
             rest_sec,
@@ -365,7 +364,7 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                 // Extract workout parameters - prefer DB columns over extra
                 sets: item.sets || extra.sets || undefined,
                 reps: item.reps || extra.reps || undefined,
-                suggestedKg: item.weight_kg || parseWeight(extra.weight), // Prioritize weight_kg column over extra
+                suggestedKg: extra.weight_kg || parseWeight(extra.weight), // Get weight from extra JSONB
                 durationMin,
                 targetDistanceKm,
                 

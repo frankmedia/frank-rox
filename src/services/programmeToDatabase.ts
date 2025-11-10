@@ -409,8 +409,8 @@ async function generateStrengthWorkout(
             item_order: 0,
             sets: 2,
             reps: 10,
-            weight_kg: warmupWeight,
             notes: "Warm-up - Light weight, focus on form and depth",
+            extra: { weight_kg: warmupWeight },
           });
         }
       }
@@ -441,8 +441,8 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 4,
             reps: 6,
-            weight_kg: squatWeight,
             notes: "Strength - 80% 1RM, focus on depth and explosive drive",
+            extra: { weight_kg: squatWeight },
           });
         }
 
@@ -456,8 +456,8 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 8,
-            weight_kg: Math.round(bulgarianWeight * 0.6), // Split between legs, so lighter
             notes: "Hypertrophy - Each leg, controlled 3-0-1 tempo, maintain upright torso",
+            extra: { weight_kg: Math.round(bulgarianWeight * 0.6) }, // Split between legs, so lighter
           });
         }
 
@@ -471,8 +471,8 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 10,
-            weight_kg: rdlWeight,
             notes: "Hypertrophy - Feel the hamstring stretch, keep bar close to legs",
+            extra: { weight_kg: rdlWeight },
           });
         }
 
@@ -486,8 +486,8 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 12,
-            weight_kg: Math.round(legPressWeight * 1.5), // Leg press typically heavier
             notes: "Endurance - Full ROM, don't lock knees at top",
+            extra: { weight_kg: Math.round(legPressWeight * 1.5) }, // Leg press typically heavier
           });
         }
       }
@@ -576,8 +576,8 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 4,
             reps: 6,
-            weight_kg: benchWeight,
             notes: "Strength - 80% 1RM, control the descent (3s), explosive press",
+            extra: { weight_kg: benchWeight },
           });
         }
 
@@ -591,8 +591,8 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 4,
             reps: 8,
-            weight_kg: Math.round(rowWeight * 0.9), // Rows typically slightly lighter than bench
             notes: "Strength/Hypertrophy - Pull to ribs, squeeze scapulae at top, 2s hold",
+            extra: { weight_kg: Math.round(rowWeight * 0.9) }, // Rows typically slightly lighter than bench
           });
         }
 
@@ -606,8 +606,8 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 10,
-            weight_kg: shoulderWeight,
             notes: "Hypertrophy - Full ROM, controlled tempo, avoid arching back",
+            extra: { weight_kg: shoulderWeight },
           });
         }
 
@@ -621,8 +621,8 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 10,
-            weight_kg: Math.round(latWeight * 0.85), // Lats typically lighter
             notes: "Hypertrophy - Pull to upper chest, squeeze lats, slow eccentric",
+            extra: { weight_kg: Math.round(latWeight * 0.85) }, // Lats typically lighter
           });
         }
       }
@@ -653,8 +653,8 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 12,
-            weight_kg: Math.round(bicepWeight * 0.3), // Biceps much lighter than bench
             notes: "Endurance - Controlled tempo, no swinging, squeeze at top",
+            extra: { weight_kg: Math.round(bicepWeight * 0.3) }, // Biceps much lighter than bench
           });
         }
 
@@ -668,8 +668,8 @@ async function generateStrengthWorkout(
             item_order: order++,
             sets: 3,
             reps: 12,
-            weight_kg: Math.round(tricepWeight * 0.35), // Triceps lighter than bench
             notes: "Endurance - Elbows stay in position, full extension, control the weight",
+            extra: { weight_kg: Math.round(tricepWeight * 0.35) }, // Triceps lighter than bench
           });
         }
       }
