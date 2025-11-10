@@ -12,6 +12,7 @@ export interface CardioSessionOptions {
   duration?: number; // minutes
   intensity?: "easy" | "moderate" | "hard";
   equipment?: string[]; // Available equipment
+  allowRunning?: boolean; // If false, replace runs with erg alternatives
 }
 
 /**
@@ -170,12 +171,23 @@ async function buildRaceSimulation(
     .single();
 
   if (warmupBlock) {
-    const easyRun = await findExercise(supabase, ["Easy Z2 Run", "Treadmill Easy Run (Z2)", "Run"]);
-    if (easyRun) {
-      await addItem(supabase, warmupBlock.id, easyRun.id, 0, {
-        duration: "10min",
-        notes: "Easy pace warm-up"
-      });
+    // Use erg alternative if running not allowed
+    if (options.allowRunning === false) {
+      const bike = await findExercise(supabase, ["Assault Bike", "Air Bike", "Bike"]);
+      if (bike) {
+        await addItem(supabase, warmupBlock.id, bike.id, 0, {
+          duration: "10min",
+          notes: "Easy pace warm-up (no-running alternative)"
+        });
+      }
+    } else {
+      const easyRun = await findExercise(supabase, ["Easy Z2 Run", "Treadmill Easy Run (Z2)", "Run"]);
+      if (easyRun) {
+        await addItem(supabase, warmupBlock.id, easyRun.id, 0, {
+          duration: "10min",
+          notes: "Easy pace warm-up"
+        });
+      }
     }
   }
 
@@ -199,13 +211,23 @@ async function buildRaceSimulation(
   if (circuitBlock) {
     let order = 0;
 
-    // 1. Run
-    const run = await findExercise(supabase, ["Run", "1km Run Hyrox Pace"]);
-    if (run) {
-      await addItem(supabase, circuitBlock.id, run.id, order++, {
-        distance: "1km",
-        notes: "Race pace - maintain consistency"
-      });
+    // 1. Run (or RowErg alternative if running not allowed)
+    if (options.allowRunning === false) {
+      const rower = await findExercise(supabase, ["RowErg", "Rower", "Rowing Machine"]);
+      if (rower) {
+        await addItem(supabase, circuitBlock.id, rower.id, order++, {
+          distance: "1km",
+          notes: "Hard pace - maintain consistency (no-running alternative)"
+        });
+      }
+    } else {
+      const run = await findExercise(supabase, ["Run", "1km Run Hyrox Pace"]);
+      if (run) {
+        await addItem(supabase, circuitBlock.id, run.id, order++, {
+          distance: "1km",
+          notes: "Race pace - maintain consistency"
+        });
+      }
     }
 
     // 2. Sled Push
@@ -285,12 +307,23 @@ async function buildEngineWork(
     .single();
 
   if (warmupBlock) {
-    const easyRun = await findExercise(supabase, ["Easy Z2 Run", "Treadmill Easy Run (Z2)"]);
-    if (easyRun) {
-      await addItem(supabase, warmupBlock.id, easyRun.id, 0, {
-        duration: "5min",
-        notes: "Easy pace warm-up"
-      });
+    // Use erg alternative if running not allowed
+    if (options.allowRunning === false) {
+      const rower = await findExercise(supabase, ["RowErg", "Rower", "Rowing Machine"]);
+      if (rower) {
+        await addItem(supabase, warmupBlock.id, rower.id, 0, {
+          duration: "5min",
+          notes: "Easy pace warm-up (no-running alternative)"
+        });
+      }
+    } else {
+      const easyRun = await findExercise(supabase, ["Easy Z2 Run", "Treadmill Easy Run (Z2)"]);
+      if (easyRun) {
+        await addItem(supabase, warmupBlock.id, easyRun.id, 0, {
+          duration: "5min",
+          notes: "Easy pace warm-up"
+        });
+      }
     }
   }
 

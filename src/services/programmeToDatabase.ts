@@ -39,9 +39,13 @@ export async function createPlanInDatabase(
     blockNumber: programme.blockNumber,
     focus: programme.focus,
     sessionsCount: programme.sessions.length,
+    runSessionsPerWeek: programme.preferences?.runSessionsPerWeek,
   });
 
   const warnings: string[] = [];
+  
+  // Check if running is allowed (for cardio generator)
+  const allowRunning = (programme.preferences?.runSessionsPerWeek ?? 2) > 0;
 
   try {
     // 0. Delete any existing active plans for this user (for testing)
@@ -168,7 +172,7 @@ export async function createPlanInDatabase(
         } else if (session.type === "strength") {
           await generateStrengthWorkout(supabase, planDay.id, session, warnings);
         } else if (session.type === "cardio") {
-          await generateCardioWorkout(supabase, planDay.id, session, warnings);
+          await generateCardioWorkout(supabase, planDay.id, session, warnings, allowRunning);
         } else if (session.type === "recovery") {
           await generateRecoveryWorkout(supabase, planDay.id, session, warnings);
         }
@@ -784,7 +788,8 @@ async function generateCardioWorkout(
   supabase: SupabaseClient,
   planDayId: string,
   session: SessionBlock,
-  warnings: string[]
+  warnings: string[],
+  allowRunning: boolean = true
 ) {
   // TODO: Implement cardio workout generation
   const { data: sessionData, error } = await supabase
@@ -817,6 +822,8 @@ async function generateCardioWorkout(
       sessionType = "engine-work";
     }
     
+    console.log(`🏃 Cardio session: allowRunning = ${allowRunning}`);
+    
     // Delete the placeholder session we just created
     await supabase.from("sessions").delete().eq("id", sessionData.id);
     
@@ -825,6 +832,7 @@ async function generateCardioWorkout(
       sessionType,
       intensity: session.effort as "easy" | "moderate" | "hard",
       duration: 30,
+      allowRunning, // Pass the allowRunning flag
     });
     
     console.log(`✅ Generated ${sessionType} cardio workout`);
