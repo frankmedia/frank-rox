@@ -884,18 +884,18 @@ const HorizontalRow = ({
                         <p className="text-sm font-semibold mb-2">What best describes you?</p>
                         <div className="flex gap-3">
                           {sexOptions.map((option) => (
-                            <Button
-                              key={option}
+                              <Button
+                                key={option}
                               variant="ghost"
                               className={`flex-1 h-12 border transition-colors ${
                                 selectedSex === option
                                   ? "bg-[#FFCC00] text-black border-[#FFCC00]"
                                   : "bg-black text-white border-white/30 hover:border-[#FFCC00]"
                               }`}
-                              onClick={() => setSelectedSex(option)}
-                            >
-                              {option}
-                            </Button>
+                                onClick={() => setSelectedSex(option)}
+                              >
+                                {option}
+                              </Button>
                           ))}
                         </div>
                       </div>
@@ -903,7 +903,7 @@ const HorizontalRow = ({
                         <p className="text-sm font-semibold mb-2">Select your experience level</p>
                         <div className="grid grid-cols-3 gap-2">
                           {levelOptions.map((level) => (
-                            <Button
+                              <Button
                               key={level}
                               variant="ghost"
                               className={`h-12 border transition-colors ${
@@ -912,9 +912,9 @@ const HorizontalRow = ({
                                   : "bg-black text-white border-white/30 hover:border-[#FFCC00]"
                               }`}
                               onClick={() => setSelectedLevel(level)}
-                            >
+                              >
                               {level}
-                            </Button>
+                              </Button>
                           ))}
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">

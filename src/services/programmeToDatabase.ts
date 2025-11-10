@@ -279,13 +279,22 @@ async function generateStrengthWorkout(
   warnings: string[]
 ) {
   console.log(`💪 Generating strength workout: ${session.title}`);
+  console.log(`📍 Plan day ID: ${planDayId}`);
   
   // Get the plan to find the client_id
-  const { data: planDay } = await supabase
+  const { data: planDay, error: planDayError } = await supabase
     .from("plan_days")
     .select("plan_id, plans!inner(client_id)")
     .eq("id", planDayId)
     .single();
+  
+  if (planDayError) {
+    console.error(`❌ Failed to fetch plan day:`, planDayError);
+    warnings.push(`Failed to fetch plan day: ${planDayError.message}`);
+    return;
+  }
+  
+  console.log(`✅ Plan day fetched:`, planDay);
 
   let onboardingData: any = null;
   let strengthData = {
@@ -382,21 +391,29 @@ async function generateStrengthWorkout(
   };
 
   try {
+    console.log(`🔧 Starting ${split} body workout generation`);
+    
     if (split === "lower") {
       // LOWER BODY WORKOUT
+      console.log(`📋 Creating warm-up block for session ${sessionData.id}`);
       
       // Warm-up Block
-      const { data: warmupBlock } = await supabase
+      const { data: warmupBlock, error: warmupError } = await supabase
         .from("session_blocks")
         .insert({
           session_id: sessionData.id,
           block_type: "strength",
           title: "Warm-up",
           rounds: 1,
-          block_order: 0,
         })
         .select()
         .single();
+      
+      if (warmupError) {
+        console.error(`❌ Failed to create warm-up block:`, warmupError);
+        throw warmupError;
+      }
+      console.log(`✅ Warm-up block created:`, warmupBlock?.id);
 
       if (warmupBlock) {
         // Goblet Squat warm-up
@@ -423,7 +440,6 @@ async function generateStrengthWorkout(
           block_type: "strength",
           title: "Lower Body Strength",
           rounds: 1,
-          block_order: 1,
         })
         .select()
         .single();
@@ -500,7 +516,6 @@ async function generateStrengthWorkout(
           block_type: "strength",
           title: "Core Finisher",
           rounds: 3,
-          block_order: 2,
         })
         .select()
         .single();
@@ -521,19 +536,25 @@ async function generateStrengthWorkout(
 
     } else if (split === "upper") {
       // UPPER BODY WORKOUT
+      console.log(`📋 Creating warm-up block for upper body session ${sessionData.id}`);
       
       // Warm-up Block
-      const { data: warmupBlock } = await supabase
+      const { data: warmupBlock, error: warmupError } = await supabase
         .from("session_blocks")
         .insert({
           session_id: sessionData.id,
           block_type: "strength",
           title: "Warm-up",
           rounds: 1,
-          block_order: 0,
         })
         .select()
         .single();
+      
+      if (warmupError) {
+        console.error(`❌ Failed to create warm-up block:`, warmupError);
+        throw warmupError;
+      }
+      console.log(`✅ Warm-up block created:`, warmupBlock?.id);
 
       if (warmupBlock) {
         // Band Pull-Aparts
@@ -558,7 +579,6 @@ async function generateStrengthWorkout(
           block_type: "strength",
           title: "Upper Body Strength",
           rounds: 1,
-          block_order: 1,
         })
         .select()
         .single();
@@ -635,7 +655,6 @@ async function generateStrengthWorkout(
           block_type: "strength",
           title: "Accessory Work",
           rounds: 1,
-          block_order: 2,
         })
         .select()
         .single();
@@ -683,7 +702,6 @@ async function generateStrengthWorkout(
           block_type: "strength",
           title: "Full Body Strength",
           rounds: 1,
-          block_order: 0,
         })
         .select()
         .single();

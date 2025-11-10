@@ -850,7 +850,7 @@ const Profile = () => {
             </Carousel>
           </div>
         </section>
-
+        
         {/* Connections */}
         <Card className="p-6 mb-4 shadow-lg">
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">Connections</h3>

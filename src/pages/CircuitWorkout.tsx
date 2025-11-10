@@ -394,17 +394,17 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                         <div className="flex items-center justify-between gap-3 mb-2">
                           <h3 className="text-2xl font-bold text-foreground truncate">{title}</h3>
                           <div className="flex items-center gap-4 text-muted-foreground whitespace-nowrap">
-                            {ex.sets && ex.reps && (
-                              <span className="text-4xl font-bold text-foreground">
-                                {ex.sets} × {ex.reps}
-                              </span>
-                            )}
-                            {ex.suggestedKg && ex.suggestedKg > 0 && (
+                              {ex.sets && ex.reps && (
+                                <span className="text-4xl font-bold text-foreground">
+                                  {ex.sets} × {ex.reps}
+                                </span>
+                              )}
+                              {ex.suggestedKg && ex.suggestedKg > 0 && (
                               <span className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
                                 <Dumbbell className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
-                                <span className="font-extrabold text-primary">{ex.suggestedKg}kg</span>
-                              </span>
-                            )}
+                                  <span className="font-extrabold text-primary">{ex.suggestedKg}kg</span>
+                                </span>
+                              )}
                             {!ex.sets && !ex.reps && ex.durationMin && (
                               <span className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
                                 <Clock className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
@@ -421,8 +421,8 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                                 </span>
                               </span>
                             )}
+                            </div>
                           </div>
-                        </div>
                       </div>
                       
                       {/* Exercise Media (YouTube/Video) */}
