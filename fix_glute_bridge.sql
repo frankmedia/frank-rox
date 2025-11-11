@@ -1,13 +1,14 @@
 -- Fix Glute Bridge to be a bodyweight exercise instead of weights
 -- This ensures it displays with duration/reps instead of weight/kg
+-- Note: exercises table uses 'modality' not 'type'
 
 UPDATE exercises
-SET type = 'bodyweight'
+SET modality = 'bodyweight'
 WHERE name ILIKE '%Glute Bridge%'
-  AND type = 'weights';
+  AND modality = 'weights';
 
 -- Verify the change
-SELECT id, name, type, tags
+SELECT id, name, modality, tags
 FROM exercises
 WHERE name ILIKE '%Glute Bridge%';
 

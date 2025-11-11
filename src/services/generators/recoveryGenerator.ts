@@ -151,7 +151,7 @@ async function buildPostWorkoutMobility(
     const catCow = await findExercise(supabase, ["Cat-Cow"]);
     if (catCow) {
       await addItem(supabase, stretchBlock.id, catCow.id, order++, {
-        duration: "60s",
+        duration: "1min",
         notes: "Slow breathing, gentle spinal movement"
       });
     }
@@ -160,7 +160,7 @@ async function buildPostWorkoutMobility(
     const hipFlexor = await findExercise(supabase, ["Hip Flexor Stretch"]);
     if (hipFlexor) {
       await addItem(supabase, stretchBlock.id, hipFlexor.id, order++, {
-        duration: "45s",
+        duration: "1min",
         notes: "Each side, posterior pelvic tilt"
       });
     }
@@ -169,7 +169,7 @@ async function buildPostWorkoutMobility(
     const gluteBridge = await findExercise(supabase, ["Glute Bridge"]);
     if (gluteBridge) {
       await addItem(supabase, stretchBlock.id, gluteBridge.id, order++, {
-        duration: "60s",
+        duration: "1min",
         notes: "10-15 reps, squeeze at top"
       });
     }
@@ -215,7 +215,7 @@ async function buildActiveRecovery(
     const inchworms = await findExercise(supabase, ["Inchworms"]);
     if (inchworms) {
       await addItem(supabase, yogaBlock.id, inchworms.id, order++, {
-        duration: "120s",
+        duration: "2min",
         notes: "6-8 reps, dynamic stretch for hamstrings and shoulders"
       });
     }
@@ -224,7 +224,7 @@ async function buildActiveRecovery(
     const thoracic = await findExercise(supabase, ["Thoracic Rotation (Open Book)"]);
     if (thoracic) {
       await addItem(supabase, yogaBlock.id, thoracic.id, order++, {
-        duration: "120s",
+        duration: "2min",
         notes: "10 reps each side, slow rotations, breathe into stretch"
       });
     }
@@ -233,7 +233,7 @@ async function buildActiveRecovery(
     const hipCars = await findExercise(supabase, ["Standing Hip CARs"]);
     if (hipCars) {
       await addItem(supabase, yogaBlock.id, hipCars.id, order++, {
-        duration: "120s",
+        duration: "2min",
         notes: "5 circles each direction, each leg"
       });
     }
@@ -242,7 +242,7 @@ async function buildActiveRecovery(
     const hipSwitches = await findExercise(supabase, ["90/90 Hip Switches"]);
     if (hipSwitches) {
       await addItem(supabase, yogaBlock.id, hipSwitches.id, order++, {
-        duration: "120s",
+        duration: "2min",
         notes: "10-12 switches, control, no pain, breathe"
       });
     }
@@ -267,7 +267,7 @@ async function buildActiveRecovery(
     const hamstring = await findExercise(supabase, ["Hamstring Stretch"]);
     if (hamstring) {
       await addItem(supabase, stretchBlock.id, hamstring.id, order++, {
-        duration: "90s",
+        duration: "2min",
         notes: "Keep back straight, relax into stretch, each side"
       });
     }
@@ -276,7 +276,7 @@ async function buildActiveRecovery(
     const quad = await findExercise(supabase, ["Quad Stretch"]);
     if (quad) {
       await addItem(supabase, stretchBlock.id, quad.id, order++, {
-        duration: "90s",
+        duration: "2min",
         notes: "Pull heel to glute, keep knees together, each side"
       });
     }
@@ -285,7 +285,7 @@ async function buildActiveRecovery(
     const cossack = await findExercise(supabase, ["Cossack Squat"]);
     if (cossack) {
       await addItem(supabase, stretchBlock.id, cossack.id, order++, {
-        duration: "120s",
+        duration: "2min",
         notes: "8-10 reps, heel down, upright chest, side to side"
       });
     }
@@ -294,7 +294,7 @@ async function buildActiveRecovery(
     const glute = await findExercise(supabase, ["Figure of 4 Stretch"]);
     if (glute) {
       await addItem(supabase, stretchBlock.id, glute.id, order++, {
-        duration: "90s",
+        duration: "2min",
         notes: "Seated or lying, deep hold, each side"
       });
     }
@@ -319,7 +319,7 @@ async function buildActiveRecovery(
     const birdDog = await findExercise(supabase, ["Bird Dog"]);
     if (birdDog) {
       await addItem(supabase, coreBlock.id, birdDog.id, order++, {
-        duration: "90s",
+        duration: "2min",
         notes: "10 reps each side, reach long, hips level, controlled"
       });
     }
@@ -328,7 +328,7 @@ async function buildActiveRecovery(
     const deadBug = await findExercise(supabase, ["Dead Bug"]);
     if (deadBug) {
       await addItem(supabase, coreBlock.id, deadBug.id, order++, {
-        duration: "90s",
+        duration: "2min",
         notes: "10 reps each side, low back gently down, breathe"
       });
     }
@@ -337,7 +337,7 @@ async function buildActiveRecovery(
     const plank = await findExercise(supabase, ["Plank"]);
     if (plank) {
       await addItem(supabase, coreBlock.id, plank.id, order++, {
-        duration: "60s",
+        duration: "1min",
         notes: "Hold strong position, breathe steadily"
       });
     }
