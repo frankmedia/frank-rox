@@ -79,37 +79,54 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
         // Draw the photo
         ctx.drawImage(img, 0, 0);
 
-        // Add semi-transparent overlay at bottom (10% darker)
-        const overlayHeight = Math.min(600, img.height * 0.4);
-        const gradient = ctx.createLinearGradient(0, img.height - overlayHeight, 0, img.height);
-        gradient.addColorStop(0, "rgba(0, 0, 0, 0)");
-        gradient.addColorStop(0.3, "rgba(0, 0, 0, 0.8)");  // Was 0.7, now 0.8
-        gradient.addColorStop(1, "rgba(0, 0, 0, 1)");
+        // Add semi-transparent overlay: 10% top half, 20% bottom half
+        const midHeight = img.height / 2;
         
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, img.height - overlayHeight, img.width, overlayHeight);
+        // Top half (10% opacity)
+        ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+        ctx.fillRect(0, 0, img.width, midHeight);
+        
+        // Bottom half (20% opacity)
+        ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+        ctx.fillRect(0, midHeight, img.width, midHeight);
 
-        // Add flame logo + "RoxPT" at top left
+        // Draw flame SVG icon at top left
         const leftMargin = 40;
-        ctx.font = "60px sans-serif";
-        ctx.fillText("🔥", leftMargin, 80);
+        const rightMargin = 40;
         
+        // Draw flame icon (yellow stroke, no fill)
+        ctx.strokeStyle = "#FFCC00";
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        
+        // Scale and position flame path
+        ctx.save();
+        ctx.translate(leftMargin, 40);
+        ctx.scale(2.5, 2.5); // Make it bigger
+        ctx.beginPath();
+        // Flame SVG path
+        ctx.moveTo(8.5, 14.5);
+        ctx.bezierCurveTo(8.5, 15.88, 9.62, 17, 11, 17);
+        ctx.lineTo(11, 12);
+        ctx.bezierCurveTo(11, 10.62, 10.5, 10, 10, 9);
+        ctx.bezierCurveTo(8.928, 6.857, 9.776, 4.946, 12, 3);
+        ctx.bezierCurveTo(12.5, 5.5, 14, 7.9, 16, 9.5);
+        ctx.bezierCurveTo(18, 11.1, 19, 13, 19, 15);
+        ctx.arc(12, 15, 7, 0, 2 * Math.PI);
+        ctx.bezierCurveTo(5, 13.847, 5.433, 12.706, 6, 12);
+        ctx.bezierCurveTo(6, 13.38, 7.12, 14.5, 8.5, 14.5);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+        
+        // Add "RoxPT" text next to flame
         ctx.fillStyle = "#FFCC00";
-        ctx.font = "bold 48px sans-serif";
+        ctx.font = "bold 54px sans-serif";
         ctx.textAlign = "left";
-        ctx.fillText("RoxPT", leftMargin + 80, 80);
+        ctx.fillText("RoxPT", leftMargin + 90, 80);
 
-        // Add workout name if present (left-aligned at bottom)
-        let yPos = img.height - overlayHeight + 60;
-        if (workoutName) {
-          ctx.fillStyle = "#FFFFFF";
-          ctx.font = "bold 32px sans-serif";
-          ctx.textAlign = "left";
-          ctx.fillText(workoutName, leftMargin, yPos);
-          yPos += 45;
-        }
-
-        // Add date and time (left-aligned)
+        // Add date and time at TOP RIGHT
         const now = new Date();
         const dateStr = now.toLocaleDateString("en-GB", { 
           day: "numeric", 
@@ -122,26 +139,38 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
         });
         
         ctx.fillStyle = "#FFCC00";
-        ctx.font = "22px sans-serif";
-        ctx.textAlign = "left";
-        ctx.fillText(`${dateStr} • ${timeStr}`, leftMargin, yPos);
-        yPos += 45;
+        ctx.font = "bold 24px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(`${dateStr}`, img.width - rightMargin, 50);
+        ctx.fillText(`${timeStr}`, img.width - rightMargin, 80);
+
+        // Start workout details at bottom third of image
+        let yPos = img.height - (img.height * 0.35);
+
+        // Add workout name if present
+        if (workoutName) {
+          ctx.fillStyle = "#FFFFFF";
+          ctx.font = "bold 48px sans-serif";
+          ctx.textAlign = "left";
+          ctx.fillText(workoutName, leftMargin, yPos);
+          yPos += 70;
+        }
 
         // Add "Workout Complete" header
         ctx.fillStyle = "#FFCC00";
-        ctx.font = "bold 24px sans-serif";
+        ctx.font = "bold 42px sans-serif";
         ctx.textAlign = "left";
         ctx.fillText("✓ Workout Complete", leftMargin, yPos);
-        yPos += 40;
+        yPos += 65;
 
-        // Add exercises list
+        // Add exercises list (3x bigger text)
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = "18px sans-serif";
+        ctx.font = "36px sans-serif"; // Was 18px, now 36px (2x), target 54px (3x)
         ctx.textAlign = "left";
         
-        const lineHeight = 30;
+        const lineHeight = 55; // Increased from 30
         let exerciseCount = 0;
-        const maxExercises = Math.floor((overlayHeight - (yPos - (img.height - overlayHeight))) / lineHeight) - 2;
+        const maxExercises = Math.floor((img.height - yPos - 60) / lineHeight);
 
         for (const exercise of exercises.slice(0, maxExercises)) {
           if (exercise.type === "intro") continue; // Skip intro cards
@@ -180,7 +209,7 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
         const remainingExercises = exercises.filter(e => e.type !== "intro").length - exerciseCount;
         if (remainingExercises > 0) {
           ctx.fillStyle = "#FFCC00";
-          ctx.font = "italic 20px sans-serif";
+          ctx.font = "italic 32px sans-serif"; // Was 20px, now 32px
           ctx.fillText(`...and ${remainingExercises} more exercise${remainingExercises > 1 ? 's' : ''}`, leftMargin, yPos);
         }
 
