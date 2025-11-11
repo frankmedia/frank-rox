@@ -151,7 +151,7 @@ const steps = [
               <Button
                 key={`bench-${v}`}
                 variant="ghost"
-                className={`w-full text-lg border ${v==="Not sure"?"h-18 opacity-60":"h-12"} ${a.bench5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                className={`w-full text-lg border ${v==="Not sure"?"h-27 opacity-60":"h-12"} ${a.bench5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
                 onClick={()=>set("bench5rm", v)}
               >
                 {v}
@@ -166,7 +166,7 @@ const steps = [
               <Button
                 key={`squat-${v}`}
                 variant="ghost"
-                className={`w-full text-lg border ${v==="Not sure"?"h-18 opacity-60":"h-12"} ${a.squat5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                className={`w-full text-lg border ${v==="Not sure"?"h-27 opacity-60":"h-12"} ${a.squat5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
                 onClick={()=>set("squat5rm", v)}
               >
                 {v}
@@ -181,7 +181,7 @@ const steps = [
               <Button
                 key={`dead-${v}`}
                 variant="ghost"
-                className={`w-full text-lg border ${v==="Not sure"?"h-18 opacity-60":"h-12"} ${a.deadlift5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                className={`w-full text-lg border ${v==="Not sure"?"h-27 opacity-60":"h-12"} ${a.deadlift5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
                 onClick={()=>set("deadlift5rm", v)}
               >
                 {v}
@@ -196,7 +196,7 @@ const steps = [
               <Button
                 key={`ohp-${v}`}
                 variant="ghost"
-                className={`w-full text-lg border ${v==="Not sure"?"h-18 opacity-60":"h-12"} ${a.ohp5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                className={`w-full text-lg border ${v==="Not sure"?"h-27 opacity-60":"h-12"} ${a.ohp5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
                 onClick={()=>set("ohp5rm", v)}
               >
                 {v}
@@ -532,7 +532,7 @@ const Onboarding = () => {
       {/* Header */}
       <header
         className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border"
-        style={{ paddingTop: 'calc(60px + env(safe-area-inset-top, 0px))' }}
+        style={{ paddingTop: 'calc(30px + env(safe-area-inset-top, 0px))' }}
       >
         <div className="container max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -543,8 +543,8 @@ const Onboarding = () => {
       </header>
 
       {/* Centered content area; page is frozen (no global scrolling) */}
-      <main className="container max-w-2xl mx-auto px-4 pb-40 h-[calc(100vh-4rem)] overflow-y-auto" style={{ paddingTop: 'calc(9rem + env(safe-area-inset-top, 0px))' }}>
-        <Card className="mt-32 p-5 bg-zinc-900 border-zinc-800">
+      <main className="container max-w-2xl mx-auto px-4 pb-40 h-[calc(100vh-4rem)] overflow-y-auto" style={{ paddingTop: 'calc(4.5rem + env(safe-area-inset-top, 0px))' }}>
+        <Card className="mt-16 p-5 bg-zinc-900 border-zinc-800">
           <div className="text-white space-y-4">
             {typeof step.render === "function" ? step.render(answers, set) : step.render}
           </div>
