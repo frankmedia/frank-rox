@@ -1,28 +1,21 @@
 /**
  * Cardio/Conditioning Workout Generator
  * 
- * Generates cardio and conditioning workouts for hybrid training programmes.
- * Supports: Race Simulation, Engine Work, HIIT Conditioning
+ * Generates 12 Hyrox-style cardio workouts:
+ * - 10 equipment-based workouts
+ * - 2 bodyweight-only workouts
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
+import { CardioWorkoutType } from "../cardioWorkoutSelector";
 
 export interface CardioSessionOptions {
-  sessionType: 
-    | "machine-endurance"      // 40min steady state (Z2-3)
-    | "ski-row-threshold"      // 4 rounds: 1000m Ski + 1000m Row + 20 Wall Balls
-    | "functional-engine"      // 30min AMRAP: Row, Lunges, Burpees, KB, Wall Balls
-    | "machine-power"          // 6 rounds: 1min Ski/Row/Bike (hard) + 1min rest
-    | "sled-ski-combo"         // 5 rounds: 250m Ski + Sled Push/Pull + Air Squats
-    | "descending-ladder"      // 10-8-6-4-2: 250m Ski/Row + 10 Burpees
-    | "assault-gauntlet"       // EMOM 5min x6: 20cal Bike + Jump Squats + KB DL
-    | "hybrid-pyramid"         // Pyramid: 250-500-750-1000-750-500-250 (Ski/Row/Bike)
-    | "lactic-threshold"       // 3 rounds: 500m Row + Burpees + 250m Ski + KB Swings
-    | "hyrox-finisher";        // 4 rounds: 1000m Ski + Wall Balls + Burpees + Sled
+  sessionType: CardioWorkoutType;
   duration?: number; // minutes
   intensity?: "easy" | "moderate" | "hard";
   equipment?: string[]; // Available equipment
   allowRunning?: boolean; // If false, replace runs with erg alternatives
+  intensityModifier?: number; // Progressive overload multiplier (1.0 = base, 1.1 = +10%)
 }
 
 /**
@@ -33,38 +26,46 @@ export async function createCardioSession(
   planDayId: string,
   options: CardioSessionOptions
 ): Promise<void> {
-  console.log(`🏃 Creating ${options.sessionType} cardio session`);
+  console.log(`🏃 Creating ${options.sessionType} cardio session (modifier: ${options.intensityModifier || 1.0})`);
+
+  const modifier = options.intensityModifier || 1.0;
 
   switch (options.sessionType) {
     case "machine-endurance":
-      await buildMachineEndurance(supabase, planDayId, options);
+      await buildMachineEndurance(supabase, planDayId, options, modifier);
       break;
     case "ski-row-threshold":
-      await buildSkiRowThreshold(supabase, planDayId, options);
+      await buildSkiRowThreshold(supabase, planDayId, options, modifier);
       break;
     case "functional-engine":
-      await buildFunctionalEngine(supabase, planDayId, options);
+      await buildFunctionalEngine(supabase, planDayId, options, modifier);
       break;
     case "machine-power":
-      await buildMachinePower(supabase, planDayId, options);
+      await buildMachinePower(supabase, planDayId, options, modifier);
       break;
     case "sled-ski-combo":
-      await buildSledSkiCombo(supabase, planDayId, options);
+      await buildSledSkiCombo(supabase, planDayId, options, modifier);
       break;
     case "descending-ladder":
-      await buildDescendingLadder(supabase, planDayId, options);
+      await buildDescendingLadder(supabase, planDayId, options, modifier);
       break;
     case "assault-gauntlet":
-      await buildAssaultGauntlet(supabase, planDayId, options);
+      await buildAssaultGauntlet(supabase, planDayId, options, modifier);
       break;
     case "hybrid-pyramid":
-      await buildHybridPyramid(supabase, planDayId, options);
+      await buildHybridPyramid(supabase, planDayId, options, modifier);
       break;
     case "lactic-threshold":
-      await buildLacticThreshold(supabase, planDayId, options);
+      await buildLacticThreshold(supabase, planDayId, options, modifier);
       break;
     case "hyrox-finisher":
-      await buildHyroxFinisher(supabase, planDayId, options);
+      await buildHyroxFinisher(supabase, planDayId, options, modifier);
+      break;
+    case "bodyweight-grinder":
+      await buildBodyweightGrinder(supabase, planDayId, options, modifier);
+      break;
+    case "bodyweight-power":
+      await buildBodyweightPower(supabase, planDayId, options, modifier);
       break;
   }
 }
@@ -151,7 +152,7 @@ async function addItem(
     const durStr = String(extra.duration);
     const durMatch = durStr.match(/(\d+)\s*min/i);
     if (durMatch) {
-      payload.duration_sec = parseInt(durMatch[1]); // Store as minutes for cardio
+      payload.duration_sec = parseInt(durMatch[1]) * 60;
     }
   }
   
@@ -174,66 +175,104 @@ async function addItem(
 /**
  * 1. MACHINE ENDURANCE BUILDER
  * 40 minutes steady state (Zone 2-3)
- * 10 min SkiErg + 10 min RowErg + 10 min Assault Bike + 10 min Cross Trainer
  */
 async function buildMachineEndurance(
   supabase: SupabaseClient,
   planDayId: string,
-  options: CardioSessionOptions
+  options: CardioSessionOptions,
+  modifier: number
 ) {
   const sessionData = await createSession(
     supabase,
     planDayId,
-    "Race Simulation",
-    "Hybrid conditioning circuit combining running, strength, and erg work. Maintain consistent pacing across all rounds. This simulates race-day demands with mixed modalities."
+    "Machine Endurance Builder",
+    "40 minutes steady state aerobic work. Keep heart rate in Zone 2-3 (conversational pace). Build your aerobic base across multiple modalities."
   );
 
-  // Create warm-up block
-  const { data: warmupBlock } = await supabase
+  const duration = Math.round(10 * modifier); // Base 10min per machine
+
+  // Create main block
+  const { data: mainBlock } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
-      title: "Warm-up",
-      parameters: { format: "standard" },
+      title: "Steady State Endurance",
+      parameters: { format: "standard", intensity: "easy" },
     })
     .select()
     .single();
 
-  if (warmupBlock) {
-    // Use erg alternative if running not allowed
-    if (options.allowRunning === false) {
-      const bike = await findExercise(supabase, ["Assault Bike", "Air Bike", "Bike"]);
-      if (bike) {
-        await addItem(supabase, warmupBlock.id, bike.id, 0, {
-          duration: "10min",
-          notes: "Easy pace warm-up (no-running alternative)"
-        });
-      }
-    } else {
-      const easyRun = await findExercise(supabase, ["Easy Z2 Run", "Treadmill Easy Run (Z2)", "Run"]);
-      if (easyRun) {
-        await addItem(supabase, warmupBlock.id, easyRun.id, 0, {
-          duration: "10min",
-          notes: "Easy pace warm-up"
-        });
-      }
+  if (mainBlock) {
+    let order = 0;
+
+    const skierg = await findExercise(supabase, ["SkiErg"]);
+    if (skierg) {
+      await addItem(supabase, mainBlock.id, skierg.id, order++, {
+        duration: `${duration}min`,
+        notes: "Zone 2-3, tall catch, lats engaged"
+      });
+    }
+
+    const rower = await findExercise(supabase, ["RowErg", "Rower"]);
+    if (rower) {
+      await addItem(supabase, mainBlock.id, rower.id, order++, {
+        duration: `${duration}min`,
+        notes: "Zone 2-3, even splits, 20-24 spm"
+      });
+    }
+
+    const bike = await findExercise(supabase, ["Assault Bike", "BikeErg Steady Z2"]);
+    if (bike) {
+      await addItem(supabase, mainBlock.id, bike.id, order++, {
+        duration: `${duration}min`,
+        notes: "Zone 2-3, smooth cadence"
+      });
+    }
+
+    const crossTrainer = await findExercise(supabase, ["Cross Trainer", "Elliptical"]);
+    if (crossTrainer) {
+      await addItem(supabase, mainBlock.id, crossTrainer.id, order++, {
+        duration: `${duration}min`,
+        notes: "Zone 2-3, full range of motion"
+      });
     }
   }
 
-  // Create main circuit block
+  console.log("✅ Machine Endurance Builder created");
+}
+
+/**
+ * 2. SKI-ROW THRESHOLD
+ * 4 rounds: 1000m Ski + 1000m Row + 20 Wall Balls
+ */
+async function buildSkiRowThreshold(
+  supabase: SupabaseClient,
+  planDayId: string,
+  options: CardioSessionOptions,
+  modifier: number
+) {
+  const sessionData = await createSession(
+    supabase,
+    planDayId,
+    "Ski-Row Threshold",
+    "Threshold work combining ergs and functional movement. Focus on consistent splits across all rounds. This builds lactate tolerance and mental toughness."
+  );
+
+  const rounds = Math.round(4 * modifier);
+  const distance = Math.round(1000 * modifier);
+  const wallBalls = Math.round(20 * modifier);
+
+  // Create main circuit
   const { data: circuitBlock } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
-      title: "Race Simulation Circuit",
-      rounds: 4,
-      rest_between_rounds_s: 180, // 3 min rest
-      parameters: { 
-        format: "circuit",
-        intensity: "hard"
-      },
+      title: "Threshold Circuit",
+      rounds: rounds,
+      rest_between_rounds_s: 120,
+      parameters: { format: "circuit", intensity: "hard" },
     })
     .select()
     .single();
@@ -241,146 +280,150 @@ async function buildMachineEndurance(
   if (circuitBlock) {
     let order = 0;
 
-    // 1. Run (or RowErg alternative if running not allowed)
-    if (options.allowRunning === false) {
-      const rower = await findExercise(supabase, ["RowErg", "Rower", "Rowing Machine"]);
-      if (rower) {
-        await addItem(supabase, circuitBlock.id, rower.id, order++, {
-          distance: "1km",
-          notes: "Hard pace - maintain consistency (no-running alternative)"
-        });
-      }
-    } else {
-      const run = await findExercise(supabase, ["Run", "1km Run Hyrox Pace"]);
-      if (run) {
-        await addItem(supabase, circuitBlock.id, run.id, order++, {
-          distance: "1km",
-          notes: "Race pace - maintain consistency"
-        });
-      }
-    }
-
-    // 2. Sled Push
-    const sledPush = await findExercise(supabase, ["Sled Push"]);
-    if (sledPush) {
-      await addItem(supabase, circuitBlock.id, sledPush.id, order++, {
-        distance: "50m",
-        notes: "Fast short steps, drive through legs"
-      });
-    }
-
-    // 3. SkiErg
     const skierg = await findExercise(supabase, ["SkiErg"]);
     if (skierg) {
       await addItem(supabase, circuitBlock.id, skierg.id, order++, {
-        distance: "500m",
-        notes: "Tall catch, lats engaged, consistent pace"
+        distance: `${distance}m`,
+        notes: "Consistent splits, tall catch"
+      });
+    }
+
+    const rower = await findExercise(supabase, ["RowErg"]);
+    if (rower) {
+      await addItem(supabase, circuitBlock.id, rower.id, order++, {
+        distance: `${distance}m`,
+        notes: "Even pacing, 20-24 spm"
+      });
+    }
+
+    const wallBall = await findExercise(supabase, ["Wall Balls", "Wall Ball"]);
+    if (wallBall) {
+      await addItem(supabase, circuitBlock.id, wallBall.id, order++, {
+        reps: wallBalls,
+        notes: "Full depth squat, hit target"
       });
     }
   }
 
-  // Create cool-down block
-  const { data: cooldownBlock } = await supabase
-    .from("session_blocks")
-    .insert({
-      session_id: sessionData.id,
-      block_type: "cardio",
-      title: "Cool-down",
-      parameters: { format: "standard" },
-    })
-    .select()
-    .single();
-
-  if (cooldownBlock) {
-    const easyWalk = await findExercise(supabase, ["Easy Walk", "Treadmill Easy Run (Z2)"]);
-    if (easyWalk) {
-      await addItem(supabase, cooldownBlock.id, easyWalk.id, 0, {
-        duration: "5min",
-        notes: "Easy pace to bring heart rate down"
-      });
-    }
-  }
-
-  console.log("✅ Race Simulation created");
+  console.log("✅ Ski-Row Threshold created");
 }
 
 /**
- * ENGINE WORK
- * 
- * Format: Mixed intervals on different machines
- * Example: 30 min rotating between RowErg, SkiErg, Assault Bike
+ * 3. FUNCTIONAL ENGINE AMRAP
+ * 30min AMRAP: Row, Lunges, Burpees, KB, Wall Balls
  */
-async function buildEngineWork(
+async function buildFunctionalEngine(
   supabase: SupabaseClient,
   planDayId: string,
-  options: CardioSessionOptions
+  options: CardioSessionOptions,
+  modifier: number
 ) {
-  const duration = options.duration || 30;
-  
   const sessionData = await createSession(
     supabase,
     planDayId,
-    "Engine Work",
-    "Mixed cardio intervals to build aerobic capacity across multiple modalities. Focus on maintaining consistent effort, not max output. Build your engine with varied movement patterns."
+    "Functional Engine AMRAP",
+    "30-minute AMRAP for max rounds. Sustainable pace - this is about volume and consistency, not sprinting. Build your work capacity across mixed modalities."
   );
 
-  // Create warm-up block
-  const { data: warmupBlock } = await supabase
+  const duration = Math.round(30 * modifier);
+
+  // Create AMRAP block
+  const { data: amrapBlock } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
-      title: "Warm-up",
-      parameters: { format: "standard" },
+      title: `${duration} min AMRAP`,
+      parameters: { format: "amrap", time_cap_min: duration, intensity: "moderate" },
     })
     .select()
     .single();
 
-  if (warmupBlock) {
-    // Use erg alternative if running not allowed
-    if (options.allowRunning === false) {
-      const rower = await findExercise(supabase, ["RowErg", "Rower", "Rowing Machine"]);
-      if (rower) {
-        await addItem(supabase, warmupBlock.id, rower.id, 0, {
-          duration: "5min",
-          notes: "Easy pace warm-up (no-running alternative)"
-        });
-      }
-    } else {
-      const easyRun = await findExercise(supabase, ["Easy Z2 Run", "Treadmill Easy Run (Z2)"]);
-      if (easyRun) {
-        await addItem(supabase, warmupBlock.id, easyRun.id, 0, {
-          duration: "5min",
-          notes: "Easy pace warm-up"
-        });
-      }
+  if (amrapBlock) {
+    let order = 0;
+
+    const rower = await findExercise(supabase, ["RowErg"]);
+    if (rower) {
+      await addItem(supabase, amrapBlock.id, rower.id, order++, {
+        distance: "500m",
+        notes: "Steady pace"
+      });
+    }
+
+    const lunges = await findExercise(supabase, ["Walking Lunges", "Lunges"]);
+    if (lunges) {
+      await addItem(supabase, amrapBlock.id, lunges.id, order++, {
+        reps: 20,
+        notes: "10 each leg, weighted optional"
+      });
+    }
+
+    const burpees = await findExercise(supabase, ["Burpees"]);
+    if (burpees) {
+      await addItem(supabase, amrapBlock.id, burpees.id, order++, {
+        reps: 15,
+        notes: "Full chest to deck"
+      });
+    }
+
+    const kbSwing = await findExercise(supabase, ["KB Swings", "Kettlebell Swings"]);
+    if (kbSwing) {
+      await addItem(supabase, amrapBlock.id, kbSwing.id, order++, {
+        reps: 20,
+        notes: "24/16kg, hip drive"
+      });
+    }
+
+    const wallBall = await findExercise(supabase, ["Wall Balls"]);
+    if (wallBall) {
+      await addItem(supabase, amrapBlock.id, wallBall.id, order++, {
+        reps: 15,
+        notes: "Full depth squat"
+      });
     }
   }
 
-  // Create interval blocks for each machine
+  console.log("✅ Functional Engine AMRAP created");
+}
+
+/**
+ * 4. MACHINE POWER INTERVALS
+ * 6 rounds: 1min Ski/Row/Bike (hard) + 1min rest
+ */
+async function buildMachinePower(
+  supabase: SupabaseClient,
+  planDayId: string,
+  options: CardioSessionOptions,
+  modifier: number
+) {
+  const sessionData = await createSession(
+    supabase,
+    planDayId,
+    "Machine Power Intervals",
+    "High-intensity intervals across three machines. Go hard on work periods, use rest to recover fully. Aim for equal power output across all machines."
+  );
+
+  const rounds = Math.round(6 * modifier);
+
   const machines = [
-    { name: "RowErg", exercise: ["RowErg"], notes: "Even split pacing, 20-24 spm" },
-    { name: "SkiErg", exercise: ["SkiErg"], notes: "Tall catch, lats engaged" },
-    { name: "Assault Bike", exercise: ["Assault Bike", "BikeErg Steady Z2"], notes: "Powerful arms + legs" },
+    { name: "SkiErg", exercise: ["SkiErg"], notes: "Max effort, tall catch" },
+    { name: "RowErg", exercise: ["RowErg"], notes: "Hard pace, 26-30 spm" },
+    { name: "Assault Bike", exercise: ["Assault Bike"], notes: "All-out, arms + legs" },
   ];
 
-  const intervalsPerMachine = Math.floor(duration / 10); // ~10 min per machine
-
-  for (let i = 0; i < machines.length; i++) {
-    const machine = machines[i];
-    
+  for (const machine of machines) {
     const { data: intervalBlock } = await supabase
       .from("session_blocks")
       .insert({
         session_id: sessionData.id,
         block_type: "cardio",
         title: `${machine.name} Intervals`,
-        rounds: intervalsPerMachine,
+        rounds: rounds,
         parameters: { 
           format: "intervals",
-          work_sec: 120, // 2 min work
-          rest_sec: 60,  // 1 min rest
-          intensity: "moderate"
+          work_sec: 60,
+          rest_sec: 60,
+          intensity: "hard"
         },
       })
       .select()
@@ -390,7 +433,7 @@ async function buildEngineWork(
       const exercise = await findExercise(supabase, machine.exercise);
       if (exercise) {
         await addItem(supabase, intervalBlock.id, exercise.id, 0, {
-          duration: "2min",
+          duration: "1min",
           rest: "60s",
           notes: machine.notes
         });
@@ -398,152 +441,571 @@ async function buildEngineWork(
     }
   }
 
-  // Create cool-down block
-  const { data: cooldownBlock } = await supabase
-    .from("session_blocks")
-    .insert({
-      session_id: sessionData.id,
-      block_type: "cardio",
-      title: "Cool-down",
-      parameters: { format: "standard" },
-    })
-    .select()
-    .single();
-
-  if (cooldownBlock) {
-    const easyWalk = await findExercise(supabase, ["Easy Walk"]);
-    if (easyWalk) {
-      await addItem(supabase, cooldownBlock.id, easyWalk.id, 0, {
-        duration: "5min",
-        notes: "Easy pace to bring heart rate down"
-      });
-    }
-  }
-
-  console.log("✅ Engine Work created");
+  console.log("✅ Machine Power Intervals created");
 }
 
 /**
- * HIIT CONDITIONING
- * 
- * Format: Short bursts with short rest
- * Example: 8 rounds of 30s SkiErg / 30s rest
+ * 5. SLED & SKI COMBO
+ * 5 rounds: 250m Ski + Sled Push/Pull + Air Squats
  */
-async function buildHIIT(
+async function buildSledSkiCombo(
   supabase: SupabaseClient,
   planDayId: string,
-  options: CardioSessionOptions
+  options: CardioSessionOptions,
+  modifier: number
 ) {
   const sessionData = await createSession(
     supabase,
     planDayId,
-    "HIIT Conditioning",
-    "High-intensity interval training to improve anaerobic capacity and power output. Go hard on work periods, use rest to recover fully. Quality over quantity - maintain intensity throughout."
+    "Sled & Ski Combo",
+    "Power endurance combining erg work and sled. Race-sim style - maintain intensity across all rounds. Fast short steps on sled, drive through legs."
   );
 
-  // Create warm-up block
-  const { data: warmupBlock } = await supabase
+  const rounds = Math.round(5 * modifier);
+  const skiDistance = Math.round(250 * modifier);
+  const sledDistance = Math.round(15 * modifier);
+
+  const { data: circuitBlock } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
-      title: "Warm-up",
-      parameters: { format: "standard" },
+      title: "Sled & Ski Circuit",
+      rounds: rounds,
+      rest_between_rounds_s: 90,
+      parameters: { format: "circuit", intensity: "hard" },
     })
     .select()
     .single();
 
-  if (warmupBlock) {
-    const jumpingJacks = await findExercise(supabase, ["Jumping Jacks"]);
-    if (jumpingJacks) {
-      await addItem(supabase, warmupBlock.id, jumpingJacks.id, 0, {
-        duration: "3min",
-        notes: "Light impact warm-up"
+  if (circuitBlock) {
+    let order = 0;
+
+    const skierg = await findExercise(supabase, ["SkiErg"]);
+    if (skierg) {
+      await addItem(supabase, circuitBlock.id, skierg.id, order++, {
+        distance: `${skiDistance}m`,
+        notes: "Fast pace"
+      });
+    }
+
+    const sledPush = await findExercise(supabase, ["Sled Push"]);
+    if (sledPush) {
+      await addItem(supabase, circuitBlock.id, sledPush.id, order++, {
+        distance: `${sledDistance}m`,
+        notes: "Heavy load, fast short steps"
+      });
+    }
+
+    const sledPull = await findExercise(supabase, ["Sled Pull"]);
+    if (sledPull) {
+      await addItem(supabase, circuitBlock.id, sledPull.id, order++, {
+        distance: `${sledDistance}m`,
+        notes: "Moderate load, steady pull"
+      });
+    }
+
+    const airSquats = await findExercise(supabase, ["Air Squats", "Bodyweight Squats"]);
+    if (airSquats) {
+      await addItem(supabase, circuitBlock.id, airSquats.id, order++, {
+        reps: 15,
+        notes: "Full depth, explosive"
       });
     }
   }
 
-  // Create HIIT blocks
-  const hiitExercises = [
-    { name: ["SkiErg"], notes: "Max effort, tall catch", rounds: 8, work: 30, rest: 30 },
-    { name: ["Burpees"], notes: "Fast pace, full extension", rounds: 6, work: 40, rest: 20 },
-    { name: ["Assault Bike"], notes: "All-out effort", rounds: 10, work: 20, rest: 40 },
-  ];
+  console.log("✅ Sled & Ski Combo created");
+}
 
-  for (const hiit of hiitExercises) {
-    const { data: hiitBlock } = await supabase
+/**
+ * 6. DESCENDING LADDER
+ * 10-8-6-4-2: 250m Ski/Row + 10 Burpees
+ */
+async function buildDescendingLadder(
+  supabase: SupabaseClient,
+  planDayId: string,
+  options: CardioSessionOptions,
+  modifier: number
+) {
+  const sessionData = await createSession(
+    supabase,
+    planDayId,
+    "Descending Ladder",
+    "Ladder format with decreasing rounds. Total body effort - pace should increase as rounds decrease. Rest 60 seconds between rounds."
+  );
+
+  const rounds = [10, 8, 6, 4, 2];
+
+  for (let i = 0; i < rounds.length; i++) {
+    const roundNum = rounds[i];
+    
+    const { data: roundBlock } = await supabase
       .from("session_blocks")
       .insert({
         session_id: sessionData.id,
         block_type: "cardio",
-        title: `HIIT: ${hiit.name[0]}`,
-        rounds: hiit.rounds,
+        title: `Round ${roundNum}`,
+        parameters: { format: "standard", intensity: "moderate" },
+      })
+      .select()
+      .single();
+
+    if (roundBlock) {
+      let order = 0;
+
+      const skierg = await findExercise(supabase, ["SkiErg"]);
+      if (skierg) {
+        await addItem(supabase, roundBlock.id, skierg.id, order++, {
+          distance: "250m",
+          notes: "Fast pace"
+        });
+      }
+
+      const rower = await findExercise(supabase, ["RowErg"]);
+      if (rower) {
+        await addItem(supabase, roundBlock.id, rower.id, order++, {
+          distance: "250m",
+          notes: "Fast pace"
+        });
+      }
+
+      const burpees = await findExercise(supabase, ["Burpees"]);
+      if (burpees) {
+        await addItem(supabase, roundBlock.id, burpees.id, order++, {
+          reps: 10,
+          notes: "Full chest to deck"
+        });
+      }
+    }
+  }
+
+  console.log("✅ Descending Ladder created");
+}
+
+/**
+ * 7. ASSAULT GAUNTLET
+ * EMOM 5min x6: 20cal Bike + Jump Squats + KB DL
+ */
+async function buildAssaultGauntlet(
+  supabase: SupabaseClient,
+  planDayId: string,
+  options: CardioSessionOptions,
+  modifier: number
+) {
+  const sessionData = await createSession(
+    supabase,
+    planDayId,
+    "Assault Gauntlet",
+    "EMOM format - complete work, rest remainder of each 5-minute window. Work hard, recover fully. Teaches pacing under fatigue."
+  );
+
+  const rounds = Math.round(6 * modifier);
+  const cals = Math.round(20 * modifier);
+
+  const { data: emomBlock } = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionData.id,
+      block_type: "cardio",
+      title: "EMOM 5min",
+      rounds: rounds,
+      parameters: { 
+        format: "emom",
+        interval_sec: 300, // 5 minutes
+        intensity: "hard"
+      },
+    })
+    .select()
+    .single();
+
+  if (emomBlock) {
+    let order = 0;
+
+    const bike = await findExercise(supabase, ["Assault Bike"]);
+    if (bike) {
+      await addItem(supabase, emomBlock.id, bike.id, order++, {
+        reps: cals,
+        notes: `${cals} calories, all-out effort`
+      });
+    }
+
+    const jumpSquats = await findExercise(supabase, ["Jump Squats", "Jumping Squats"]);
+    if (jumpSquats) {
+      await addItem(supabase, emomBlock.id, jumpSquats.id, order++, {
+        reps: 15,
+        notes: "Explosive, full extension"
+      });
+    }
+
+    const kbDeadlift = await findExercise(supabase, ["KB Deadlifts", "Kettlebell Deadlifts"]);
+    if (kbDeadlift) {
+      await addItem(supabase, emomBlock.id, kbDeadlift.id, order++, {
+        reps: 15,
+        notes: "Heavy KB, hip hinge"
+      });
+    }
+  }
+
+  console.log("✅ Assault Gauntlet created");
+}
+
+/**
+ * 8. HYBRID PYRAMID
+ * Pyramid: 250-500-750-1000-750-500-250 (Ski/Row/Bike)
+ */
+async function buildHybridPyramid(
+  supabase: SupabaseClient,
+  planDayId: string,
+  options: CardioSessionOptions,
+  modifier: number
+) {
+  const sessionData = await createSession(
+    supabase,
+    planDayId,
+    "Hybrid Pyramid",
+    "Pyramid format for aerobic development. Controlled pacing - steady effort throughout. Build up, then back down."
+  );
+
+  const distances = [250, 500, 750, 1000, 750, 500, 250];
+  const machines = ["SkiErg", "RowErg", "Assault Bike"];
+
+  for (let i = 0; i < distances.length; i++) {
+    const distance = Math.round(distances[i] * modifier);
+    const machine = machines[i % machines.length];
+    
+    const { data: roundBlock } = await supabase
+      .from("session_blocks")
+      .insert({
+        session_id: sessionData.id,
+        block_type: "cardio",
+        title: `${distance}m ${machine}`,
+        parameters: { format: "standard", intensity: "easy" },
+      })
+      .select()
+      .single();
+
+    if (roundBlock) {
+      const exercise = await findExercise(supabase, [machine]);
+      if (exercise) {
+        await addItem(supabase, roundBlock.id, exercise.id, 0, {
+          distance: `${distance}m`,
+          notes: "Steady pace, controlled breathing"
+        });
+      }
+    }
+  }
+
+  console.log("✅ Hybrid Pyramid created");
+}
+
+/**
+ * 9. LACTIC THRESHOLD BUILDER
+ * 3 rounds: 500m Row + Burpees + 250m Ski + KB Swings
+ */
+async function buildLacticThreshold(
+  supabase: SupabaseClient,
+  planDayId: string,
+  options: CardioSessionOptions,
+  modifier: number
+) {
+  const sessionData = await createSession(
+    supabase,
+    planDayId,
+    "Lactic Threshold Builder",
+    "Short rests, teaches tolerance under fatigue. Zone 4-5 pace on ergs. This is about pushing through discomfort and maintaining output."
+  );
+
+  const rounds = Math.round(3 * modifier);
+
+  const { data: circuitBlock } = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionData.id,
+      block_type: "cardio",
+      title: "Threshold Circuit",
+      rounds: rounds,
+      rest_between_rounds_s: 90,
+      parameters: { format: "circuit", intensity: "hard" },
+    })
+    .select()
+    .single();
+
+  if (circuitBlock) {
+    let order = 0;
+
+    const rower = await findExercise(supabase, ["RowErg"]);
+    if (rower) {
+      await addItem(supabase, circuitBlock.id, rower.id, order++, {
+        distance: "500m",
+        notes: "Z4 pace, hard effort"
+      });
+    }
+
+    const burpeesOver = await findExercise(supabase, ["Burpees Over Rower", "Burpees"]);
+    if (burpeesOver) {
+      await addItem(supabase, circuitBlock.id, burpeesOver.id, order++, {
+        reps: 15,
+        notes: "Fast pace, jump over"
+      });
+    }
+
+    const skierg = await findExercise(supabase, ["SkiErg"]);
+    if (skierg) {
+      await addItem(supabase, circuitBlock.id, skierg.id, order++, {
+        distance: "250m",
+        notes: "Z5 pace, max effort"
+      });
+    }
+
+    const kbSwing = await findExercise(supabase, ["KB Swings"]);
+    if (kbSwing) {
+      await addItem(supabase, circuitBlock.id, kbSwing.id, order++, {
+        reps: 15,
+        notes: "Heavy KB, explosive"
+      });
+    }
+  }
+
+  console.log("✅ Lactic Threshold Builder created");
+}
+
+/**
+ * 10. FULL HYROX FINISHER
+ * 4 rounds: 1000m Ski + Wall Balls + Burpees + Sled
+ */
+async function buildHyroxFinisher(
+  supabase: SupabaseClient,
+  planDayId: string,
+  options: CardioSessionOptions,
+  modifier: number
+) {
+  const sessionData = await createSession(
+    supabase,
+    planDayId,
+    "Full Hyrox Finisher",
+    "Simulates Hyrox effort, minus the running legs. 4 rounds for time - this is a race simulation. Maintain intensity, manage fatigue."
+  );
+
+  const rounds = Math.round(4 * modifier);
+  const skiDistance = Math.round(1000 * modifier);
+
+  const { data: circuitBlock } = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionData.id,
+      block_type: "cardio",
+      title: "Hyrox Simulation",
+      rounds: rounds,
+      rest_between_rounds_s: 180,
+      parameters: { format: "circuit", intensity: "hard" },
+    })
+    .select()
+    .single();
+
+  if (circuitBlock) {
+    let order = 0;
+
+    const skierg = await findExercise(supabase, ["SkiErg"]);
+    if (skierg) {
+      await addItem(supabase, circuitBlock.id, skierg.id, order++, {
+        distance: `${skiDistance}m`,
+        notes: "Race pace, consistent splits"
+      });
+    }
+
+    const wallBall = await findExercise(supabase, ["Wall Balls"]);
+    if (wallBall) {
+      await addItem(supabase, circuitBlock.id, wallBall.id, order++, {
+        reps: 20,
+        notes: "Full depth, hit target"
+      });
+    }
+
+    const burpeeBroad = await findExercise(supabase, ["Burpee Broad Jumps", "Burpees"]);
+    if (burpeeBroad) {
+      await addItem(supabase, circuitBlock.id, burpeeBroad.id, order++, {
+        reps: 15,
+        notes: "Explosive, max distance"
+      });
+    }
+
+    const sledPush = await findExercise(supabase, ["Sled Push"]);
+    if (sledPush) {
+      await addItem(supabase, circuitBlock.id, sledPush.id, order++, {
+        distance: "50m",
+        notes: "Heavy load, drive hard"
+      });
+    }
+
+    const sledPull = await findExercise(supabase, ["Sled Pull"]);
+    if (sledPull) {
+      await addItem(supabase, circuitBlock.id, sledPull.id, order++, {
+        distance: "50m",
+        notes: "Steady pull, maintain tension"
+      });
+    }
+  }
+
+  console.log("✅ Full Hyrox Finisher created");
+}
+
+/**
+ * 11. BODYWEIGHT GRINDER
+ * 4 rounds: Jump Squats, Burpees, Lunges, Broad Jumps, Plank
+ */
+async function buildBodyweightGrinder(
+  supabase: SupabaseClient,
+  planDayId: string,
+  options: CardioSessionOptions,
+  modifier: number
+) {
+  const sessionData = await createSession(
+    supabase,
+    planDayId,
+    "Bodyweight Grinder",
+    "No equipment needed. 4 rounds for time - keep moving, focus on consistent pacing and full range of motion. Great for aerobic conditioning and muscular endurance."
+  );
+
+  const rounds = Math.round(4 * modifier);
+
+  const { data: circuitBlock } = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionData.id,
+      block_type: "cardio",
+      title: "Bodyweight Circuit",
+      rounds: rounds,
+      rest_between_rounds_s: 90,
+      parameters: { format: "circuit", intensity: "moderate" },
+    })
+    .select()
+    .single();
+
+  if (circuitBlock) {
+    let order = 0;
+
+    const jumpSquats = await findExercise(supabase, ["Jump Squats"]);
+    if (jumpSquats) {
+      await addItem(supabase, circuitBlock.id, jumpSquats.id, order++, {
+        reps: 20,
+        notes: "Explosive, full extension"
+      });
+    }
+
+    const burpees = await findExercise(supabase, ["Burpees"]);
+    if (burpees) {
+      await addItem(supabase, circuitBlock.id, burpees.id, order++, {
+        reps: 15,
+        notes: "Full chest to deck"
+      });
+    }
+
+    const lunges = await findExercise(supabase, ["Walking Lunges"]);
+    if (lunges) {
+      await addItem(supabase, circuitBlock.id, lunges.id, order++, {
+        reps: 20,
+        notes: "10 each leg, controlled"
+      });
+    }
+
+    const broadJumps = await findExercise(supabase, ["Broad Jumps", "Standing Long Jump"]);
+    if (broadJumps) {
+      await addItem(supabase, circuitBlock.id, broadJumps.id, order++, {
+        reps: 10,
+        notes: "Max distance, soft landing"
+      });
+    }
+
+    const plank = await findExercise(supabase, ["Plank"]);
+    if (plank) {
+      await addItem(supabase, circuitBlock.id, plank.id, order++, {
+        duration: "1min",
+        notes: "Strong position, breathe steadily"
+      });
+    }
+  }
+
+  console.log("✅ Bodyweight Grinder created");
+}
+
+/**
+ * 12. BODYWEIGHT POWER INTERVALS
+ * 6 rounds: 40s Burpees/Lunges/Climbers/Squats + 20s rest
+ */
+async function buildBodyweightPower(
+  supabase: SupabaseClient,
+  planDayId: string,
+  options: CardioSessionOptions,
+  modifier: number
+) {
+  const sessionData = await createSession(
+    supabase,
+    planDayId,
+    "Bodyweight Power Intervals",
+    "No equipment needed. Push hard on the 40s, active recovery during rests. This simulates the heart rate spikes and recovery patterns of Hyrox transitions."
+  );
+
+  const rounds = Math.round(6 * modifier);
+
+  const exercises = [
+    { name: ["Burpees"], notes: "Max reps, full chest to deck" },
+    { name: ["Jumping Lunges", "Jump Lunges"], notes: "Alternate legs, explosive" },
+    { name: ["Mountain Climbers"], notes: "Fast pace, knees to chest" },
+    { name: ["Air Squats"], notes: "Max reps, full depth" },
+  ];
+
+  for (const ex of exercises) {
+    const { data: intervalBlock } = await supabase
+      .from("session_blocks")
+      .insert({
+        session_id: sessionData.id,
+        block_type: "cardio",
+        title: `${ex.name[0]} Intervals`,
+        rounds: rounds,
         parameters: { 
-          format: "hiit",
-          work_sec: hiit.work,
-          rest_sec: hiit.rest,
+          format: "intervals",
+          work_sec: 40,
+          rest_sec: 20,
           intensity: "hard"
         },
       })
       .select()
       .single();
 
-    if (hiitBlock) {
-      const exercise = await findExercise(supabase, hiit.name);
+    if (intervalBlock) {
+      const exercise = await findExercise(supabase, ex.name);
       if (exercise) {
-        await addItem(supabase, hiitBlock.id, exercise.id, 0, {
-          duration: `${hiit.work}s`,
-          rest: `${hiit.rest}s`,
-          notes: hiit.notes
-        });
-      }
-    }
-
-    // Add 2 min rest between HIIT blocks
-    const { data: restBlock } = await supabase
-      .from("session_blocks")
-      .insert({
-        session_id: sessionData.id,
-        block_type: "cardio",
-        title: "Active Rest",
-        parameters: { format: "standard" },
-      })
-      .select()
-      .single();
-
-    if (restBlock) {
-      const walk = await findExercise(supabase, ["Easy Walk"]);
-      if (walk) {
-        await addItem(supabase, restBlock.id, walk.id, 0, {
-          duration: "2min",
-          notes: "Walk to recover between blocks"
+        await addItem(supabase, intervalBlock.id, exercise.id, 0, {
+          duration: "40s",
+          rest: "20s",
+          notes: ex.notes
         });
       }
     }
   }
 
-  // Create cool-down block
-  const { data: cooldownBlock } = await supabase
+  // Add 90s rest between exercise blocks
+  const { data: restBlock } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
-      title: "Cool-down",
+      title: "Rest Between Exercises",
       parameters: { format: "standard" },
     })
     .select()
     .single();
 
-  if (cooldownBlock) {
-    const easyWalk = await findExercise(supabase, ["Easy Walk"]);
-    if (easyWalk) {
-      await addItem(supabase, cooldownBlock.id, easyWalk.id, 0, {
-        duration: "5min",
-        notes: "Easy pace to bring heart rate down"
+  if (restBlock) {
+    const walk = await findExercise(supabase, ["Easy Walk", "Walk"]);
+    if (walk) {
+      await addItem(supabase, restBlock.id, walk.id, 0, {
+        duration: "90s",
+        notes: "Active recovery between exercises"
       });
     }
   }
 
-  console.log("✅ HIIT Conditioning created");
+  console.log("✅ Bodyweight Power Intervals created");
 }
 
