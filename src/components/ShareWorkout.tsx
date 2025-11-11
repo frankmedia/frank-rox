@@ -118,17 +118,17 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
             ctx.stroke();
             ctx.restore();
             
-            // Add "Rox" in yellow + "PT" in white
-            ctx.font = "bold 48px sans-serif";
+            // Add "Rox" in yellow + "PT" in white (10% bigger)
+            ctx.font = "bold 53px sans-serif"; // Was 48px, now 53px (10% bigger)
             ctx.textAlign = "left";
             ctx.fillStyle = "#FFCC00";
-            ctx.fillText("Rox", leftMargin + 70, 65);
+            ctx.fillText("Rox", leftMargin + 70, 68);
             
             const roxWidth = ctx.measureText("Rox").width;
             ctx.fillStyle = "#FFFFFF";
-            ctx.fillText("PT", leftMargin + 70 + roxWidth, 65);
+            ctx.fillText("PT", leftMargin + 70 + roxWidth, 68);
 
-            // Add date and time at TOP RIGHT in banner (3x bigger)
+            // Add date and time at TOP RIGHT in banner (on same row)
             const now = new Date();
             const dateStr = now.toLocaleDateString("en-GB", { 
               day: "numeric", 
@@ -140,11 +140,10 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
               minute: "2-digit" 
             });
             
-            ctx.font = "bold 60px sans-serif"; // Was 20px, now 60px (3x bigger)
+            ctx.font = "bold 40px sans-serif"; // Reduced from 60px to fit on one row
             ctx.textAlign = "right";
             ctx.fillStyle = "#FFFFFF";
-            ctx.fillText(`${dateStr}`, img.width - rightMargin, 50);
-            ctx.fillText(`${timeStr}`, img.width - rightMargin, 115);
+            ctx.fillText(`${dateStr} • ${timeStr}`, img.width - rightMargin, 65);
 
         // Calculate workout list positioning from the BOTTOM up
         const bottomPadding = 60; // Space from bottom edge
