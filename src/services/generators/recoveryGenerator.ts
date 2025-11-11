@@ -165,12 +165,13 @@ async function buildPostWorkoutMobility(
       });
     }
 
-    // Glute Bridge (activation + stretch)
+    // Glute Bridge (weighted activation exercise)
     const gluteBridge = await findExercise(supabase, ["Glute Bridge"]);
     if (gluteBridge) {
       await addItem(supabase, stretchBlock.id, gluteBridge.id, order++, {
-        duration: "1min",
-        notes: "10-15 reps, squeeze at top"
+        sets: 3,
+        reps: 12,
+        notes: "Weighted glute activation, squeeze at top"
       });
     }
   }
