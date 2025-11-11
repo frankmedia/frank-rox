@@ -88,23 +88,27 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
         ctx.fillStyle = gradient;
         ctx.fillRect(0, img.height - overlayHeight, img.width, overlayHeight);
 
-        // Add logo at top
+        // Add flame logo + "RoxPT" at top left
+        const leftMargin = 40;
+        ctx.font = "60px sans-serif";
+        ctx.fillText("🔥", leftMargin, 80);
+        
         ctx.fillStyle = "#FFCC00";
         ctx.font = "bold 48px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("RoxPT", img.width / 2, 80);
+        ctx.textAlign = "left";
+        ctx.fillText("RoxPT", leftMargin + 80, 80);
 
-        // Add workout name if present
+        // Add workout name if present (left-aligned at bottom)
         let yPos = img.height - overlayHeight + 60;
         if (workoutName) {
           ctx.fillStyle = "#FFFFFF";
-          ctx.font = "bold 36px sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText(workoutName, img.width / 2, yPos);
-          yPos += 50;
+          ctx.font = "bold 32px sans-serif";
+          ctx.textAlign = "left";
+          ctx.fillText(workoutName, leftMargin, yPos);
+          yPos += 45;
         }
 
-        // Add date and time
+        // Add date and time (left-aligned)
         const now = new Date();
         const dateStr = now.toLocaleDateString("en-GB", { 
           day: "numeric", 
@@ -117,20 +121,26 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
         });
         
         ctx.fillStyle = "#FFCC00";
-        ctx.font = "24px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(`${dateStr} • ${timeStr}`, img.width / 2, yPos);
-        yPos += 50;
+        ctx.font = "22px sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText(`${dateStr} • ${timeStr}`, leftMargin, yPos);
+        yPos += 45;
+
+        // Add "Workout Complete" header
+        ctx.fillStyle = "#FFCC00";
+        ctx.font = "bold 24px sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("✓ Workout Complete", leftMargin, yPos);
+        yPos += 40;
 
         // Add exercises list
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = "20px sans-serif";
+        ctx.font = "18px sans-serif";
         ctx.textAlign = "left";
         
-        const leftMargin = 60;
-        const lineHeight = 32;
+        const lineHeight = 30;
         let exerciseCount = 0;
-        const maxExercises = Math.floor((overlayHeight - (yPos - (img.height - overlayHeight))) / lineHeight) - 1;
+        const maxExercises = Math.floor((overlayHeight - (yPos - (img.height - overlayHeight))) / lineHeight) - 2;
 
         for (const exercise of exercises.slice(0, maxExercises)) {
           if (exercise.type === "intro") continue; // Skip intro cards
