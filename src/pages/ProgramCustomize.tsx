@@ -58,12 +58,17 @@ const ProgramCustomize = () => {
       setRunPerWeek(prefs.runSessionsPerWeek ?? 0);
       setHillsSprints(prefs.hillsOrSprints ?? null);
       setWantsPT(prefs.wantsPTCheckins ? "Yes" : "No");
-      setEquip(prefs.equipment ?? []);
-      setCardioClassFreq(prefs.cardioClassFrequency ?? null);
+      // Force equipment to RowErg/SkiErg if empty
+      setEquip((prefs.equipment && prefs.equipment.length > 0) ? prefs.equipment : ["RowErg", "SkiErg"]);
+      setCardioClassFreq(prefs.cardioClassFrequency ?? "Never");
       setTrainingDays(typeof prefs.trainingDaysPerWeek === "number" ? prefs.trainingDaysPerWeek : 3);
     } else {
       // First time: pre-select based on scores < 60
       setSelected(recommendedOptions);
+      // Pre-select RowErg and SkiErg for cardio/strength
+      setEquip(["RowErg", "SkiErg"]);
+      // Pre-select "Never" for cardio classes
+      setCardioClassFreq("Never");
     }
   }, [profile, recommendedOptions]);
 
