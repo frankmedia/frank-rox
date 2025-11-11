@@ -519,6 +519,14 @@ const Onboarding = () => {
     };
   }, []);
 
+  // Reset scroll position to top when step changes
+  useEffect(() => {
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.scrollTop = 0;
+    }
+  }, [idx]);
+
   return (
     <div className="fixed inset-0 bg-background overflow-hidden" style={{ touchAction: 'none' }}>
       {/* Header */}
