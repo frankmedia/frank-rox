@@ -400,8 +400,13 @@ async function generateStrengthWorkout(
         .ilike("name", `%${name}%`)
         .limit(1)
         .single();
-      if (data) return data;
+      if (data) {
+        console.log(`✅ Found exercise: ${data.name} (searched: ${name})`);
+        return data;
+      }
     }
+    console.warn(`⚠️ Exercise NOT FOUND in database. Searched for: ${names.join(", ")}`);
+    warnings.push(`Exercise not found: ${names.join(", ")}`);
     return null;
   };
 
