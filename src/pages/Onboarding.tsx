@@ -535,7 +535,7 @@ const Onboarding = () => {
       </header>
 
       {/* Centered content area; page is frozen (no global scrolling) */}
-      <main className="container max-w-2xl mx-auto px-4 pt-12 pb-40 h-[calc(100vh-4rem)] overflow-y-auto">
+      <main className="container max-w-2xl mx-auto px-4 pb-40 h-[calc(100vh-4rem)] overflow-y-auto" style={{ paddingTop: 'calc(3rem + env(safe-area-inset-top, 0px))' }}>
         <Card className="mt-10 p-5 bg-zinc-900 border-zinc-800">
           <div className="text-white space-y-4">
             {typeof step.render === "function" ? step.render(answers, set) : step.render}
