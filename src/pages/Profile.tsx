@@ -732,7 +732,7 @@ const Profile = () => {
         </div>
       </header>
 
-      <main className="container max-w-2xl mx-auto px-4 pt-20 pb-6">
+      <main className="container max-w-2xl mx-auto px-2 pt-6 pb-6">
         {/* User Profile Card */}
         <Card className="p-6 mb-4 shadow-lg">
           <div className="flex flex-col items-center">
@@ -1373,58 +1373,35 @@ const Profile = () => {
 
         {/* Athlete Details */}
         <Card className="p-6 mb-4 shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-xs uppercase font-semibold tracking-wide text-muted-foreground">
-                Athlete Details
-              </p>
-              <p className="text-sm text-muted-foreground/80">
-                Keep your birthdate up to date so age-based targets stay accurate.
-              </p>
-            </div>
-            {age !== null && (
-              <Badge className="bg-purple-500/20 text-purple-100 border border-purple-400/40 text-xs px-3 py-1">
-                Age&nbsp;{age}
-              </Badge>
-            )}
+          <div className="mb-4">
+            <p className="text-xs uppercase font-semibold tracking-wide text-muted-foreground">
+              Athlete Details
+            </p>
+            <p className="text-sm text-muted-foreground/80">
+              Information from your onboarding questionnaire
+            </p>
           </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                Date of Birth
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-                <Input
-                  type="date"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  max={maxBirthDate}
-                  inputMode="numeric"
-                  pattern="\\d{4}-\\d{2}-\\d{2}"
-                  placeholder="Select date"
-                  className="w-full max-w-full min-w-0 bg-background pl-12 pr-3 h-12 text-base rounded-xl border-2 border-border focus-visible:border-yellow-400 focus-visible:ring-0 focus-visible:ring-offset-0 appearance-none"
-                />
+          <div className="grid grid-cols-2 gap-4">
+            {onboardingSex && (
+              <div className="flex flex-col">
+                <span className="text-xs uppercase font-semibold tracking-wide text-muted-foreground mb-1">
+                  Biological Sex
+                </span>
+                <span className="text-base font-medium text-foreground">
+                  {onboardingSex}
+                </span>
               </div>
-            </div>
-            <Button
-              onClick={handleSaveDob}
-              disabled={savingDob}
-              className="w-full"
-              size="lg"
-            >
-              {savingDob ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5 mr-2" />
-                  Save Date of Birth
-                </>
-              )}
-            </Button>
+            )}
+            {onboardingAge && (
+              <div className="flex flex-col">
+                <span className="text-xs uppercase font-semibold tracking-wide text-muted-foreground mb-1">
+                  Age
+                </span>
+                <span className="text-base font-medium text-foreground">
+                  {onboardingAge} years
+                </span>
+              </div>
+            )}
           </div>
         </Card>
 
