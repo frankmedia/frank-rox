@@ -370,6 +370,39 @@ export default function ProgrammeBuilder() {
 
     console.log("✅ User authenticated. ClientId:", user.clientId);
 
+    // Verify client exists in database, create if not
+    try {
+      const { data: existingClient, error: checkError } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("id", user.clientId)
+        .single();
+
+      if (checkError || !existingClient) {
+        console.log("⚠️ Client not found in database, creating...");
+        const { error: insertError } = await supabase
+          .from("clients")
+          .insert({
+            id: user.clientId,
+            name: user.username,
+            email: user.email
+          });
+
+        if (insertError) {
+          console.error("❌ Failed to create client:", insertError);
+          toast.error("Failed to create client record");
+          navigate("/login");
+          return;
+        }
+        console.log("✅ Client created successfully");
+      }
+    } catch (err) {
+      console.error("❌ Error checking/creating client:", err);
+      toast.error("Database error");
+      navigate("/login");
+      return;
+    }
+
     const profile = JSON.parse(profileStr);
     const prefs = profile?.training_preferences || {};
     const answers = profile?.answers || {};
