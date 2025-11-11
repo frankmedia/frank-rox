@@ -296,6 +296,14 @@ const steps = [
     key: "cardio",
     title: "Cardio & Conditioning",
     render: (a: Answers, set: (k: keyof Answers, v: any) => void) => {
+      // Pre-select defaults if not set
+      if (a.cardioSessions === undefined) {
+        set("cardioSessions", 2);
+      }
+      if (!a.cardioModalities || a.cardioModalities.length === 0) {
+        set("cardioModalities", ["RowErg", "SkiErg"]);
+      }
+      
       const toggleMod = (mod: string) => {
         const cur = a.cardioModalities ?? [];
         if (cur.includes(mod)) {
