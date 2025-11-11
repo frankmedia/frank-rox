@@ -107,14 +107,30 @@ npm install @capacitor/camera @capacitor/share
 - Capacitor Camera plugin handles permission requests automatically
 - User sees native permission dialog on first use
 
+### **Preview During Onboarding**
+- ✅ Added informational card on `OnboardingComplete.tsx` (native only)
+- Shows: "Share Your Progress 📸"
+- Description: "Camera access to take selfies and share your workout on social media."
+- Note: "Camera access will be requested when you use this feature for the first time."
+- **No permission requested** at this stage (just-in-time on first use)
+
 ---
 
 ## 🎨 User Flow
 
+### **During Onboarding:**
+1. **User completes onboarding** → navigates to OnboardingComplete page
+2. **Sees preview card** (native only):
+   - 📸 Share Your Progress
+   - "Camera access to take selfies and share your workout on social media."
+   - "Camera access will be requested when you use this feature for the first time."
+3. **No permission requested** at this stage
+
+### **After Workout:**
 1. **User completes workout** on Today page
 2. **Scrolls to bottom** → sees "Share Workout 📸" button (native only)
 3. **Taps button** → Dialog opens
-4. **Taps "Take Selfie 📸"** → Camera opens
+4. **Taps "Take Selfie 📸"** → Camera permission requested (first time only)
 5. **Takes photo** → Preview shows with overlay
 6. **Options:**
    - **Retake** → Opens camera again
@@ -197,6 +213,11 @@ const isNativeApp = Capacitor.isNativePlatform();
    - Added share dialog state
    - Added "Share Workout 📸" button (native only)
    - Integrated ShareWorkout component
+
+4. **`src/pages/OnboardingComplete.tsx`**
+   - Added Camera icon import
+   - Added preview card (native only)
+   - Explains feature without requesting permission
 
 ---
 
