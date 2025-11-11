@@ -18,7 +18,9 @@ export type CardioWorkoutType =
   | "assault-gauntlet"       // EMOM 5min x6: 20cal Bike + Jump Squats + KB DL
   | "hybrid-pyramid"         // Pyramid: 250-500-750-1000-750-500-250 (Ski/Row/Bike)
   | "lactic-threshold"       // 3 rounds: 500m Row + Burpees + 250m Ski + KB Swings
-  | "hyrox-finisher";        // 4 rounds: 1000m Ski + Wall Balls + Burpees + Sled
+  | "hyrox-finisher"         // 4 rounds: 1000m Ski + Wall Balls + Burpees + Sled
+  | "bodyweight-grinder"     // 4 rounds: Jump Squats, Burpees, Lunges, Broad Jumps, Plank
+  | "bodyweight-power";      // 6 rounds: 40s Burpees/Lunges/Climbers/Squats + 20s rest
 
 export interface CardioWorkoutDefinition {
   type: CardioWorkoutType;
@@ -121,6 +123,24 @@ export const CARDIO_WORKOUTS: CardioWorkoutDefinition[] = [
     requiredEquipment: ["SkiErg", "Wall balls", "Sled push/pull"],
     optionalEquipment: [],
     duration: 40
+  },
+  {
+    type: "bodyweight-grinder",
+    name: "Bodyweight Grinder",
+    intensity: "moderate",
+    category: "mixed",
+    requiredEquipment: [], // NO EQUIPMENT NEEDED
+    optionalEquipment: [],
+    duration: 30
+  },
+  {
+    type: "bodyweight-power",
+    name: "Bodyweight Power Intervals",
+    intensity: "hard",
+    category: "power",
+    requiredEquipment: [], // NO EQUIPMENT NEEDED
+    optionalEquipment: [],
+    duration: 25
   }
 ];
 
@@ -158,8 +178,10 @@ export function selectCardioWorkout(
   const available = getAvailableWorkouts(userEquipment);
   
   if (available.length === 0) {
-    // Fallback: bodyweight-only workout (descending-ladder with burpees)
-    return { type: "descending-ladder", intensityModifier: 1.0 };
+    // Fallback: bodyweight-only workouts (NO EQUIPMENT NEEDED)
+    // Rotate between grinder (moderate) and power (hard)
+    const bodyweightType = sessionNumber === 1 ? "bodyweight-power" : "bodyweight-grinder";
+    return { type: bodyweightType, intensityModifier: 1.0 };
   }
   
   // Determine intensity preference based on session number and training days
