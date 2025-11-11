@@ -146,8 +146,24 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
             ctx.fillText(`${dateStr}`, img.width - rightMargin, 50);
             ctx.fillText(`${timeStr}`, img.width - rightMargin, 115);
 
-        // Start workout details much lower (reduce bottom padding)
-        let yPos = img.height - (img.height * 0.45); // Was 0.35, now 0.45 to push text lower
+        // Calculate workout list positioning from the BOTTOM up
+        const bottomPadding = 60; // Space from bottom edge
+        const lineHeight = 55;
+        const headerHeight = 65; // "Workout Complete" header
+        const workoutNameHeight = workoutName ? 70 : 0;
+        
+        // Calculate how many exercises we can fit
+        const nonIntroExercises = exercises.filter(e => e.type !== "intro");
+        const exerciseListHeight = nonIntroExercises.length * lineHeight;
+        const totalContentHeight = workoutNameHeight + headerHeight + exerciseListHeight + bottomPadding;
+        
+        // Start position: image height minus total content height
+        let yPos = img.height - totalContentHeight;
+        
+        // If content is too tall, start from a reasonable position (50% from bottom)
+        if (yPos < img.height * 0.4) {
+          yPos = img.height * 0.5;
+        }
 
         // Add workout name if present
         if (workoutName) {
@@ -167,12 +183,11 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
 
         // Add exercises list (3x bigger text)
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = "36px sans-serif"; // Was 18px, now 36px (2x), target 54px (3x)
+        ctx.font = "36px sans-serif";
         ctx.textAlign = "left";
         
-        const lineHeight = 55; // Increased from 30
         let exerciseCount = 0;
-        const maxExercises = Math.floor((img.height - yPos - 60) / lineHeight);
+        const maxExercises = Math.floor((img.height - yPos - bottomPadding) / lineHeight);
 
         for (const exercise of exercises.slice(0, maxExercises)) {
           if (exercise.type === "intro") continue; // Skip intro cards
