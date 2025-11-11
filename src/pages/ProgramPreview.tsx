@@ -319,7 +319,7 @@ const ProgramPreview = () => {
           </div>
         </div>
       </header>
-      <main className="container max-w-3xl mx-auto px-4 pb-40 flex flex-col items-center" style={{ paddingTop: '160px' }}>
+      <main className="container max-w-3xl mx-auto px-4 pb-40 flex flex-col items-center" style={{ paddingTop: '144px' }}>
         <div className="w-full max-w-2xl mb-12 text-white/90 text-base sm:text-lg text-left">
           <div className="font-medium" dangerouslySetInnerHTML={{ 
             __html: typed
