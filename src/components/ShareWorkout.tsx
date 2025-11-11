@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Share } from "@capacitor/share";
+import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Button } from "@/components/ui/button";
 import { Camera as CameraIcon, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -209,36 +210,51 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
         return;
       }
 
-      // Convert blob URL to base64 for sharing
+      // Convert blob URL to base64
       const response = await fetch(overlayedImage);
       const blob = await response.blob();
       const reader = new FileReader();
       
       reader.onloadend = async () => {
-        const base64data = reader.result as string;
-        
         try {
+          const base64data = (reader.result as string).split(',')[1]; // Remove data:image/jpeg;base64, prefix
+          
+          // Save image to filesystem
+          const fileName = `workout-${Date.now()}.jpg`;
+          const savedFile = await Filesystem.writeFile({
+            path: fileName,
+            data: base64data,
+            directory: Directory.Cache,
+          });
+
+          console.log('File saved:', savedFile.uri);
+
+          // Share the file using native share sheet
           await Share.share({
             title: "My Workout",
             text: `Just crushed this workout with RoxPT! 💪`,
-            url: base64data,
+            url: savedFile.uri,
             dialogTitle: "Share your workout",
           });
           
           toast.success("Shared successfully!");
           if (onClose) onClose();
         } catch (shareError: any) {
-          if (!shareError.message?.includes("cancelled")) {
-            console.error("Share error:", shareError);
-            toast.error("Failed to share");
+          console.error("Share error:", shareError);
+          if (!shareError.message?.includes("cancelled") && !shareError.message?.includes("cancel")) {
+            toast.error("Failed to share", {
+              description: shareError.message || "Please try again"
+            });
           }
         }
       };
       
       reader.readAsDataURL(blob);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Share error:", error);
-      toast.error("Failed to share image");
+      toast.error("Failed to share image", {
+        description: error.message || "Please try again"
+      });
     } finally {
       setIsProcessing(false);
     }
