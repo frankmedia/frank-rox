@@ -78,12 +78,12 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
         // Draw the photo
         ctx.drawImage(img, 0, 0);
 
-        // Add semi-transparent overlay at bottom
+        // Add semi-transparent overlay at bottom (10% darker)
         const overlayHeight = Math.min(600, img.height * 0.4);
         const gradient = ctx.createLinearGradient(0, img.height - overlayHeight, 0, img.height);
         gradient.addColorStop(0, "rgba(0, 0, 0, 0)");
-        gradient.addColorStop(0.3, "rgba(0, 0, 0, 0.7)");
-        gradient.addColorStop(1, "rgba(0, 0, 0, 0.95)");
+        gradient.addColorStop(0.3, "rgba(0, 0, 0, 0.8)");  // Was 0.7, now 0.8
+        gradient.addColorStop(1, "rgba(0, 0, 0, 1)");
         
         ctx.fillStyle = gradient;
         ctx.fillRect(0, img.height - overlayHeight, img.width, overlayHeight);
