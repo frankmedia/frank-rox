@@ -43,6 +43,12 @@ function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
   const focus = prefs.focus || "base";
   const focusAreas = new Set(prefs.focusAreas.map(f => f.toLowerCase()));
   
+  console.log("🏗️ BUILDING PROGRAMME:");
+  console.log("  Training days:", trainingDays);
+  console.log("  Runs per week:", runs);
+  console.log("  Focus areas:", Array.from(focusAreas));
+  console.log("  Has cardio?:", focusAreas.has("cardio"));
+  
   // Volume modifiers for deload/taper
   let volumeModifier = 1.0; // Normal = 100%
   let useLowImpact = false;
