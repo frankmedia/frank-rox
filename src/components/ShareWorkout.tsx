@@ -350,8 +350,8 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
                 </span>
               </div>
               
-              {/* Right: Date & Time (3x bigger) */}
-              <div className="text-right text-white font-bold text-3xl leading-tight">
+              {/* Right: Date & Time */}
+              <div className="text-right text-white font-bold text-sm leading-tight">
                 <div>{new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
                 <div>{new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
               </div>
