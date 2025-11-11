@@ -591,10 +591,25 @@ export function IntervalTimer({
                 
                 {/* Consistency Score */}
                 {(() => {
-                  const avgTime = intervalTimes.reduce((sum, time) => sum + time, 0) / totalRounds;
-                  const variance = intervalTimes.reduce((sum, time) => sum + Math.pow(time - avgTime, 2), 0) / totalRounds;
+                  // Filter out outliers (rounds that are > 3x the median or < 0.1x the median)
+                  // This prevents one bad round from skewing the consistency score
+                  const sortedTimes = [...intervalTimes].sort((a, b) => a - b);
+                  const median = sortedTimes[Math.floor(sortedTimes.length / 2)];
+                  const filteredTimes = intervalTimes.filter(time => {
+                    return time >= median * 0.1 && time <= median * 3;
+                  });
+                  
+                  // Use filtered times for consistency, but need at least 2 rounds
+                  const validTimes = filteredTimes.length >= 2 ? filteredTimes : intervalTimes;
+                  const avgTime = validTimes.reduce((sum, time) => sum + time, 0) / validTimes.length;
+                  const variance = validTimes.reduce((sum, time) => sum + Math.pow(time - avgTime, 2), 0) / validTimes.length;
                   const stdDev = Math.sqrt(variance);
-                  const consistencyPercent = Math.max(0, Math.min(100, 100 - (stdDev / avgTime * 100)));
+                  
+                  // Coefficient of Variation (CV) = stdDev / avgTime
+                  // Consistency = 100 - (CV * 100), clamped between 0-100
+                  // Lower CV = more consistent = higher score
+                  const cv = avgTime > 0 ? stdDev / avgTime : 0;
+                  const consistencyPercent = Math.max(0, Math.min(100, 100 - (cv * 100)));
                   
                   return (
                     <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">

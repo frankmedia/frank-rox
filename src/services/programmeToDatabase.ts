@@ -926,9 +926,15 @@ async function generateStrengthWorkout(
         
         // Choose finisher based on split (alternate between erg types)
         if (split === "lower") {
-          // SkiErg intervals after lower body
+          // SkiErg intervals after lower body - use specific exercise ID
+          // TODO: Replace with correct SkiErg ID when provided
           const skierg = await findExercise(["SkiErg", "Ski Erg"]);
           if (skierg) {
+            // Check if we got the wrong exercise (e.g., "SkiErg Intervals")
+            if (skierg.name.toLowerCase().includes("interval")) {
+              console.warn(`⚠️ SkiErg exercise matched wrong exercise: ${skierg.name}. Please provide correct SkiErg ID.`);
+              warnings.push(`SkiErg exercise may be incorrect: ${skierg.name}`);
+            }
             await supabase.from("session_block_items").insert({
               block_id: cardioBlock.id,
               exercise_id: skierg.id,

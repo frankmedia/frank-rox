@@ -1363,7 +1363,7 @@ const Overview = () => {
           </div>
         )}
 
-        <div className="grid gap-3">
+        <div className="space-y-3">
           {daySummaries.length === 0 && !loading && !isFetchingDays && (
             <Card className="p-8 text-center space-y-4">
               <div className="flex justify-center">

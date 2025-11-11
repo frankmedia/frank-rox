@@ -1135,26 +1135,31 @@ const Today = () => {
           <ExerciseListSkeleton count={6} />
         ) : (
           <>
-            {/* Session Intro Cards - Horizontal Scrolling */}
-            {exercises.filter(ex => ex.type === "intro").length > 0 && (
-              <div className="overflow-x-auto -mx-2 px-2 pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-                <div className="flex gap-4" style={{ width: 'max-content' }}>
-                  {exercises.filter(ex => ex.type === "intro").map((intro) => (
-                    <Card key={intro.id} className="p-6 bg-primary/5 border-primary/20 flex-shrink-0 w-80">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-primary/20 rounded-full">
-                          <Info className="w-5 h-5 text-primary" />
+            {/* Session Intro Cards - Full width if only one, horizontal scroll if multiple */}
+            {(() => {
+              const introCards = exercises.filter(ex => ex.type === "intro");
+              const hasMultipleIntros = introCards.length > 1;
+              
+              return introCards.length > 0 && (
+                <div className={hasMultipleIntros ? "overflow-x-auto -mx-2 px-2 pb-2" : ""} style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <div className={hasMultipleIntros ? "flex gap-4" : ""} style={hasMultipleIntros ? { width: 'max-content' } : {}}>
+                    {introCards.map((intro) => (
+                      <Card key={intro.id} className={`p-6 bg-primary/5 border-primary/20 ${hasMultipleIntros ? 'flex-shrink-0 w-80' : 'w-full'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-primary/20 rounded-full">
+                            <Info className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg mb-2">{intro.name}</h3>
+                            <p className="text-sm text-foreground/70 leading-relaxed">{intro.notes}</p>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg mb-2">{intro.name}</h3>
-                          <p className="text-sm text-foreground/70 leading-relaxed">{intro.notes}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             
             <div className="space-y-4">
               {exercises.map((exercise) => {
