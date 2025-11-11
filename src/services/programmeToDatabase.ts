@@ -232,10 +232,14 @@ export async function createPlanInDatabase(
       console.log(`🧘 Creating Active Recovery sessions for ${restDayPlanDayIds.length} rest day(s)...`);
       const { createRecoverySession } = await import("./generators/recoveryGenerator");
       
+      // Fetch strength data from client
+      const strengthData = await fetchStrengthData(supabase, clientId);
+      
       for (const planDayId of restDayPlanDayIds) {
         try {
           await createRecoverySession(supabase, planDayId, {
-            sessionType: "active-recovery"
+            sessionType: "active-recovery",
+            strengthData
           });
           console.log(`✅ Active Recovery session created for rest day`);
         } catch (error: any) {
@@ -252,6 +256,78 @@ export async function createPlanInDatabase(
   } catch (error: any) {
     throw new Error(`Failed to create programme in database: ${error.message}`);
   }
+}
+
+/**
+ * Helper: Fetch strength data from client onboarding answers
+ */
+async function fetchStrengthData(
+  supabase: SupabaseClient,
+  clientId: string
+): Promise<{
+  bench5rm: number;
+  squat5rm: number;
+  deadlift5rm: number;
+  ohp5rm: number;
+}> {
+  const defaults = {
+    bench5rm: 40,
+    squat5rm: 60,
+    deadlift5rm: 80,
+    ohp5rm: 20,
+  };
+
+  try {
+    const { data: client } = await supabase
+      .from("clients")
+      .select("onboarding_answers")
+      .eq("id", clientId)
+      .single();
+
+    if (!client?.onboarding_answers) {
+      return defaults;
+    }
+
+    const answers = client.onboarding_answers;
+    
+    return {
+      bench5rm: answers.bench5rm ? parseWeight(answers.bench5rm) : defaults.bench5rm,
+      squat5rm: answers.squat5rm ? parseWeight(answers.squat5rm) : defaults.squat5rm,
+      deadlift5rm: answers.deadlift5rm ? parseWeight(answers.deadlift5rm) : defaults.deadlift5rm,
+      ohp5rm: answers.ohp5rm ? parseWeight(answers.ohp5rm) : defaults.ohp5rm,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching strength data:", error);
+    return defaults;
+  }
+}
+
+/**
+ * Helper: Parse weight from onboarding answer (e.g., "60-80kg" -> 70)
+ */
+function parseWeight(value: string): number {
+  if (!value) return 0;
+  
+  // Handle "Not sure" or similar
+  if (value.toLowerCase().includes("not") || value.toLowerCase().includes("sure")) {
+    return 0;
+  }
+  
+  // Handle ranges like "60-80kg"
+  const rangeMatch = value.match(/(\d+)-(\d+)/);
+  if (rangeMatch) {
+    const min = parseInt(rangeMatch[1]);
+    const max = parseInt(rangeMatch[2]);
+    return Math.round((min + max) / 2);
+  }
+  
+  // Handle single numbers like "60kg" or "60"
+  const numMatch = value.match(/(\d+)/);
+  if (numMatch) {
+    return parseInt(numMatch[1]);
+  }
+  
+  return 0;
 }
 
 /**
@@ -861,10 +937,35 @@ async function generateRecoveryWorkout(
       sessionType = "active-recovery";
     }
     
+    // Fetch client ID from plan_day to get strength data
+    const { data: planDay } = await supabase
+      .from("plan_days")
+      .select("plan_id")
+      .eq("id", planDayId)
+      .single();
+    
+    if (!planDay) {
+      throw new Error("Could not find plan day");
+    }
+    
+    const { data: plan } = await supabase
+      .from("plans")
+      .select("client_id")
+      .eq("id", planDay.plan_id)
+      .single();
+    
+    if (!plan) {
+      throw new Error("Could not find plan");
+    }
+    
+    // Fetch strength data
+    const strengthData = await fetchStrengthData(supabase, plan.client_id);
+    
     // Create recovery session
     await createRecoverySession(supabase, planDayId, {
       sessionType,
       duration: sessionType === "post-workout" ? 15 : 30,
+      strengthData,
     });
     
     console.log(`✅ Generated ${sessionType} recovery workout`);

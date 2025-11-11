@@ -48,20 +48,24 @@ const ProgramCustomize = () => {
     return opts.length ? opts : ["Running", "Strength", "Cardio"];
   }, [profile]);
 
-  // Do not preselect automatically; let the user choose focus areas explicitly
+  // Pre-select focus areas based on onboarding scores if no preferences exist
   // Prefill from stored preferences if available
   useEffect(() => {
     const prefs: Preferences | undefined = profile?.training_preferences;
-    if (prefs) {
-      setSelected(prefs.focusAreas ?? []);
+    if (prefs && prefs.focusAreas && prefs.focusAreas.length > 0) {
+      // Use existing preferences
+      setSelected(prefs.focusAreas);
       setRunPerWeek(prefs.runSessionsPerWeek ?? 0);
       setHillsSprints(prefs.hillsOrSprints ?? null);
       setWantsPT(prefs.wantsPTCheckins ? "Yes" : "No");
       setEquip(prefs.equipment ?? []);
       setCardioClassFreq(prefs.cardioClassFrequency ?? null);
       setTrainingDays(typeof prefs.trainingDaysPerWeek === "number" ? prefs.trainingDaysPerWeek : 3);
+    } else {
+      // First time: pre-select based on scores < 60
+      setSelected(recommendedOptions);
     }
-  }, [profile]);
+  }, [profile, recommendedOptions]);
 
   const buildPrefs = (): Preferences => ({
     focusAreas: selected,
@@ -190,7 +194,7 @@ const ProgramCustomize = () => {
               })}
             </div>
           </div>
-          {selected.includes("Strength") && (
+          {(selected.includes("Strength") || selected.includes("Cardio")) && (
             <div>
               <Label className="text-white text-xl font-bold">Hyrox‑style equipment</Label>
               <p className="text-sm text-white/60 mt-1">Select all that apply</p>

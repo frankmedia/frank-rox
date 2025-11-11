@@ -10,6 +10,12 @@ import { SupabaseClient } from "@supabase/supabase-js";
 export interface RecoverySessionOptions {
   sessionType: "post-workout" | "active-recovery";
   duration?: number; // minutes
+  strengthData?: {
+    bench5rm?: number;
+    squat5rm?: number;
+    deadlift5rm?: number;
+    ohp5rm?: number;
+  };
 }
 
 /**
@@ -168,9 +174,15 @@ async function buildPostWorkoutMobility(
     // Glute Bridge (weighted activation exercise)
     const gluteBridge = await findExercise(supabase, ["Glute Bridge"]);
     if (gluteBridge) {
+      // Calculate weight based on squat strength (10-20kg range)
+      // Use 15-25% of squat 5RM, capped at 10-20kg
+      const squat5rm = options.strengthData?.squat5rm || 60;
+      const gluteWeight = Math.max(10, Math.min(20, Math.round(squat5rm * 0.20)));
+      
       await addItem(supabase, stretchBlock.id, gluteBridge.id, order++, {
         sets: 3,
         reps: 12,
+        weight: gluteWeight,
         notes: "Weighted glute activation, squeeze at top"
       });
     }
