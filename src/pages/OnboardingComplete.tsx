@@ -127,59 +127,56 @@ export default function OnboardingComplete() {
             </div>
           </Card>
 
-          {/* Health Connect (Native Android only) */}
-          {healthSupported && (
-            <Card className="p-6 bg-zinc-900 border-zinc-800">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                  <Heart className="w-6 h-6 text-green-500" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-white mb-1">Health Connect</h3>
-                  <p className="text-sm text-white/70 mb-4">
-                    {healthConnected 
-                      ? "Connected! Your health data will sync automatically."
-                      : "Track steps, heart rate, sleep, and more from your wearable devices."}
-                  </p>
-                  <Button
-                    onClick={handleConnectHealth}
-                    disabled={loading || healthConnected}
-                    className="w-full h-12 text-base font-bold"
-                    style={{ backgroundColor: healthConnected ? "#10b981" : "#FFCC00", color: "#000" }}
-                  >
-                    {healthConnected ? "✓ Connected" : "Connect Health"}
-                  </Button>
-                </div>
+          {/* Health - Combined Card with Two Buttons */}
+          <Card className="p-6 bg-zinc-900 border-zinc-800">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                <Heart className="w-6 h-6 text-green-500" />
               </div>
-            </Card>
-          )}
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-white mb-1">Health</h3>
+                <p className="text-sm text-white/70">
+                  Track steps, heart rate, sleep, and sync your runs, rides, and workouts.
+                </p>
+              </div>
+            </div>
 
-          {/* Strava (Web/PWA) */}
-          {!isNative && (
-            <Card className="p-6 bg-zinc-900 border-zinc-800">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-                  <Activity className="w-6 h-6 text-orange-500" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-white mb-1">Strava</h3>
-                  <p className="text-sm text-white/70 mb-4">
-                    {stravaConnected
-                      ? "Connected! Your activities will sync automatically."
-                      : "Import your runs, rides, and workouts from Strava."}
-                  </p>
-                  <Button
-                    onClick={handleConnectStrava}
-                    disabled={stravaConnected}
-                    className="w-full h-12 text-base font-bold"
-                    style={{ backgroundColor: stravaConnected ? "#fc5200" : "#FFCC00", color: stravaConnected ? "#fff" : "#000" }}
-                  >
-                    {stravaConnected ? "✓ Connected" : "Connect Strava"}
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          )}
+            {/* Two Buttons: Strava and Health Connect */}
+            <div className="space-y-3">
+              {/* Strava Button */}
+              <Button
+                onClick={handleConnectStrava}
+                disabled={stravaConnected}
+                className="w-full h-12 text-base font-bold flex items-center justify-center gap-2"
+                style={{ backgroundColor: stravaConnected ? "#fc5200" : "#FFCC00", color: stravaConnected ? "#fff" : "#000" }}
+              >
+                <Activity className="w-5 h-5" />
+                {stravaConnected ? "✓ Strava Connected" : "Connect Strava"}
+              </Button>
+
+              {/* Health Connect Button (Android only) */}
+              {healthSupported ? (
+                <Button
+                  onClick={handleConnectHealth}
+                  disabled={loading || healthConnected}
+                  className="w-full h-12 text-base font-bold flex items-center justify-center gap-2"
+                  style={{ backgroundColor: healthConnected ? "#10b981" : "#FFCC00", color: "#000" }}
+                >
+                  <Heart className="w-5 h-5" />
+                  {healthConnected ? "✓ Health Connect" : "Connect Health Connect"}
+                </Button>
+              ) : (
+                <Button
+                  disabled
+                  className="w-full h-12 text-base font-bold flex items-center justify-center gap-2 opacity-50"
+                  style={{ backgroundColor: "#666", color: "#fff" }}
+                >
+                  <Heart className="w-5 h-5" />
+                  Health Connect (Android Only)
+                </Button>
+              )}
+            </div>
+          </Card>
 
           {/* Camera/Share Preview (Native Only - shown on web for preview) */}
           <Card className="p-6 bg-zinc-900 border-yellow-500/30">
