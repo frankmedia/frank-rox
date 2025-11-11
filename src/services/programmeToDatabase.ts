@@ -487,9 +487,17 @@ async function generateStrengthWorkout(
   }
 
   // Helper: Calculate working weight based on percentage of 1RM
+  // Always round to EVEN numbers (plates come in pairs: 2.5kg, 5kg, 10kg, 20kg)
   function calculateWeight(fiveRM: number, percentage: number): number {
     const oneRM = calculate1RM(fiveRM);
-    return Math.round(oneRM * percentage);
+    const rawWeight = oneRM * percentage;
+    // Round to nearest even number
+    return Math.round(rawWeight / 2) * 2;
+  }
+
+  // Helper: Round any weight to nearest even number
+  function roundToEven(weight: number): number {
+    return Math.round(weight / 2) * 2;
   }
 
   // Determine the split type from the title
@@ -553,7 +561,40 @@ async function generateStrengthWorkout(
       // LOWER BODY WORKOUT
       console.log(`📋 Creating warm-up block for session ${sessionData.id}`);
       
-      // Main Work Block (warm-up is handled by the 5min cardio block above)
+      // Warm-up Block: Air Squats for movement prep
+      const { data: warmupBlock } = await supabase
+        .from("session_blocks")
+        .insert({
+          session_id: sessionData.id,
+          block_type: "mobility",
+          title: "Warm-up",
+          rounds: 1,
+        })
+        .select()
+        .single();
+
+      if (warmupBlock) {
+        const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
+        const { data: airSquat } = await supabase
+          .from("exercises")
+          .select("id, name")
+          .eq("id", AIR_SQUAT_ID)
+          .single();
+        
+        if (airSquat) {
+          await supabase.from("session_block_items").insert({
+            block_id: warmupBlock.id,
+            exercise_id: airSquat.id,
+            item_order: 0,
+            sets: 2,
+            reps: 10,
+            notes: "Movement prep - no weight, focus on form and depth"
+          });
+          console.log(`✅ Added Air Squat warm-up (2×10)`);
+        }
+      }
+      
+      // Main Work Block
       const { data: mainBlock } = await supabase
         .from("session_blocks")
         .insert({
@@ -568,10 +609,19 @@ async function generateStrengthWorkout(
       if (mainBlock) {
         let order = 0;
         
-        // 1. Back Squat or Squat - STRENGTH (4×6 @ 80%)
-        const squat = await findExercise(["Squat", "Back Squat", "Barbell Squat"]);
+        // 1. Back Squat - STRENGTH (4×6 @ 80%)
+        // Use specific exercise ID to avoid matching wrong exercise (e.g., Goblet Squat)
+        const SQUAT_ID = "a4902a64-b188-4ea8-a567-df330a5f0f96";
+        const { data: squat } = await supabase
+          .from("exercises")
+          .select("id, name")
+          .eq("id", SQUAT_ID)
+          .single();
+        
         if (squat) {
           const squatWeight = calculateWeight(strengthData.squat5rm, 0.80); // 80% of 1RM
+          console.log(`✅ Using squat: ${squat.name} (ID: ${squat.id}), weight: ${squatWeight}kg`);
+          
           await supabase.from("session_block_items").insert({
             block_id: mainBlock.id,
             exercise_id: squat.id,
@@ -581,10 +631,19 @@ async function generateStrengthWorkout(
             notes: "Strength (4-6 reps) - 80% 1RM, focus on depth and explosive drive",
             extra: { weight_kg: squatWeight },
           });
+        } else {
+          console.warn(`⚠️ Squat exercise not found (ID: ${SQUAT_ID})`);
+          warnings.push(`Squat exercise not found`);
         }
 
-        // 2. Bulgarian Split Squat - HYPERTROPHY (3×10 @ 70%)
-        const bulgarian = await findExercise(["Rear-Foot Elevated Split Squat", "Split Squat", "DB Split Squat"]);
+        // 2. Bulgarian Split Squat (Rear-Foot Elevated) - HYPERTROPHY (3×10 @ 70%)
+        const BULGARIAN_SPLIT_SQUAT_ID = "959709d8-99db-4dfa-ad8b-353c7e09c28e";
+        const { data: bulgarian } = await supabase
+          .from("exercises")
+          .select("id, name")
+          .eq("id", BULGARIAN_SPLIT_SQUAT_ID)
+          .single();
+        
         if (bulgarian) {
           const bulgarianWeight = calculateWeight(strengthData.squat5rm, 0.70); // 70% of squat 1RM
           await supabase.from("session_block_items").insert({
@@ -594,7 +653,7 @@ async function generateStrengthWorkout(
             sets: 3,
             reps: 10,
             notes: "Hypertrophy (8-12 reps) - Each leg, controlled 3-0-1 tempo, maintain upright torso",
-            extra: { weight_kg: Math.round(bulgarianWeight * 0.6) }, // Split between legs, so lighter
+            extra: { weight_kg: roundToEven(bulgarianWeight * 0.6) }, // Split between legs, so lighter
           });
         }
 
@@ -624,7 +683,7 @@ async function generateStrengthWorkout(
             sets: 3,
             reps: 12,
             notes: "Endurance (12-15 reps) - Full ROM, don't lock knees at top",
-            extra: { weight_kg: Math.round(legPressWeight * 1.5) }, // Leg press typically heavier
+            extra: { weight_kg: roundToEven(legPressWeight * 1.5) }, // Leg press typically heavier
           });
         }
       }
@@ -700,7 +759,7 @@ async function generateStrengthWorkout(
             sets: 4,
             reps: 10,
             notes: "Hypertrophy (8-12 reps) - Pull to ribs, squeeze scapulae at top, 2s hold",
-            extra: { weight_kg: Math.round(rowWeight * 0.9) }, // Rows typically slightly lighter than bench
+            extra: { weight_kg: roundToEven(rowWeight * 0.9) }, // Rows typically slightly lighter than bench
           });
         }
 
@@ -730,7 +789,7 @@ async function generateStrengthWorkout(
             sets: 3,
             reps: 10,
             notes: "Hypertrophy (8-12 reps) - Pull to upper chest, squeeze lats, slow eccentric",
-            extra: { weight_kg: Math.round(latWeight * 0.85) }, // Lats typically lighter
+            extra: { weight_kg: roundToEven(latWeight * 0.85) }, // Lats typically lighter
           });
         }
       }
@@ -761,7 +820,7 @@ async function generateStrengthWorkout(
             sets: 3,
             reps: 12,
             notes: "Endurance (12-15 reps) - Controlled tempo, no swinging, squeeze at top",
-            extra: { weight_kg: Math.round(bicepWeight * 0.3) }, // Biceps much lighter than bench
+            extra: { weight_kg: roundToEven(bicepWeight * 0.3) }, // Biceps much lighter than bench
           });
         }
 
@@ -776,7 +835,7 @@ async function generateStrengthWorkout(
             sets: 3,
             reps: 12,
             notes: "Endurance (12-15 reps) - Elbows stay in position, full extension, control the weight",
-            extra: { weight_kg: Math.round(tricepWeight * 0.35) }, // Triceps lighter than bench
+            extra: { weight_kg: roundToEven(tricepWeight * 0.35) }, // Triceps lighter than bench
           });
         }
       }
@@ -844,6 +903,55 @@ async function generateStrengthWorkout(
             reps: 10,
           });
         }
+      }
+    }
+
+    // ADD CARDIO FINISHER if title includes "Cardio Finisher"
+    if (session.title.includes("Cardio Finisher")) {
+      console.log(`🔥 Adding 15min cardio finisher to ${split} body session`);
+      
+      const { data: cardioBlock } = await supabase
+        .from("session_blocks")
+        .insert({
+          session_id: sessionData.id,
+          block_type: "cardio",
+          title: "Cardio Finisher",
+          rounds: 1,
+        })
+        .select()
+        .single();
+
+      if (cardioBlock) {
+        let order = 0;
+        
+        // Choose finisher based on split (alternate between erg types)
+        if (split === "lower") {
+          // SkiErg intervals after lower body
+          const skierg = await findExercise(["SkiErg", "Ski Erg"]);
+          if (skierg) {
+            await supabase.from("session_block_items").insert({
+              block_id: cardioBlock.id,
+              exercise_id: skierg.id,
+              item_order: order++,
+              duration_sec: 900, // 15 minutes
+              notes: "15min steady-state or intervals - maintain consistent output"
+            });
+          }
+        } else {
+          // RowErg intervals after upper body
+          const rowerg = await findExercise(["RowErg", "Rower", "Row Erg"]);
+          if (rowerg) {
+            await supabase.from("session_block_items").insert({
+              block_id: cardioBlock.id,
+              exercise_id: rowerg.id,
+              item_order: order++,
+              duration_sec: 900, // 15 minutes
+              notes: "15min steady-state or intervals - focus on consistent pace"
+            });
+          }
+        }
+        
+        console.log(`✅ Cardio finisher added to ${split} body session`);
       }
     }
 
@@ -1117,6 +1225,121 @@ async function duplicateWeekWithProgression(
               notes: item.notes ? `Week 2: ${item.notes}` : null,
               extra: progressedExtra,
             });
+        }
+      }
+    }
+  }
+
+  // Add Farmers Carry to Week 2 Upper Body sessions (grip training)
+  console.log("💪 Adding Farmers Carry to Week 2 upper body sessions...");
+  
+  // Helper function to find exercise by name
+  const findExercise = async (names: string[]) => {
+    for (const name of names) {
+      const { data } = await supabase
+        .from("exercises")
+        .select("id, name")
+        .ilike("name", `%${name}%`)
+        .limit(1)
+        .single();
+      if (data) {
+        console.log(`✅ Found exercise: ${data.name} (searched: ${name})`);
+        return data;
+      }
+    }
+    console.warn(`⚠️ Exercise NOT FOUND in database. Searched for: ${names.join(", ")}`);
+    return null;
+  };
+
+  // Helper function to round to even numbers
+  const roundToEven = (weight: number): number => {
+    return Math.round(weight / 2) * 2;
+  };
+
+  // Get clientId from first plan day
+  let clientId = "";
+  if (planDays.length > 0) {
+    const { data: planDay } = await supabase
+      .from("plan_days")
+      .select("plan_id, plans!inner(client_id)")
+      .eq("id", planDays[0].id)
+      .single();
+    if (planDay && (planDay as any).plans && Array.isArray((planDay as any).plans)) {
+      const plan = (planDay as any).plans[0];
+      if (plan?.client_id) {
+        clientId = plan.client_id;
+      }
+    } else if (planDay && (planDay as any).plans?.client_id) {
+      clientId = (planDay as any).plans.client_id;
+    }
+  }
+
+  for (let i = 7; i < 14; i++) {
+    const week2Day = planDays[i];
+    if (!week2Day) continue;
+
+    // Get Week 2 sessions for this day
+    const { data: week2Sessions } = await supabase
+      .from("sessions")
+      .select("id, name")
+      .eq("plan_day_id", week2Day.id);
+
+    if (!week2Sessions || week2Sessions.length === 0) continue;
+
+    // Find upper body strength session
+    const upperBodySession = week2Sessions.find(s => 
+      s.name.toLowerCase().includes("upper") || 
+      s.name.toLowerCase().includes("strength upper")
+    );
+
+    if (upperBodySession) {
+      // Check if Farmers Carry already exists (avoid duplicates)
+      const { data: existingBlocks } = await supabase
+        .from("session_blocks")
+        .select("id, title")
+        .eq("session_id", upperBodySession.id);
+
+      const hasFarmersCarry = existingBlocks?.some(b => 
+        b.title?.toLowerCase().includes("farmers") || 
+        b.title?.toLowerCase().includes("grip")
+      );
+
+      if (!hasFarmersCarry) {
+        // Create Farmers Carry finisher block
+        const { data: gripBlock } = await supabase
+          .from("session_blocks")
+          .insert({
+            session_id: upperBodySession.id,
+            block_type: "strength",
+            title: "Grip Finisher",
+            rounds: 3,
+          })
+          .select()
+          .single();
+
+        if (gripBlock) {
+          // Find Farmers Carry exercise
+          const farmersCarry = await findExercise(["Farmers Carry", "Farmer's Walk", "Farmer Walk"]);
+          if (farmersCarry) {
+            // Calculate weight: 60% of deadlift 5RM (grip strength focus)
+            const strengthData = await fetchStrengthData(supabase, clientId);
+            const deadlift5rm = strengthData.deadlift5rm || 80;
+            const farmersWeight = roundToEven(deadlift5rm * 0.60); // 60% of deadlift 5RM per hand
+            
+            await supabase.from("session_block_items").insert({
+              block_id: gripBlock.id,
+              exercise_id: farmersCarry.id,
+              item_order: 0,
+              sets: 3,
+              reps: 1, // Distance-based (will be in notes)
+              notes: `Week 2 Grip Training - 50m walk per set, ${farmersWeight}kg per hand. Focus on maintaining grip throughout.`,
+              extra: { weight_kg: farmersWeight, distance_m: 50 },
+            });
+            console.log(`✅ Added Farmers Carry to ${upperBodySession.name} (Day ${week2Day.day_index})`);
+          } else {
+            console.warn(`⚠️ Farmers Carry exercise not found in database`);
+            warnings.push(`Farmers Carry exercise not found`);
+          }
         }
       }
     }

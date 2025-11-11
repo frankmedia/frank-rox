@@ -323,15 +323,41 @@ Based on **weeks to event**, the system assigns a training phase:
 
 ## Programme Generation Algorithm
 
-### Step 1: Day Allocation Strategy
+### Step 1: Smart Session Distribution
 
-The system uses a **priority-based allocation** to fill the athlete's training week:
+The system uses **intelligent session distribution** to prevent overcrowding the training week:
 
-**Priority Order:**
-1. Running sessions (if Running focus or runs > 0)
-2. Strength sessions (if Strength focus)
-3. Cardio sessions (if Cardio focus)
-4. Recovery/Mobility (if days remaining)
+**Smart Distribution Logic:**
+
+1. **Calculate Total Requested Sessions:**
+   - Running sessions (from user preference: 0-5)
+   - Strength sessions (2 if Strength focus selected)
+   - Cardio sessions (from onboarding: 0-5+)
+
+2. **Hybrid Training Optimization:**
+   - If BOTH Cardio + Strength are selected:
+     - **Embed 2 cardio finishers** (15min) into strength days
+     - Only count **standalone cardio** sessions toward training days
+     - Formula: `Total = Runs + (Cardio - 2) + Strength`
+   - If only Cardio (no Strength):
+     - All cardio sessions are standalone
+     - Formula: `Total = Runs + Cardio`
+
+3. **Auto-Adjustment:**
+   - If `Total > Training Days Per Week`:
+     - **Reduce runs first** to fit schedule
+     - Preserve cardio and strength sessions
+     - Example: 5 runs + 2 cardio + 2 strength = 9 sessions → Reduce to 4 runs
+
+**Example (6 training days, 5 runs, 2 cardio, 2 strength):**
+```
+Requested: 5 runs + 2 cardio + 2 strength = 9 sessions
+Cardio embedded: 2 (in strength days as finishers)
+Standalone cardio: 0 (2 - 2 = 0)
+Total sessions: 5 runs + 0 standalone cardio + 2 strength = 7
+Excess: 7 - 6 = 1
+Adjusted: 4 runs + 2 strength (with cardio finishers) = 6 sessions ✅
+```
 
 **Smart Day Selection:**
 - Each session type has **preferred days** (e.g., Long Run → Saturday)
@@ -384,38 +410,81 @@ The system uses a **priority-based allocation** to fill the athlete's training w
 
 **If Strength is a Focus Area:**
 
-**1 Session per Week:**
-- **Strength Lower + Easy Engine**
-  - Back squats, Bulgarian split squats, RDLs
-  - + 20min Z2 RowErg
+**Hybrid Training (Cardio + Strength Focus):**
+- **2 Strength Sessions with Embedded Cardio Finishers:**
+  
+  **Session 1: Strength Lower + Cardio Finisher**
+  - Back squats, Bulgarian split squats, RDLs, leg press
+  - + **15min cardio finisher** (SkiErg, RowErg, or circuit)
+  - Effort: Hard
+  
+  **Session 2: Strength Upper + Cardio Finisher**
+  - Bench press, strict press, weighted pull-ups, rows
+  - + **15min cardio finisher** (SkiErg, RowErg, or circuit)
   - Effort: Hard
 
-**2 Sessions per Week:**
-- Add **Strength Upper + Short Engine**
-  - Bench press, strict press, weighted pull-ups
-  - + 15min EMOM SkiErg
+**Strength-Only Training (No Cardio Focus):**
+- **2 Strength Sessions without Cardio:**
+  
+  **Session 1: Strength Lower**
+  - Back squats, Bulgarian split squats, RDLs, leg press
+  - Effort: Hard
+  
+  **Session 2: Strength Upper**
+  - Bench press, strict press, weighted pull-ups, rows
   - Effort: Hard
 
-**3 Sessions per Week:**
-- Add **Full Body Strength**
-  - Deadlifts, overhead press, rows, core work
-  - Effort: Moderate
+**Note:** The system automatically adds cardio finishers when both Cardio and Strength are selected as focus areas. This provides additional cardio volume without requiring extra training days.
 
 ### Step 4: Cardio/Conditioning Programme
 
 **If Cardio is a Focus Area:**
 
-**1 Session per Week:**
-- **Race Simulation**
-  - 4 rounds: 1km run + 50m sled push + 500m SkiErg
-  - 3min rest between rounds
-  - Effort: Hard
+The system uses a **hybrid approach** combining embedded and standalone cardio sessions:
 
-**2 Sessions per Week:**
-- Add **Engine Work**
-  - 30min mixed modalities
-  - RowErg, SkiErg, Assault Bike intervals
-  - Effort: Moderate
+**Embedded Cardio (if Strength also selected):**
+- **2× 15min cardio finishers** added to strength days
+- Counts toward total cardio volume
+- Examples: SkiErg intervals, RowErg threshold, bodyweight circuits
+- Based on available equipment from onboarding
+
+**Standalone Cardio Sessions:**
+- Only scheduled if requested cardio > 2 sessions
+- OR if Cardio selected without Strength focus
+- Uses smart workout selector with 12 workout types:
+  - **Equipment-based** (10 workouts): Ski-Row Threshold, Machine Endurance, Functional Engine, Machine Power, Sled-Ski Combo, Descending Ladder, Assault Gauntlet, Hybrid Pyramid, Lactic Threshold, HYROX Finisher
+  - **Bodyweight** (2 workouts): Bodyweight Grinder, Bodyweight Power Intervals
+
+**Workout Selection Logic:**
+- Based on user's available equipment (SkiErg, RowErg, Sled, etc.)
+- Rotates through different workout types each block
+- Progressive overload every 2 blocks (4 weeks)
+- Intensity varies: aerobic, threshold, power, race-sim
+
+**Example Cardio Distribution:**
+
+**Scenario 1: 2 Cardio Sessions + Strength Focus**
+```
+Day 1: Strength Lower + 15min Cardio Finisher (embedded)
+Day 3: Strength Upper + 15min Cardio Finisher (embedded)
+Total: 2 cardio sessions (both embedded, 0 standalone)
+```
+
+**Scenario 2: 4 Cardio Sessions + Strength Focus**
+```
+Day 1: Strength Lower + 15min Cardio Finisher (embedded)
+Day 3: Strength Upper + 15min Cardio Finisher (embedded)
+Day 4: Ski-Row Threshold (standalone, 40min)
+Day 6: Machine Endurance Builder (standalone, 40min)
+Total: 4 cardio sessions (2 embedded + 2 standalone)
+```
+
+**Scenario 3: 2 Cardio Sessions + NO Strength Focus**
+```
+Day 2: Ski-Row Threshold (standalone, 40min)
+Day 5: Functional Engine AMRAP (standalone, 30min)
+Total: 2 cardio sessions (both standalone)
+```
 
 ### Step 5: Recovery/Mobility
 
@@ -492,27 +561,43 @@ The system uses a **priority-based allocation** to fill the athlete's training w
 
 ### Example 2: Intermediate Hybrid Athlete
 **Profile:**
-- 5 days/week
-- 3 runs/week
-- Running + Strength focus
+- 6 days/week
+- 5 runs/week requested
+- Running + Strength + Cardio focus (all 3!)
+- 2 cardio sessions from onboarding
 - 6 weeks to event
 - Build phase
+
+**Smart Distribution:**
+- Requested: 5 runs + 2 cardio + 2 strength = 9 sessions
+- Cardio embedded: 2 (in strength days)
+- Standalone cardio: 0
+- Total: 5 runs + 2 strength = 7 sessions
+- Excess: 7 - 6 = 1
+- **Adjusted: 4 runs + 2 strength (with cardio finishers) = 6 sessions**
 
 **Generated Programme:**
 
 **Week 1:**
-- Monday: Strength Lower + Easy Engine
+- Monday: Strength Lower + 15min Cardio Finisher (SkiErg intervals)
 - Tuesday: Intervals (8×500m @ race pace)
-- Thursday: Tempo Run (5-6km @ Z3)
-- Friday: Strength Upper + Short Engine
-- Saturday: Long Run (8-10km @ Z2)
+- Wednesday: Strength Upper + 15min Cardio Finisher (RowErg threshold)
+- Thursday: Tempo Run (5km @ Z3)
+- Friday: Recovery Run (3-4km @ Z1)
+- Saturday: Long Run (8km @ Z2)
 
 **Week 2:**
-- Monday: Strength Lower + Easy Engine ← +2 reps on all main sets
+- Monday: Strength Lower + 15min Cardio Finisher ← +2 reps on all main sets
 - Tuesday: Intervals (8×500m @ race pace) ← SAME rounds, RPE 8/10
+- Wednesday: Strength Upper + 15min Cardio Finisher ← +2 reps on all main sets
 - Thursday: Tempo Run (6km @ Z3) ← +1km
-- Friday: Strength Upper + Short Engine ← +2 reps on all main sets
+- Friday: Recovery Run (3-4km @ Z1) ← NO CHANGE
 - Saturday: Long Run (9km @ Z2) ← +1km
+
+**Total Weekly Volume:**
+- 4 running sessions (reduced from 5 to fit schedule)
+- 2 strength sessions with embedded cardio finishers
+- **= 6 training days with balanced hybrid training**
 
 ---
 

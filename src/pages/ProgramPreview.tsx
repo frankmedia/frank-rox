@@ -51,8 +51,38 @@ type TrainingPreferences = {
 const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
 function buildWeek(pref: TrainingPreferences, desiredTrainingDays: number, weekNumber: number = 1): DayPlan[] {
-  const runs = Math.max(0, Math.min(5, pref.runSessionsPerWeek ?? 0));
+  let runs = Math.max(0, Math.min(5, pref.runSessionsPerWeek ?? 0));
   const focus = new Set((pref.focusAreas || []).map((x) => x.toLowerCase()));
+  
+  // SMART SESSION DISTRIBUTION (same logic as ProgrammeBuilder)
+  // Get cardioSessions from onboarding_answers (stored in localStorage)
+  let requestedCardio = 0;
+  try {
+    const profileStr = localStorage.getItem("onboarding_profile");
+    if (profileStr) {
+      const profile = JSON.parse(profileStr);
+      requestedCardio = profile?.answers?.cardioSessions ?? 0;
+    }
+  } catch {
+    // Ignore
+  }
+  
+  // If Cardio is selected as focus area but no cardioSessions, default to 2
+  if (focus.has("cardio") && requestedCardio === 0) {
+    requestedCardio = 2;
+  }
+  
+  const requestedStrength = focus.has("strength") ? 2 : 0;
+  const totalRequested = runs + requestedCardio + requestedStrength;
+  
+  // If total sessions exceed training days, reduce runs first
+  if (totalRequested > desiredTrainingDays) {
+    const excess = totalRequested - desiredTrainingDays;
+    runs = Math.max(0, runs - excess);
+    console.log(`⚠️ Preview: Reducing runs from ${pref.runSessionsPerWeek} to ${runs} to fit ${desiredTrainingDays} training days`);
+  }
+  
+  console.log(`📊 Preview: ${runs} runs + ${requestedCardio} cardio + ${requestedStrength} strength = ${runs + requestedCardio + requestedStrength} sessions in ${desiredTrainingDays} days`);
 
   // Base hybrid training template with multiple blocks per day
   // Week 2 increases volume/intensity by ~10%
@@ -147,7 +177,8 @@ function buildWeek(pref: TrainingPreferences, desiredTrainingDays: number, weekN
     return { ...day, blocks };
   });
 
-  // Step 2: Limit total run sessions
+  // Step 2: Limit sessions based on smart distribution
+  // Limit runs
   let totalRunBlocks = filtered.reduce((sum, day) => 
     sum + day.blocks.filter(b => b.type === "run").length, 0
   );
@@ -160,6 +191,20 @@ function buildWeek(pref: TrainingPreferences, desiredTrainingDays: number, weekN
       filtered[idx].blocks = filtered[idx].blocks.filter(b => b.type !== "run");
       totalRunBlocks--;
     }
+  }
+  
+  // Limit cardio (if user didn't select cardio focus, remove all cardio blocks)
+  if (requestedCardio === 0) {
+    filtered.forEach(day => {
+      day.blocks = day.blocks.filter(b => b.type !== "cardio");
+    });
+  }
+  
+  // Limit strength (if user didn't select strength focus, remove all strength blocks)
+  if (requestedStrength === 0) {
+    filtered.forEach(day => {
+      day.blocks = day.blocks.filter(b => b.type !== "strength");
+    });
   }
 
   // Step 3: Compute day intensity

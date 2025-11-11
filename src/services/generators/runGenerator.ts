@@ -158,7 +158,7 @@ async function addItem(
     }
   }
   if (extra.duration) {
-    // Convert duration string to NUMBER (e.g., "10min" -> 10, "45-60min" -> 52.5)
+    // Convert duration string to SECONDS (e.g., "10min" -> 600, "45-60min" -> 3150)
     const durStr = String(extra.duration);
     console.log(`🔍 Parsing duration: "${durStr}"`);
     const durMatch = durStr.match(/(\d+)(?:[-–—](\d+))?\s*min/i);
@@ -166,8 +166,8 @@ async function addItem(
       const min = parseInt(durMatch[1]);
       const max = durMatch[2] ? parseInt(durMatch[2]) : min;
       const avgMinutes = (min + max) / 2; // Average if range
-      payload.duration_sec = Math.round(avgMinutes); // Store as NUMBER
-      console.log(`✅ Parsed duration: "${durStr}" -> ${payload.duration_sec} (NUMBER)`);
+      payload.duration_sec = Math.round(avgMinutes * 60); // Convert minutes to SECONDS
+      console.log(`✅ Parsed duration: "${durStr}" -> ${avgMinutes} min -> ${payload.duration_sec} seconds`);
       console.log(`   Type check: ${typeof payload.duration_sec}`);
     } else {
       console.error(`❌ FAILED to parse duration: "${durStr}"`);

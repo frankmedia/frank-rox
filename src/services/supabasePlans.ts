@@ -191,9 +191,9 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
               // Add workout parameters based on type
               // Prefer database columns over extra object
               if (childType === "cardio") {
-                // Use duration_sec column (stored as minutes), fallback to extra
+                // Use duration_sec column (stored as SECONDS), convert to minutes
                 if (item.duration_sec) {
-                  childExercise.durationMin = item.duration_sec;
+                  childExercise.durationMin = item.duration_sec / 60;
                 } else if (extra.duration) {
                   childExercise.durationMin = extra.duration;
                 }
@@ -214,7 +214,7 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                 childExercise.sets = item.sets || extra.sets;
                 childExercise.reps = item.reps || extra.reps;
                 if (item.duration_sec) {
-                  childExercise.durationMin = item.duration_sec;
+                  childExercise.durationMin = item.duration_sec / 60; // Convert seconds to minutes
                 } else if (extra.duration) {
                   childExercise.durationMin = extra.duration;
                 }
@@ -229,7 +229,7 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                   }
                 }
                 if (item.duration_sec) {
-                  childExercise.durationMin = item.duration_sec;
+                  childExercise.durationMin = item.duration_sec / 60; // Convert seconds to minutes
                 } else if (extra.duration) {
                   childExercise.durationMin = extra.duration;
                 }
@@ -341,14 +341,9 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
               // Prefer database columns over extra object
               let durationMin = undefined;
               if (item.duration_sec) {
-                // Check if this is a cardio/running exercise (duration stored as minutes)
-                // or a strength exercise (duration stored as seconds)
-                if (exerciseType === "cardio" || modality === "running" || modality === "cardio") {
-                  durationMin = item.duration_sec; // Running: stored as minutes
-                } else {
-                  // Strength exercises: stored as seconds, convert to minutes for display
-                  durationMin = item.duration_sec / 60;
-                }
+                // duration_sec is ALWAYS stored as seconds in the database
+                // Convert to minutes for display
+                durationMin = item.duration_sec / 60;
               } else if (extra.duration) {
                 durationMin = extra.duration;
               }

@@ -296,6 +296,21 @@ async function buildSkiRowThreshold(
       });
     }
 
+    // Add Air Squats for cardio conditioning
+    const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
+    const { data: airSquat } = await supabase
+      .from("exercises")
+      .select("id, name")
+      .eq("id", AIR_SQUAT_ID)
+      .single();
+    
+    if (airSquat) {
+      await addItem(supabase, circuitBlock.id, airSquat.id, order++, {
+        reps: 20,
+        notes: "Fast tempo, full depth, cardio conditioning"
+      });
+    }
+
     const wallBall = await findExercise(supabase, ["Wall Balls", "Wall Ball"]);
     if (wallBall) {
       await addItem(supabase, circuitBlock.id, wallBall.id, order++, {
@@ -366,7 +381,7 @@ async function buildFunctionalEngine(
       });
     }
 
-    const kbSwing = await findExercise(supabase, ["KB Swings", "Kettlebell Swings"]);
+    const kbSwing = await findExercise(supabase, ["Kettlebell Swing", "KB Swing"]);
     if (kbSwing) {
       await addItem(supabase, amrapBlock.id, kbSwing.id, order++, {
         reps: 20,
@@ -505,11 +520,18 @@ async function buildSledSkiCombo(
       });
     }
 
-    const airSquats = await findExercise(supabase, ["Air Squats", "Bodyweight Squats"]);
+    // Use specific Air Squat ID for consistency
+    const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
+    const { data: airSquats } = await supabase
+      .from("exercises")
+      .select("id, name")
+      .eq("id", AIR_SQUAT_ID)
+      .single();
+    
     if (airSquats) {
       await addItem(supabase, circuitBlock.id, airSquats.id, order++, {
         reps: 15,
-        notes: "Full depth, explosive"
+        notes: "Full depth, explosive, cardio conditioning"
       });
     }
   }
@@ -749,6 +771,21 @@ async function buildLacticThreshold(
       });
     }
 
+    // Add Air Squats for cardio conditioning
+    const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
+    const { data: airSquat } = await supabase
+      .from("exercises")
+      .select("id, name")
+      .eq("id", AIR_SQUAT_ID)
+      .single();
+    
+    if (airSquat) {
+      await addItem(supabase, circuitBlock.id, airSquat.id, order++, {
+        reps: 20,
+        notes: "Explosive tempo, full ROM, maintain pace"
+      });
+    }
+
     const skierg = await findExercise(supabase, ["SkiErg"]);
     if (skierg) {
       await addItem(supabase, circuitBlock.id, skierg.id, order++, {
@@ -884,11 +921,18 @@ async function buildBodyweightGrinder(
   if (circuitBlock) {
     let order = 0;
 
-    const jumpSquats = await findExercise(supabase, ["Jump Squats"]);
-    if (jumpSquats) {
-      await addItem(supabase, circuitBlock.id, jumpSquats.id, order++, {
+    // Use specific Air Squat ID for consistency
+    const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
+    const { data: airSquats } = await supabase
+      .from("exercises")
+      .select("id, name")
+      .eq("id", AIR_SQUAT_ID)
+      .single();
+    
+    if (airSquats) {
+      await addItem(supabase, circuitBlock.id, airSquats.id, order++, {
         reps: 20,
-        notes: "Explosive, full extension"
+        notes: "Explosive tempo, full depth, cardio conditioning"
       });
     }
 
@@ -908,9 +952,9 @@ async function buildBodyweightGrinder(
       });
     }
 
-    const broadJumps = await findExercise(supabase, ["Broad Jumps", "Standing Long Jump"]);
-    if (broadJumps) {
-      await addItem(supabase, circuitBlock.id, broadJumps.id, order++, {
+    const burpeeBroadJump = await findExercise(supabase, ["Burpee Broad Jump"]);
+    if (burpeeBroadJump) {
+      await addItem(supabase, circuitBlock.id, burpeeBroadJump.id, order++, {
         reps: 10,
         notes: "Max distance, soft landing"
       });
@@ -949,9 +993,9 @@ async function buildBodyweightPower(
 
   const exercises = [
     { name: ["Burpees"], notes: "Max reps, full chest to deck" },
-    { name: ["Jumping Lunges", "Jump Lunges"], notes: "Alternate legs, explosive" },
+    { name: ["Walking Lunges"], notes: "Alternate legs, explosive tempo" },
     { name: ["Mountain Climbers"], notes: "Fast pace, knees to chest" },
-    { name: ["Air Squats"], notes: "Max reps, full depth" },
+    { name: ["Air Squat"], notes: "Max reps, full depth" },
   ];
 
   for (const ex of exercises) {

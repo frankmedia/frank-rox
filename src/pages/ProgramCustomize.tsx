@@ -69,8 +69,10 @@ const ProgramCustomize = () => {
       setRunPerWeek(2);
       // Pre-select RowErg and SkiErg for cardio/strength
       setEquip(["RowErg", "SkiErg"]);
-      // Pre-select "Never" for cardio classes
-      setCardioClassFreq("Never");
+      // Only set cardio class frequency if Cardio is recommended
+      if (recommendedOptions.includes("Cardio")) {
+        setCardioClassFreq("Never");
+      }
     }
   }, [profile, recommendedOptions]);
 

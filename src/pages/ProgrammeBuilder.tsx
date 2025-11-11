@@ -26,6 +26,7 @@ type SessionBlock = {
 type UserPreferences = {
   trainingDaysPerWeek: number;
   runSessionsPerWeek: number;
+  cardioSessionsPerWeek?: number; // From onboarding
   focusAreas: string[];
   hasHills: boolean;
   focus: "base" | "build" | "race-prep";
@@ -34,19 +35,45 @@ type UserPreferences = {
   isDeload?: boolean;
   isTaper?: boolean;
   taperWeek?: 1 | 2; // Week -2 or Week -1
+  equipment?: string[]; // For cardio workout selection
 };
 
 async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[]> {
   const sessions: SessionBlock[] = [];
   const trainingDays = prefs.trainingDaysPerWeek || 5;
-  const runs = prefs.runSessionsPerWeek ?? 2; // Use ?? to allow 0
+  let runs = prefs.runSessionsPerWeek ?? 2; // Use ?? to allow 0
   const focus = prefs.focus || "base";
   const focusAreas = new Set(prefs.focusAreas.map(f => f.toLowerCase()));
+  
+  // SMART SESSION DISTRIBUTION
+  // Calculate how many sessions we need and adjust if it exceeds training days
+  const requestedCardio = focusAreas.has("cardio") ? (prefs.cardioSessionsPerWeek ?? 2) : 0;
+  const requestedStrength = focusAreas.has("strength") ? 2 : 0;
+  
+  // If both cardio and strength are selected, cardio will be embedded in strength days
+  // So we only need: runs + strength + (standalone cardio - 2)
+  const hasCardioAndStrength = focusAreas.has("cardio") && focusAreas.has("strength");
+  const standaloneCardio = hasCardioAndStrength ? Math.max(0, requestedCardio - 2) : requestedCardio;
+  const totalRequested = runs + standaloneCardio + requestedStrength;
   
   console.log("🏗️ BUILDING PROGRAMME:");
   console.log("  Training days:", trainingDays);
   console.log("  Runs per week:", runs);
+  console.log("  Cardio per week:", requestedCardio);
+  console.log("  Strength per week:", requestedStrength);
+  console.log("  Cardio embedded in strength:", hasCardioAndStrength ? 2 : 0);
+  console.log("  Standalone cardio:", standaloneCardio);
+  console.log("  Total sessions needed:", totalRequested);
   console.log("  Focus areas:", Array.from(focusAreas));
+  
+  // If total sessions exceed training days, reduce runs proportionally
+  if (totalRequested > trainingDays) {
+    const excess = totalRequested - trainingDays;
+    runs = Math.max(0, runs - excess); // Reduce runs first
+    console.log(`⚠️ Too many sessions! Reducing runs from ${prefs.runSessionsPerWeek} to ${runs} to fit ${trainingDays} training days`);
+  }
+  
+  console.log("  Adjusted runs:", runs);
   console.log("  Has cardio?:", focusAreas.has("cardio"));
   
   // Volume modifiers for deload/taper
@@ -192,17 +219,19 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
 
   // 2. Add Strength Sessions
   if (focusAreas.has("strength")) {
-    // Calculate how many strength days we can fit
-    const remainingDays = trainingDays - usedDays.size;
-    const strengthDays = Math.min(3, remainingDays);
+    // Use fixed 2 strength sessions (from smart distribution)
+    const strengthDays = requestedStrength;
+    const hasCardioFocus = focusAreas.has("cardio");
     
     if (strengthDays >= 1) {
       const lowerDay = getNextDay(["Monday", "Thursday"]);
       sessions.push({
         day: lowerDay,
         type: "strength",
-        title: "Strength Lower + Easy Engine",
-        detail: "Back squats, Bulgarian split squats, RDLs + 20min Z2 RowErg",
+        title: hasCardioFocus ? "Strength Lower + Cardio Finisher" : "Strength Lower",
+        detail: hasCardioFocus 
+          ? "Back squats, Bulgarian split squats, RDLs + 15min cardio finisher"
+          : "Back squats, Bulgarian split squats, RDLs, leg press",
         effort: "hard"
       });
       usedDays.add(lowerDay);
@@ -213,8 +242,10 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
       sessions.push({
         day: upperDay,
         type: "strength",
-        title: "Strength Upper + Short Engine",
-        detail: "Bench press, strict press, weighted pull-ups + 15min EMOM SkiErg",
+        title: hasCardioFocus ? "Strength Upper + Cardio Finisher" : "Strength Upper",
+        detail: hasCardioFocus
+          ? "Bench press, strict press, weighted pull-ups + 15min cardio finisher"
+          : "Bench press, strict press, weighted pull-ups, rows",
         effort: "hard"
       });
       usedDays.add(upperDay);
@@ -265,7 +296,11 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
 
   // 3. Add Cardio/Conditioning Sessions (using smart selector)
   if (focusAreas.has("cardio")) {
-    const cardioDays = Math.min(2, trainingDays - usedDays.size);
+    // Use cardioSessionsPerWeek from onboarding, or default to 2
+    const requestedCardio = prefs.cardioSessionsPerWeek ?? 2;
+    const cardioDays = Math.min(requestedCardio, trainingDays - usedDays.size);
+    
+    console.log(`  Requested cardio sessions: ${requestedCardio}, available days: ${trainingDays - usedDays.size}, scheduling: ${cardioDays}`);
     
     // Import cardio selector
     const { selectCardioWorkout, getWorkoutName } = await import("../services/cardioWorkoutSelector");
@@ -314,25 +349,53 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
       });
       usedDays.add(engineDay);
     }
+
+    if (cardioDays >= 3) {
+      const cardioDay3 = getNextDay(["Wednesday", "Saturday"]);
+      
+      const { type: workout3Type } = selectCardioWorkout(
+        1, // Block 1
+        1, // Week 1
+        3, // Third cardio session
+        equipment,
+        trainingDays
+      );
+      
+      sessions.push({
+        day: cardioDay3,
+        type: "cardio",
+        title: getWorkoutName(workout3Type),
+        detail: workout3Type,
+        effort: "moderate"
+      });
+      usedDays.add(cardioDay3);
+    }
+
+    if (cardioDays >= 4) {
+      const cardioDay4 = getNextDay(["Monday", "Saturday"]);
+      
+      const { type: workout4Type } = selectCardioWorkout(
+        1, // Block 1
+        1, // Week 1
+        4, // Fourth cardio session
+        equipment,
+        trainingDays
+      );
+      
+      sessions.push({
+        day: cardioDay4,
+        type: "cardio",
+        title: getWorkoutName(workout4Type),
+        detail: workout4Type,
+        effort: "easy"
+      });
+      usedDays.add(cardioDay4);
+    }
   }
 
   // 4. Add Mobility/Recovery sessions
-  // Strategy: Add mobility to EVERY training day (10-15 min post-workout)
-  // Add full recovery days on rest days
-  
-  // Get all training days
-  const trainingDaysUsed = Array.from(usedDays);
-  
-  // Add short mobility to each training day (10-15 min)
-  for (const day of trainingDaysUsed) {
-    sessions.push({
-      day: day, // Same day as main workout
-      type: "recovery",
-      title: "Post-Workout Mobility",
-      detail: "10-15min stretching and foam rolling",
-      effort: "easy"
-    });
-  }
+  // Strategy: ONLY add full recovery sessions on rest days (NOT on training days)
+  // User feedback: Too many mobility exercises on every day!
   
   // Add full recovery days on rest days (if any)
   const restDays = availableDays.filter(d => !usedDays.has(d));
@@ -462,6 +525,7 @@ export default function ProgrammeBuilder() {
       const userPrefs: UserPreferences = {
         trainingDaysPerWeek: prefs.trainingDaysPerWeek || 5,
         runSessionsPerWeek: prefs.runSessionsPerWeek ?? 2, // Use ?? instead of || to allow 0
+        cardioSessionsPerWeek: answers.cardioSessions ?? 2, // From onboarding
         focusAreas: prefs.focusAreas || ["Running"],
         hasHills: prefs.hillsOrSprints === "Yes",
         focus,
@@ -469,8 +533,11 @@ export default function ProgrammeBuilder() {
         weeksToEvent,
         isDeload,
         isTaper,
-        taperWeek: taperWeek as 1 | 2 | undefined
+        taperWeek: taperWeek as 1 | 2 | undefined,
+        equipment: answers.equipment || prefs.equipment || [] // From onboarding answers (not prefs)
       };
+      
+      console.log(`🎒 User equipment:`, userPrefs.equipment);
 
       // Generate full personalized programme
       const allSessions = await buildFullProgramme(userPrefs);

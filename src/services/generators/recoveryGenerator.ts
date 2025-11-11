@@ -175,9 +175,10 @@ async function buildPostWorkoutMobility(
     const gluteBridge = await findExercise(supabase, ["Glute Bridge"]);
     if (gluteBridge) {
       // Calculate weight based on squat strength (10-20kg range)
-      // Use 15-25% of squat 5RM, capped at 10-20kg
+      // Use 15-25% of squat 5RM, capped at 10-20kg, rounded to EVEN numbers
       const squat5rm = options.strengthData?.squat5rm || 60;
-      const gluteWeight = Math.max(10, Math.min(20, Math.round(squat5rm * 0.20)));
+      const rawWeight = squat5rm * 0.20;
+      const gluteWeight = Math.max(10, Math.min(20, Math.round(rawWeight / 2) * 2)); // Round to even
       
       await addItem(supabase, stretchBlock.id, gluteBridge.id, order++, {
         sets: 3,
