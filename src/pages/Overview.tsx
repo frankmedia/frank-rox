@@ -1246,7 +1246,7 @@ const Overview = () => {
 
         {healthConnected && (readinessInsight || sleepInsight) && (
           <div className="mb-4 grid grid-cols-2 gap-3">
-            {readinessInsight && (
+            {readinessInsight && sleepInsight && (
               <Card className="p-5 bg-background/80 border border-orange-500/30 shadow-lg flex flex-col items-center text-center gap-2">
                 <p className="text-xs uppercase font-semibold text-yellow-300">24h Recovery Index</p>
                 <div className="relative w-28 h-28 sm:w-32 sm:h-32 my-1">
