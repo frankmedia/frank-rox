@@ -55,7 +55,7 @@ const ProgramCustomize = () => {
     if (prefs && prefs.focusAreas && prefs.focusAreas.length > 0) {
       // Use existing preferences
       setSelected(prefs.focusAreas);
-      setRunPerWeek(prefs.runSessionsPerWeek ?? 0);
+      setRunPerWeek(prefs.runSessionsPerWeek ?? 2); // Default to 2 runs
       setHillsSprints(prefs.hillsOrSprints ?? null);
       setWantsPT(prefs.wantsPTCheckins ? "Yes" : "No");
       // Force equipment to RowErg/SkiErg if empty
@@ -65,6 +65,8 @@ const ProgramCustomize = () => {
     } else {
       // First time: pre-select based on scores < 60
       setSelected(recommendedOptions);
+      // Pre-select 2 runs per week
+      setRunPerWeek(2);
       // Pre-select RowErg and SkiErg for cardio/strength
       setEquip(["RowErg", "SkiErg"]);
       // Pre-select "Never" for cardio classes
