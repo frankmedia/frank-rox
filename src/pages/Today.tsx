@@ -19,6 +19,7 @@ import { isExerciseComplete, getCompletionStats } from "@/services/workoutCache"
 import confetti from "canvas-confetti";
 import { Capacitor } from "@capacitor/core";
 import { AppHealth } from "@/services/appHealth";
+import { ShareWorkout } from "@/components/ShareWorkout";
 
 const AUTO_NAV_FLAG = "rox_auto_open_first_incomplete";
 
@@ -221,6 +222,10 @@ const Today = () => {
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [completedReady, setCompletedReady] = useState(false);
   const autoNavTriggeredRef = useRef(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  
+  // Check if running on native app (not PWA/web)
+  const isNativeApp = Capacitor.isNativePlatform();
 
   // Refresh exercises when training day changes
   useEffect(() => {
@@ -1130,7 +1135,7 @@ const Today = () => {
 
             {/* Complete/Skip Day Buttons */}
             {!loading && exercises.filter(ex => ex.type !== "intro").length > 0 && (
-              <div className="container max-w-2xl mx-auto px-4 py-6">
+              <div className="container max-w-2xl mx-auto px-4 py-6 space-y-3">
                 <div className="flex gap-3">
                   <Button
                     onClick={handleSkipDay}
@@ -1170,6 +1175,34 @@ const Today = () => {
                     )}
                   </Button>
                 </div>
+
+                {/* Share Workout Button - Native Apps Only */}
+                {isNativeApp && (
+                  <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full h-12 text-base font-semibold border-yellow-500/50 hover:bg-yellow-500/10"
+                      >
+                        <Share2 className="w-5 h-5 mr-2" />
+                        Share Workout 📸
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Share Your Progress</DialogTitle>
+                        <DialogDescription>
+                          Take a selfie and share your workout with friends!
+                        </DialogDescription>
+                      </DialogHeader>
+                      <ShareWorkout
+                        workoutName={exercises.find(ex => ex.type === "intro")?.name}
+                        exercises={exercises.filter(ex => ex.type !== "intro")}
+                        onClose={() => setShareDialogOpen(false)}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             )}
           </>
