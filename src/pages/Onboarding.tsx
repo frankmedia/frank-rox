@@ -553,7 +553,7 @@ const Onboarding = () => {
 
       {/* Fixed action bar at the bottom of the screen */}
       <div className="fixed left-0 right-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]">
-        <div className="container max-w-2xl mx-auto px-4 pb-4">
+        <div className="container max-w-2xl mx-auto px-4 pb-2">
           <div className="bg-background/95 backdrop-blur border border-border rounded-xl p-2 shadow-lg">
             <div className="flex items-center gap-2">
               <Button variant="ghost" className="basis-1/3 h-14 text-lg font-bold border border-white/20 text-white" onClick={prev} disabled={idx===0}>
