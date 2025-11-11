@@ -486,16 +486,58 @@ async function generateStrengthWorkout(
     return Math.round(fiveRM * 1.15);
   }
 
-  // Helper: Calculate working weight based on percentage of 1RM
-  // Always round to EVEN numbers (plates come in pairs: 2.5kg, 5kg, 10kg, 20kg)
-  function calculateWeight(fiveRM: number, percentage: number): number {
-    const oneRM = calculate1RM(fiveRM);
-    const rawWeight = oneRM * percentage;
-    // Round to nearest even number
-    return Math.round(rawWeight / 2) * 2;
+  // Helper: Check if exercise uses barbell/bench (plates) vs dumbbells
+  function isBarbellExercise(exerciseName: string): boolean {
+    const name = exerciseName.toLowerCase();
+    // Barbell/bench exercises (use plates)
+    const barbellKeywords = [
+      "squat", "bench press", "deadlift", "row", "lat pulldown", 
+      "leg press", "incline bench", "overhead press", "strict press",
+      "rdl", "romanian deadlift", "bent over row"
+    ];
+    // Exclude dumbbell exercises
+    const dumbbellKeywords = ["db ", "dumbbell", "goblet"];
+    
+    // Check if it's a dumbbell exercise first
+    if (dumbbellKeywords.some(keyword => name.includes(keyword))) {
+      return false;
+    }
+    
+    // Check if it's a barbell exercise
+    return barbellKeywords.some(keyword => name.includes(keyword));
   }
 
-  // Helper: Round any weight to nearest even number
+  // Helper: Round weight for barbell/bench exercises (plates: 2.5kg increments)
+  // Standard plates: 1.25kg, 2.5kg, 5kg, 10kg, 15kg, 20kg, 25kg per side
+  // Smallest increment: 2 × 1.25kg = 2.5kg total
+  // So weights: 20kg (bar), 22.5kg, 25kg, 27.5kg, 30kg, 32.5kg, 35kg, etc.
+  function roundToPlateWeight(weight: number): number {
+    // Round to nearest 2.5kg increment
+    return Math.round(weight / 2.5) * 2.5;
+  }
+
+  // Helper: Round weight for dumbbell exercises (typically 1kg increments, sometimes 0.5kg)
+  function roundToDumbbellWeight(weight: number): number {
+    // Round to nearest 1kg increment (most gyms have 1kg dumbbell increments)
+    return Math.round(weight);
+  }
+
+  // Helper: Calculate working weight based on percentage of 1RM
+  // Applies correct rounding based on exercise type (barbell vs dumbbell)
+  function calculateWeight(fiveRM: number, percentage: number, exerciseName?: string): number {
+    const oneRM = calculate1RM(fiveRM);
+    const rawWeight = oneRM * percentage;
+    
+    // Apply correct rounding based on exercise type
+    if (exerciseName && isBarbellExercise(exerciseName)) {
+      return roundToPlateWeight(rawWeight);
+    } else {
+      // Default to dumbbell rounding (1kg increments)
+      return roundToDumbbellWeight(rawWeight);
+    }
+  }
+
+  // Helper: Round any weight to nearest even number (legacy - use specific functions instead)
   function roundToEven(weight: number): number {
     return Math.round(weight / 2) * 2;
   }
@@ -619,7 +661,7 @@ async function generateStrengthWorkout(
           .single();
         
         if (squat) {
-          const squatWeight = calculateWeight(strengthData.squat5rm, 0.80); // 80% of 1RM
+          const squatWeight = calculateWeight(strengthData.squat5rm, 0.80, squat.name); // 80% of 1RM
           console.log(`✅ Using squat: ${squat.name} (ID: ${squat.id}), weight: ${squatWeight}kg`);
           
           await supabase.from("session_block_items").insert({
@@ -645,7 +687,11 @@ async function generateStrengthWorkout(
           .single();
         
         if (bulgarian) {
-          const bulgarianWeight = calculateWeight(strengthData.squat5rm, 0.70); // 70% of squat 1RM
+          // Bulgarian Split Squat uses dumbbells - calculate per-hand weight
+          // Single-leg exercise: use 25-30% of squat 1RM per hand (much lighter than barbell)
+          const oneRM = calculate1RM(strengthData.squat5rm);
+          const rawWeight = oneRM * 0.25; // 25% of squat 1RM per hand
+          const finalWeight = roundToDumbbellWeight(rawWeight);
           await supabase.from("session_block_items").insert({
             block_id: mainBlock.id,
             exercise_id: bulgarian.id,
@@ -653,29 +699,55 @@ async function generateStrengthWorkout(
             sets: 3,
             reps: 10,
             notes: "Hypertrophy (8-12 reps) - Each leg, controlled 3-0-1 tempo, maintain upright torso",
-            extra: { weight_kg: roundToEven(bulgarianWeight * 0.6) }, // Split between legs, so lighter
+            extra: { weight_kg: finalWeight },
           });
         }
 
         // 3. Romanian Deadlift - HYPERTROPHY (3×10 @ 70%)
-        const rdl = await findExercise(["Romanian Deadlift", "RDL", "DB Romanian Deadlift"]);
+        // Prioritize DB version (dumbbell) over barbell version
+        const rdl = await findExercise(["DB Romanian Deadlift", "Romanian Deadlift", "RDL"]);
         if (rdl) {
-          const rdlWeight = calculateWeight(strengthData.deadlift5rm, 0.70); // 70% of deadlift 1RM
-          await supabase.from("session_block_items").insert({
-            block_id: mainBlock.id,
-            exercise_id: rdl.id,
-            item_order: order++,
-            sets: 3,
-            reps: 10,
-            notes: "Hypertrophy (8-12 reps) - Feel the hamstring stretch, keep bar close to legs",
-            extra: { weight_kg: rdlWeight },
-          });
+          const oneRM = calculate1RM(strengthData.deadlift5rm);
+          // Check if it's a DB exercise
+          const isDB = rdl.name.toLowerCase().includes("db ") || rdl.name.toLowerCase().includes("dumbbell");
+          
+          if (isDB) {
+            // DB Romanian Deadlift: use 30-35% of deadlift 1RM per hand (much lighter than barbell)
+            const rawWeight = oneRM * 0.35; // 35% of deadlift 1RM per hand
+            const rdlWeight = roundToDumbbellWeight(rawWeight);
+            await supabase.from("session_block_items").insert({
+              block_id: mainBlock.id,
+              exercise_id: rdl.id,
+              item_order: order++,
+              sets: 3,
+              reps: 10,
+              notes: "Hypertrophy (8-12 reps) - Feel the hamstring stretch, keep bar close to legs",
+              extra: { weight_kg: rdlWeight },
+            });
+          } else {
+            // Barbell Romanian Deadlift: use 70% of deadlift 1RM
+            const rawWeight = oneRM * 0.70;
+            const rdlWeight = roundToPlateWeight(rawWeight);
+            await supabase.from("session_block_items").insert({
+              block_id: mainBlock.id,
+              exercise_id: rdl.id,
+              item_order: order++,
+              sets: 3,
+              reps: 10,
+              notes: "Hypertrophy (8-12 reps) - Feel the hamstring stretch, keep bar close to legs",
+              extra: { weight_kg: rdlWeight },
+            });
+          }
         }
 
         // 4. Leg Press - ENDURANCE (3×12 @ 65%)
         const legPress = await findExercise(["Leg Press"]);
         if (legPress) {
-          const legPressWeight = calculateWeight(strengthData.squat5rm, 0.65); // 65% of squat 1RM
+          // Calculate raw weight first, then multiply, then round
+          const oneRM = calculate1RM(strengthData.squat5rm);
+          const rawWeight = oneRM * 0.65 * 1.5; // 65% of squat 1RM × 1.5 (leg press typically heavier)
+          // Leg press uses plates, so use plate rounding
+          const finalWeight = roundToPlateWeight(rawWeight);
           await supabase.from("session_block_items").insert({
             block_id: mainBlock.id,
             exercise_id: legPress.id,
@@ -683,7 +755,7 @@ async function generateStrengthWorkout(
             sets: 3,
             reps: 12,
             notes: "Endurance (12-15 reps) - Full ROM, don't lock knees at top",
-            extra: { weight_kg: roundToEven(legPressWeight * 1.5) }, // Leg press typically heavier
+            extra: { weight_kg: finalWeight },
           });
         }
       }
@@ -736,52 +808,120 @@ async function generateStrengthWorkout(
         // 1. Bench Press - STRENGTH (4×6 @ 80%)
         const bench = await findExercise(["Bench Press", "DB Chest Press", "Chest Press"]);
         if (bench) {
-          const benchWeight = calculateWeight(strengthData.bench5rm, 0.80); // 80% of 1RM
-          await supabase.from("session_block_items").insert({
-            block_id: mainBlock.id,
-            exercise_id: bench.id,
-            item_order: order++,
-            sets: 4,
-            reps: 6,
-            notes: "Strength - 80% 1RM, control the descent (3s), explosive press",
-            extra: { weight_kg: benchWeight },
-          });
+          const oneRM = calculate1RM(strengthData.bench5rm);
+          // Check if it's a DB exercise
+          const isDB = bench.name.toLowerCase().includes("db ") || bench.name.toLowerCase().includes("dumbbell");
+          
+          if (isDB) {
+            // DB Chest Press: use 35-40% of bench 1RM per hand (much lighter than barbell)
+            const rawWeight = oneRM * 0.38; // 38% of bench 1RM per hand
+            const benchWeight = roundToDumbbellWeight(rawWeight);
+            await supabase.from("session_block_items").insert({
+              block_id: mainBlock.id,
+              exercise_id: bench.id,
+              item_order: order++,
+              sets: 4,
+              reps: 6,
+              notes: "Strength - 80% 1RM equivalent, control the descent (3s), explosive press",
+              extra: { weight_kg: benchWeight },
+            });
+          } else {
+            // Barbell Bench Press: use 80% of 1RM
+            const rawWeight = oneRM * 0.80;
+            const benchWeight = roundToPlateWeight(rawWeight);
+            await supabase.from("session_block_items").insert({
+              block_id: mainBlock.id,
+              exercise_id: bench.id,
+              item_order: order++,
+              sets: 4,
+              reps: 6,
+              notes: "Strength - 80% 1RM, control the descent (3s), explosive press",
+              extra: { weight_kg: benchWeight },
+            });
+          }
         }
 
         // 2. Bent Over Row - HYPERTROPHY (4×10 @ 75%)
-        const row = await findExercise(["Bent Over Row", "DB Bent-Over Row", "Single Arm DB Row"]);
+        // Prioritize DB version (dumbbell) over barbell version
+        const row = await findExercise(["DB Bent-Over Row", "Single Arm DB Row", "Bent Over Row"]);
         if (row) {
-          const rowWeight = calculateWeight(strengthData.bench5rm, 0.75); // 75% of bench 1RM (approximate)
-          await supabase.from("session_block_items").insert({
-            block_id: mainBlock.id,
-            exercise_id: row.id,
-            item_order: order++,
-            sets: 4,
-            reps: 10,
-            notes: "Hypertrophy (8-12 reps) - Pull to ribs, squeeze scapulae at top, 2s hold",
-            extra: { weight_kg: roundToEven(rowWeight * 0.9) }, // Rows typically slightly lighter than bench
-          });
+          const oneRM = calculate1RM(strengthData.bench5rm);
+          // Check if it's a DB exercise
+          const isDB = row.name.toLowerCase().includes("db ") || row.name.toLowerCase().includes("dumbbell") || row.name.toLowerCase().includes("single arm");
+          
+          if (isDB) {
+            // DB Bent-Over Row: use 25-30% of bench 1RM per hand (much lighter than barbell)
+            const rawWeight = oneRM * 0.28; // 28% of bench 1RM per hand
+            const finalWeight = roundToDumbbellWeight(rawWeight);
+            await supabase.from("session_block_items").insert({
+              block_id: mainBlock.id,
+              exercise_id: row.id,
+              item_order: order++,
+              sets: 4,
+              reps: 10,
+              notes: "Hypertrophy (8-12 reps) - Pull to ribs, squeeze scapulae at top, 2s hold",
+              extra: { weight_kg: finalWeight },
+            });
+          } else {
+            // Barbell Bent-Over Row: use 75% of bench 1RM × 0.9 (rows typically lighter)
+            const rawWeight = oneRM * 0.75 * 0.9;
+            const finalWeight = roundToPlateWeight(rawWeight);
+            await supabase.from("session_block_items").insert({
+              block_id: mainBlock.id,
+              exercise_id: row.id,
+              item_order: order++,
+              sets: 4,
+              reps: 10,
+              notes: "Hypertrophy (8-12 reps) - Pull to ribs, squeeze scapulae at top, 2s hold",
+              extra: { weight_kg: finalWeight },
+            });
+          }
         }
 
         // 3. DB Shoulder Press - HYPERTROPHY (3×10 @ 70%)
         const shoulderPress = await findExercise(["DB Shoulder Press", "Shoulder Press", "DB Overhead Press"]);
         if (shoulderPress) {
-          const shoulderWeight = calculateWeight(strengthData.ohp5rm, 0.70); // 70% of OHP 1RM
-          await supabase.from("session_block_items").insert({
-            block_id: mainBlock.id,
-            exercise_id: shoulderPress.id,
-            item_order: order++,
-            sets: 3,
-            reps: 10,
-            notes: "Hypertrophy (8-12 reps) - Full ROM, controlled tempo, avoid arching back",
-            extra: { weight_kg: shoulderWeight },
-          });
+          const oneRM = calculate1RM(strengthData.ohp5rm);
+          // Check if it's a DB exercise
+          const isDB = shoulderPress.name.toLowerCase().includes("db ") || shoulderPress.name.toLowerCase().includes("dumbbell");
+          
+          if (isDB) {
+            // DB Shoulder Press: use 30-35% of OHP 1RM per hand (much lighter than barbell)
+            const rawWeight = oneRM * 0.32; // 32% of OHP 1RM per hand
+            const shoulderWeight = roundToDumbbellWeight(rawWeight);
+            await supabase.from("session_block_items").insert({
+              block_id: mainBlock.id,
+              exercise_id: shoulderPress.id,
+              item_order: order++,
+              sets: 3,
+              reps: 10,
+              notes: "Hypertrophy (8-12 reps) - Full ROM, controlled tempo, avoid arching back",
+              extra: { weight_kg: shoulderWeight },
+            });
+          } else {
+            // Barbell Shoulder Press: use 70% of OHP 1RM
+            const rawWeight = oneRM * 0.70;
+            const shoulderWeight = roundToPlateWeight(rawWeight);
+            await supabase.from("session_block_items").insert({
+              block_id: mainBlock.id,
+              exercise_id: shoulderPress.id,
+              item_order: order++,
+              sets: 3,
+              reps: 10,
+              notes: "Hypertrophy (8-12 reps) - Full ROM, controlled tempo, avoid arching back",
+              extra: { weight_kg: shoulderWeight },
+            });
+          }
         }
 
         // 4. Lat Pulldown - HYPERTROPHY (3×10 @ 70%)
         const lat = await findExercise(["Lat Pulldown", "Wide Grip Pull Up", "Pull Up"]);
         if (lat) {
-          const latWeight = calculateWeight(strengthData.bench5rm, 0.70); // 70% of bench 1RM (approximate)
+          // Calculate raw weight first, then multiply, then round
+          const oneRM = calculate1RM(strengthData.bench5rm);
+          const rawWeight = oneRM * 0.70 * 0.85; // 70% of bench 1RM × 0.85 (lats typically lighter)
+          // Lat pulldown uses plates (machine), so use plate rounding
+          const finalWeight = roundToPlateWeight(rawWeight);
           await supabase.from("session_block_items").insert({
             block_id: mainBlock.id,
             exercise_id: lat.id,
@@ -789,7 +929,7 @@ async function generateStrengthWorkout(
             sets: 3,
             reps: 10,
             notes: "Hypertrophy (8-12 reps) - Pull to upper chest, squeeze lats, slow eccentric",
-            extra: { weight_kg: roundToEven(latWeight * 0.85) }, // Lats typically lighter
+            extra: { weight_kg: finalWeight },
           });
         }
       }
@@ -812,7 +952,10 @@ async function generateStrengthWorkout(
         // DB Bicep Curl - ENDURANCE (3×12 @ 60%)
         const curl = await findExercise(["DB Bicep Curl", "Bicep Curl"]);
         if (curl) {
-          const bicepWeight = calculateWeight(strengthData.bench5rm, 0.60); // 60% of bench 1RM
+          // DB Bicep Curl: use 12-15% of bench 1RM per hand (accessory exercise, much lighter)
+          const oneRM = calculate1RM(strengthData.bench5rm);
+          const rawWeight = oneRM * 0.13; // 13% of bench 1RM per hand
+          const finalWeight = roundToDumbbellWeight(rawWeight);
           await supabase.from("session_block_items").insert({
             block_id: accessoryBlock.id,
             exercise_id: curl.id,
@@ -820,14 +963,17 @@ async function generateStrengthWorkout(
             sets: 3,
             reps: 12,
             notes: "Endurance (12-15 reps) - Controlled tempo, no swinging, squeeze at top",
-            extra: { weight_kg: roundToEven(bicepWeight * 0.3) }, // Biceps much lighter than bench
+            extra: { weight_kg: finalWeight },
           });
         }
 
         // Tricep Extension - ENDURANCE (3×12 @ 60%)
         const tricep = await findExercise(["Overhead DB Tricep Extension", "DB Skull Crusher", "Tricep Dips"]);
         if (tricep) {
-          const tricepWeight = calculateWeight(strengthData.bench5rm, 0.60); // 60% of bench 1RM
+          // DB Tricep Extension: use 15-18% of bench 1RM per hand (accessory exercise, lighter than bench)
+          const oneRM = calculate1RM(strengthData.bench5rm);
+          const rawWeight = oneRM * 0.16; // 16% of bench 1RM per hand
+          const finalWeight = roundToDumbbellWeight(rawWeight);
           await supabase.from("session_block_items").insert({
             block_id: accessoryBlock.id,
             exercise_id: tricep.id,
@@ -835,7 +981,7 @@ async function generateStrengthWorkout(
             sets: 3,
             reps: 12,
             notes: "Endurance (12-15 reps) - Elbows stay in position, full extension, control the weight",
-            extra: { weight_kg: roundToEven(tricepWeight * 0.35) }, // Triceps lighter than bench
+            extra: { weight_kg: finalWeight },
           });
         }
       }
@@ -1257,9 +1403,9 @@ async function duplicateWeekWithProgression(
     return null;
   };
 
-  // Helper function to round to even numbers
-  const roundToEven = (weight: number): number => {
-    return Math.round(weight / 2) * 2;
+  // Helper: Round weight for dumbbell exercises (typically 1kg increments)
+  const roundToDumbbellWeight = (weight: number): number => {
+    return Math.round(weight);
   };
 
   // Get clientId from first plan day
@@ -1330,7 +1476,8 @@ async function duplicateWeekWithProgression(
             // Calculate weight: 60% of deadlift 5RM (grip strength focus)
             const strengthData = await fetchStrengthData(supabase, clientId);
             const deadlift5rm = strengthData.deadlift5rm || 80;
-            const farmersWeight = roundToEven(deadlift5rm * 0.60); // 60% of deadlift 5RM per hand
+            // Farmers Carry uses dumbbells, so use dumbbell rounding (1kg increments)
+            const farmersWeight = roundToDumbbellWeight(deadlift5rm * 0.60); // 60% of deadlift 5RM per hand
             
             await supabase.from("session_block_items").insert({
               block_id: gripBlock.id,

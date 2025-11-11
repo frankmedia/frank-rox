@@ -39,6 +39,33 @@ export async function createRecoverySession(
 }
 
 /**
+ * Helper: Check if exercise uses barbell/bench (plates) vs dumbbells
+ */
+function isBarbellExercise(exerciseName: string): boolean {
+  const name = exerciseName.toLowerCase();
+  const dumbbellKeywords = ["db ", "dumbbell", "goblet"];
+  if (dumbbellKeywords.some(keyword => name.includes(keyword))) {
+    return false;
+  }
+  const barbellKeywords = ["squat", "bench", "deadlift", "row", "glute bridge"];
+  return barbellKeywords.some(keyword => name.includes(keyword));
+}
+
+/**
+ * Helper: Round weight for barbell/bench exercises (plates: 2.5kg increments)
+ */
+function roundToPlateWeight(weight: number): number {
+  return Math.round(weight / 2.5) * 2.5;
+}
+
+/**
+ * Helper: Round weight for dumbbell exercises (1kg increments)
+ */
+function roundToDumbbellWeight(weight: number): number {
+  return Math.round(weight);
+}
+
+/**
  * Helper: Find exercise by name
  */
 async function findExercise(
@@ -175,10 +202,11 @@ async function buildPostWorkoutMobility(
     const gluteBridge = await findExercise(supabase, ["Glute Bridge"]);
     if (gluteBridge) {
       // Calculate weight based on squat strength (10-20kg range)
-      // Use 15-25% of squat 5RM, capped at 10-20kg, rounded to EVEN numbers
+      // Use 15-25% of squat 5RM, capped at 10-20kg
       const squat5rm = options.strengthData?.squat5rm || 60;
       const rawWeight = squat5rm * 0.20;
-      const gluteWeight = Math.max(10, Math.min(20, Math.round(rawWeight / 2) * 2)); // Round to even
+      // Glute Bridge is typically done with barbell, so use plate rounding (2.5kg increments)
+      const gluteWeight = Math.max(10, Math.min(20, roundToPlateWeight(rawWeight)));
       
       await addItem(supabase, stretchBlock.id, gluteBridge.id, order++, {
         sets: 3,
