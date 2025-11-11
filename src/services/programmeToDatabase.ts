@@ -412,42 +412,7 @@ async function generateStrengthWorkout(
       // LOWER BODY WORKOUT
       console.log(`📋 Creating warm-up block for session ${sessionData.id}`);
       
-      // Warm-up Block
-      const { data: warmupBlock, error: warmupError } = await supabase
-        .from("session_blocks")
-        .insert({
-          session_id: sessionData.id,
-          block_type: "strength",
-          title: "Warm-up",
-          rounds: 1,
-        })
-        .select()
-        .single();
-      
-      if (warmupError) {
-        console.error(`❌ Failed to create warm-up block:`, warmupError);
-        throw warmupError;
-      }
-      console.log(`✅ Warm-up block created:`, warmupBlock?.id);
-
-      if (warmupBlock) {
-        // Goblet Squat warm-up
-        const gobletSquat = await findExercise(["Goblet Squat", "Dumbbell Goblet Squat"]);
-        if (gobletSquat) {
-          const warmupWeight = Math.round(strengthData.squat5rm * 0.3); // 30% of 5RM for warm-up
-          await supabase.from("session_block_items").insert({
-            block_id: warmupBlock.id,
-            exercise_id: gobletSquat.id,
-            item_order: 0,
-            sets: 2,
-            reps: 10,
-            notes: "Warm-up - Light weight, focus on form and depth",
-            extra: { weight_kg: warmupWeight },
-          });
-        }
-      }
-
-      // Main Work Block
+      // Main Work Block (warm-up is handled by the 5min cardio block above)
       const { data: mainBlock } = await supabase
         .from("session_blocks")
         .insert({

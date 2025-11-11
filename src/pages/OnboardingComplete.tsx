@@ -6,11 +6,13 @@ import { ChevronLeft, Activity, Heart, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { AppHealth } from "@/services/appHealth";
 import { Capacitor } from "@capacitor/core";
+import { Camera as CapCamera } from "@capacitor/camera";
 
 export default function OnboardingComplete() {
   const navigate = useNavigate();
   const [healthConnected, setHealthConnected] = useState(false);
   const [stravaConnected, setStravaConnected] = useState(false);
+  const [cameraGranted, setCameraGranted] = useState(false);
   const [loading, setLoading] = useState(false);
   
   const isNative = Capacitor.isNativePlatform();
@@ -20,8 +22,10 @@ export default function OnboardingComplete() {
     // Check if already connected
     const healthFlag = localStorage.getItem("health_connected");
     const stravaFlag = localStorage.getItem("strava_connected");
+    const cameraFlag = localStorage.getItem("camera_granted");
     setHealthConnected(healthFlag === "true");
     setStravaConnected(stravaFlag === "true");
+    setCameraGranted(cameraFlag === "true");
   }, []);
 
   const handleConnectHealth = async () => {
@@ -96,6 +100,38 @@ export default function OnboardingComplete() {
     window.location.href = `https://www.strava.com/oauth/authorize?${params.toString()}`;
   };
 
+  const handleRequestCamera = async () => {
+    if (!isNative) {
+      toast.error("Camera not available", { description: "Camera access is only available on the mobile app" });
+      return;
+    }
+    
+    try {
+      const permissions = await CapCamera.checkPermissions();
+      
+      if (permissions.camera === 'granted') {
+        setCameraGranted(true);
+        localStorage.setItem("camera_granted", "true");
+        toast.success("Camera access already granted!");
+        return;
+      }
+      
+      const result = await CapCamera.requestPermissions({ permissions: ['camera'] });
+      
+      if (result.camera === 'granted') {
+        setCameraGranted(true);
+        localStorage.setItem("camera_granted", "true");
+        toast.success("Camera access granted!");
+      } else {
+        toast.error("Camera permission denied", {
+          description: "Enable camera access in your device settings to use this feature."
+        });
+      }
+    } catch (e: any) {
+      toast.error("Failed to request camera permission", { description: e?.message || String(e) });
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -160,10 +196,10 @@ export default function OnboardingComplete() {
                   onClick={handleConnectHealth}
                   disabled={loading || healthConnected}
                   className="w-full h-12 text-base font-bold flex items-center justify-center gap-2"
-                  style={{ backgroundColor: healthConnected ? "#10b981" : "#FFCC00", color: "#000" }}
+                  style={{ backgroundColor: healthConnected ? "#10b981" : "#FFCC00", color: healthConnected ? "#fff" : "#000" }}
                 >
                   <Heart className="w-5 h-5" />
-                  {healthConnected ? "✓ Health Connect" : "Connect Health Connect"}
+                  {healthConnected ? "✓ Health Connected" : "Connect Health Connect"}
                 </Button>
               ) : (
                 <Button
@@ -180,22 +216,38 @@ export default function OnboardingComplete() {
 
           {/* Camera/Share Preview (Native Only - shown on web for preview) */}
           <Card className="p-6 bg-zinc-900 border-yellow-500/30">
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-4 mb-4">
               <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
                 <Camera className="w-6 h-6 text-yellow-500" />
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-white mb-1">Share Your Progress 📸</h3>
-                <p className="text-sm text-white/70 mb-3">
+                <p className="text-sm text-white/70">
                   Camera access to take selfies and share your workout on social media.
-                </p>
-                <p className="text-xs text-white/50">
-                  {isNative 
-                    ? "Camera access will be requested when you use this feature for the first time."
-                    : "This feature is available on the mobile app only."}
                 </p>
               </div>
             </div>
+            
+            {isNative ? (
+              <Button
+                onClick={handleRequestCamera}
+                disabled={cameraGranted}
+                className="w-full h-12 text-base font-bold flex items-center justify-center gap-2"
+                style={{ backgroundColor: cameraGranted ? "#10b981" : "#FFCC00", color: cameraGranted ? "#fff" : "#000" }}
+              >
+                <Camera className="w-5 h-5" />
+                {cameraGranted ? "✓ Camera Access Granted" : "Enable Camera Access"}
+              </Button>
+            ) : (
+              <Button
+                disabled
+                className="w-full h-12 text-base font-bold flex items-center justify-center gap-2 opacity-50"
+                style={{ backgroundColor: "#666", color: "#fff" }}
+              >
+                <Camera className="w-5 h-5" />
+                Camera (Mobile App Only)
+              </Button>
+            )}
           </Card>
 
           {/* Skip Option */}
