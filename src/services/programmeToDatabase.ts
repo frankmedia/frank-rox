@@ -516,42 +516,9 @@ async function generateStrengthWorkout(
 
     } else if (split === "upper") {
       // UPPER BODY WORKOUT
-      console.log(`📋 Creating warm-up block for upper body session ${sessionData.id}`);
+      console.log(`📋 Creating upper body session ${sessionData.id}`);
       
-      // Warm-up Block
-      const { data: warmupBlock, error: warmupError } = await supabase
-        .from("session_blocks")
-        .insert({
-          session_id: sessionData.id,
-          block_type: "strength",
-          title: "Warm-up",
-          rounds: 1,
-        })
-        .select()
-        .single();
-      
-      if (warmupError) {
-        console.error(`❌ Failed to create warm-up block:`, warmupError);
-        throw warmupError;
-      }
-      console.log(`✅ Warm-up block created:`, warmupBlock?.id);
-
-      if (warmupBlock) {
-        // Band Pull-Aparts
-        const bandPull = await findExercise(["Band Pull-Apart", "Band Pull Apart"]);
-        if (bandPull) {
-          await supabase.from("session_block_items").insert({
-            block_id: warmupBlock.id,
-            exercise_id: bandPull.id,
-            item_order: 0,
-            sets: 2,
-            reps: 15,
-            notes: "Warm-up - Light resistance, scapular retraction focus",
-          });
-        }
-      }
-
-      // Main Work Block
+      // Main Work Block (warm-up is handled by the 5min cardio block above)
       const { data: mainBlock } = await supabase
         .from("session_blocks")
         .insert({
