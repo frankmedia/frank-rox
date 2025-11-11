@@ -883,19 +883,12 @@ async function generateCardioWorkout(
   // Import and use cardio generator
   try {
     const { createCardioSession } = await import("./generators/cardioGenerator");
+    const { CardioWorkoutType } = await import("../services/cardioWorkoutSelector");
     
-    // Determine session type based on title
-    let sessionType: "race-simulation" | "engine-work" | "hiit" = "engine-work";
+    // Get workout type from session.detail (set by programme builder)
+    const sessionType = session.detail as CardioWorkoutType || "machine-endurance";
     
-    if (session.title.toLowerCase().includes("race") || session.title.toLowerCase().includes("simulation")) {
-      sessionType = "race-simulation";
-    } else if (session.title.toLowerCase().includes("hiit") || session.title.toLowerCase().includes("conditioning")) {
-      sessionType = "hiit";
-    } else if (session.title.toLowerCase().includes("engine")) {
-      sessionType = "engine-work";
-    }
-    
-    console.log(`🏃 Cardio session: allowRunning = ${allowRunning}`);
+    console.log(`🏃 Creating cardio workout: ${sessionType}, allowRunning = ${allowRunning}`);
     
     // Delete the placeholder session we just created
     await supabase.from("sessions").delete().eq("id", sessionData.id);
@@ -906,6 +899,7 @@ async function generateCardioWorkout(
       intensity: session.effort as "easy" | "moderate" | "hard",
       duration: 30,
       allowRunning, // Pass the allowRunning flag
+      intensityModifier: 1.0 // Base intensity for Week 1
     });
     
     console.log(`✅ Generated ${sessionType} cardio workout`);

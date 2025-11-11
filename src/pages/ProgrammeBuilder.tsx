@@ -36,7 +36,7 @@ type UserPreferences = {
   taperWeek?: 1 | 2; // Week -2 or Week -1
 };
 
-function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
+async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[]> {
   const sessions: SessionBlock[] = [];
   const trainingDays = prefs.trainingDaysPerWeek || 5;
   const runs = prefs.runSessionsPerWeek ?? 2; // Use ?? to allow 0
@@ -263,17 +263,31 @@ function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
     }
   }
 
-  // 3. Add Cardio/Conditioning Sessions
+  // 3. Add Cardio/Conditioning Sessions (using smart selector)
   if (focusAreas.has("cardio")) {
     const cardioDays = Math.min(2, trainingDays - usedDays.size);
     
+    // Import cardio selector
+    const { selectCardioWorkout, getWorkoutName } = await import("../services/cardioWorkoutSelector");
+    const equipment = prefs.equipment || [];
+    
     if (cardioDays >= 1) {
       const cardioDay = getNextDay(["Tuesday", "Thursday"]);
+      
+      // Select workout based on equipment, block, week, etc.
+      const { type: workout1Type } = selectCardioWorkout(
+        1, // Block 1
+        1, // Week 1
+        1, // First cardio session
+        equipment,
+        trainingDays
+      );
+      
       sessions.push({
         day: cardioDay,
         type: "cardio",
-        title: "Race Simulation",
-        detail: "4 rounds: 1km run + 50m sled push + 500m SkiErg, 3min rest",
+        title: getWorkoutName(workout1Type),
+        detail: workout1Type, // Store workout type for generator
         effort: "hard"
       });
       usedDays.add(cardioDay);
@@ -281,11 +295,21 @@ function buildFullProgramme(prefs: UserPreferences): SessionBlock[] {
 
     if (cardioDays >= 2) {
       const engineDay = getNextDay(["Friday", "Wednesday"]);
+      
+      // Select different workout for second session
+      const { type: workout2Type } = selectCardioWorkout(
+        1, // Block 1
+        1, // Week 1
+        2, // Second cardio session
+        equipment,
+        trainingDays
+      );
+      
       sessions.push({
         day: engineDay,
         type: "cardio",
-        title: "Engine Work",
-        detail: "30min mixed: RowErg, SkiErg, Assault Bike intervals",
+        title: getWorkoutName(workout2Type),
+        detail: workout2Type, // Store workout type for generator
         effort: "moderate"
       });
       usedDays.add(engineDay);
@@ -449,7 +473,7 @@ export default function ProgrammeBuilder() {
       };
 
       // Generate full personalized programme
-      const allSessions = buildFullProgramme(userPrefs);
+      const allSessions = await buildFullProgramme(userPrefs);
 
       // Save to localStorage
       const programme = {
