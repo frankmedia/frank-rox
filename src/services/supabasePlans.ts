@@ -522,8 +522,8 @@ export async function getAllDaysSummary(clientId: string) {
         }, {} as Record<string, number>);
 
         return {
-          dayNumber: day.day_index + 1,
-          label: day.label || `Day ${day.day_index + 1}`,
+          dayNumber: day.day_index, // day_index is already 1-based (1-14)
+          label: day.label || `Day ${day.day_index}`,
           isRest: day.is_rest || false,
           exerciseCount: exercises.length,
           modalities,
