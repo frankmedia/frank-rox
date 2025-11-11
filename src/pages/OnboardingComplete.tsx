@@ -14,7 +14,7 @@ export default function OnboardingComplete() {
   const [loading, setLoading] = useState(false);
   
   const isNative = Capacitor.isNativePlatform();
-  const healthSupported = isNative && Capacitor.getPlatform() === "android";
+  const healthSupported = isNative; // Health Connect works on both iOS and Android
 
   useEffect(() => {
     // Check if already connected
@@ -154,7 +154,7 @@ export default function OnboardingComplete() {
                 {stravaConnected ? "✓ Strava Connected" : "Connect Strava"}
               </Button>
 
-              {/* Health Connect Button (Android only) */}
+              {/* Health Connect Button (iOS & Android) */}
               {healthSupported ? (
                 <Button
                   onClick={handleConnectHealth}
@@ -172,7 +172,7 @@ export default function OnboardingComplete() {
                   style={{ backgroundColor: "#666", color: "#fff" }}
                 >
                   <Heart className="w-5 h-5" />
-                  Health Connect (Android Only)
+                  Health Connect (Mobile App Only)
                 </Button>
               )}
             </div>
