@@ -205,12 +205,19 @@ const Today = () => {
           return findNextIncompleteDay();
         }
         
+        // Ensure day is never 0 or negative
+        const dayNum = parseInt(storedDay);
+        if (isNaN(dayNum) || dayNum < 1) {
+          console.warn(`⚠️ Invalid training day: ${storedDay}, resetting to 1`);
+          return "1";
+        }
+        
         // Check if the stored day is completed, if so find next incomplete
         const completedDaysKey = `completedDays_${user.username}`;
         const completedDaysStr = localStorage.getItem(completedDaysKey);
         const completedDays: number[] = completedDaysStr ? JSON.parse(completedDaysStr) : [];
         
-        if (completedDays.includes(parseInt(storedDay))) {
+        if (completedDays.includes(dayNum)) {
           return findNextIncompleteDay();
         }
         
