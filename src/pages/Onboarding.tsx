@@ -524,7 +524,7 @@ const Onboarding = () => {
       {/* Header */}
       <header
         className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border"
-        style={{ paddingTop: 'calc(20px + env(safe-area-inset-top, 0px))' }}
+        style={{ paddingTop: 'calc(40px + env(safe-area-inset-top, 0px))' }}
       >
         <div className="container max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -535,8 +535,8 @@ const Onboarding = () => {
       </header>
 
       {/* Centered content area; page is frozen (no global scrolling) */}
-      <main className="container max-w-2xl mx-auto px-4 pb-40 h-[calc(100vh-4rem)] overflow-y-auto" style={{ paddingTop: 'calc(3rem + env(safe-area-inset-top, 0px))' }}>
-        <Card className="mt-10 p-5 bg-zinc-900 border-zinc-800">
+      <main className="container max-w-2xl mx-auto px-4 pb-40 h-[calc(100vh-4rem)] overflow-y-auto" style={{ paddingTop: 'calc(6rem + env(safe-area-inset-top, 0px))' }}>
+        <Card className="mt-20 p-5 bg-zinc-900 border-zinc-800">
           <div className="text-white space-y-4">
             {typeof step.render === "function" ? step.render(answers, set) : step.render}
           </div>
