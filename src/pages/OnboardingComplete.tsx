@@ -181,25 +181,25 @@ export default function OnboardingComplete() {
             </Card>
           )}
 
-          {/* Camera/Share Preview (Native Only) */}
-          {isNative && (
-            <Card className="p-6 bg-zinc-900 border-yellow-500/30">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
-                  <Camera className="w-6 h-6 text-yellow-500" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-white mb-1">Share Your Progress 📸</h3>
-                  <p className="text-sm text-white/70 mb-3">
-                    Camera access to take selfies and share your workout on social media.
-                  </p>
-                  <p className="text-xs text-white/50">
-                    Camera access will be requested when you use this feature for the first time.
-                  </p>
-                </div>
+          {/* Camera/Share Preview (Native Only - shown on web for preview) */}
+          <Card className="p-6 bg-zinc-900 border-yellow-500/30">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+                <Camera className="w-6 h-6 text-yellow-500" />
               </div>
-            </Card>
-          )}
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-white mb-1">Share Your Progress 📸</h3>
+                <p className="text-sm text-white/70 mb-3">
+                  Camera access to take selfies and share your workout on social media.
+                </p>
+                <p className="text-xs text-white/50">
+                  {isNative 
+                    ? "Camera access will be requested when you use this feature for the first time."
+                    : "This feature is available on the mobile app only."}
+                </p>
+              </div>
+            </div>
+          </Card>
 
           {/* Skip Option */}
           <div className="text-center">
