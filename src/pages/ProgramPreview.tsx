@@ -314,8 +314,8 @@ const ProgramPreview = () => {
       >
         <div className="container max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white">Your Weekly Structure</h1>
-            <div className="text-sm text-white/70">Days/week: {desiredTrainingDays}</div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-white">Your Plan</h1>
+            <div className="text-sm text-white/70 whitespace-nowrap">Days/week: {desiredTrainingDays}</div>
           </div>
         </div>
       </header>
