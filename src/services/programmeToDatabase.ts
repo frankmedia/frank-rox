@@ -48,7 +48,7 @@ export async function createPlanInDatabase(
   const allowRunning = (programme.preferences?.runSessionsPerWeek ?? 2) > 0;
 
   try {
-    // 0. Delete any existing active plans for this user (for testing)
+    // 0. Delete any existing active plans for this user (for clean testing)
     console.log("🗑️ Checking for existing active plans...");
     const { data: existingPlans } = await supabase
       .from("plans")
@@ -59,12 +59,50 @@ export async function createPlanInDatabase(
     if (existingPlans && existingPlans.length > 0) {
       console.log(`🗑️ Deleting ${existingPlans.length} existing active plan(s)...`);
       for (const plan of existingPlans) {
-        // Delete plan_days first (foreign key constraint)
-        await supabase.from("plan_days").delete().eq("plan_id", plan.id);
-        // Then delete the plan
+        // Get all plan_days for this plan
+        const { data: planDays } = await supabase
+          .from("plan_days")
+          .select("id")
+          .eq("plan_id", plan.id);
+        
+        if (planDays && planDays.length > 0) {
+          console.log(`🗑️ Deleting ${planDays.length} plan days and their sessions...`);
+          for (const planDay of planDays) {
+            // Get all sessions for this day
+            const { data: sessions } = await supabase
+              .from("sessions")
+              .select("id")
+              .eq("plan_day_id", planDay.id);
+            
+            if (sessions && sessions.length > 0) {
+              for (const session of sessions) {
+                // Get all blocks for this session
+                const { data: blocks } = await supabase
+                  .from("session_blocks")
+                  .select("id")
+                  .eq("session_id", session.id);
+                
+                if (blocks && blocks.length > 0) {
+                  for (const block of blocks) {
+                    // Delete all items in this block
+                    await supabase.from("session_block_items").delete().eq("block_id", block.id);
+                  }
+                  // Delete all blocks in this session
+                  await supabase.from("session_blocks").delete().eq("session_id", session.id);
+                }
+              }
+              // Delete all sessions for this day
+              await supabase.from("sessions").delete().eq("plan_day_id", planDay.id);
+            }
+          }
+          // Delete all plan_days for this plan
+          await supabase.from("plan_days").delete().eq("plan_id", plan.id);
+        }
+        
+        // Finally, delete the plan itself
         await supabase.from("plans").delete().eq("id", plan.id);
       }
-      console.log("✅ Existing plans deleted");
+      console.log("✅ Existing plans and all associated data deleted");
     }
 
     // 1. Create the plan
