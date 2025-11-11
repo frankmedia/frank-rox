@@ -819,9 +819,7 @@ const Overview = () => {
       console.log(`📅 Day ${day} selected, updated training day to: ${day}`);
     }
 
-    sessionStorage.setItem(AUTO_NAV_FLAG, "true");
-
-    // Navigate to today page
+    // Navigate to today page (show full day, don't auto-open first exercise)
     navigate("/today");
   };
 
@@ -843,7 +841,7 @@ const Overview = () => {
       localStorage.setItem(userKey, String(targetDay));
     }
 
-    sessionStorage.setItem(AUTO_NAV_FLAG, "true");
+    // Navigate to today page (show full day, don't auto-open first exercise)
     navigate("/today");
   }, [daySummaries, navigate]);
 
