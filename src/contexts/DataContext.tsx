@@ -191,7 +191,15 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         if (userStr) {
           const user = JSON.parse(userStr);
           const userKey = `currentTrainingDay_${user.username}`;
-          const trainingDay = localStorage.getItem(userKey) || "1";
+          let trainingDay = localStorage.getItem(userKey) || "1";
+          
+          // Validate day is never 0 or negative
+          const dayNum = parseInt(trainingDay);
+          if (isNaN(dayNum) || dayNum < 1) {
+            console.warn(`⚠️ Invalid training day in DataContext: ${trainingDay}, resetting to 1`);
+            trainingDay = "1";
+            localStorage.setItem(userKey, "1"); // Fix it in localStorage too
+          }
           
           if (trainingDay !== currentTrainingDay) {
             setCurrentTrainingDay(trainingDay);

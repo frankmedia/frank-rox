@@ -86,6 +86,13 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
   });
 
   const handleDayChange = (newDay: string) => {
+    // Validate day is never 0 or negative
+    const dayNum = parseInt(newDay);
+    if (isNaN(dayNum) || dayNum < 1) {
+      console.warn(`⚠️ Invalid training day: ${newDay}, resetting to 1`);
+      newDay = "1";
+    }
+    
     setCurrentDay(newDay);
     
     // Save to user-specific storage
