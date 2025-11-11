@@ -137,7 +137,7 @@ const ProgramCustomize = () => {
           </div>
         </div>
       </header>
-      <main className="container max-w-2xl mx-auto px-4 pt-12 pb-40 h-[calc(100vh-4rem)] overflow-y-auto">
+      <main className="container max-w-2xl mx-auto px-4 pb-40 h-[calc(100vh-4rem)] overflow-y-auto" style={{ paddingTop: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>
         {/* Training days - priority card */}
         <Card className="p-5 bg-zinc-900 border-zinc-800 mb-4">
           <Label className="text-white text-xl font-bold">Training days per week</Label>
