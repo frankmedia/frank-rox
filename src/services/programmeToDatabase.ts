@@ -168,9 +168,10 @@ export async function createPlanInDatabase(
 
     console.log(`✅ Created ${planDays.length} plan days out of 14`);
 
-    // 3. Mark rest days (days without sessions in Week 1)
+    // 3. Mark rest days and create Active Recovery sessions (days without sessions in Week 1)
     const sessionDays = new Set(programme.sessions.map(s => s.day));
     const week1Days = planDays.slice(0, 7); // First 7 days only
+    const restDayPlanDayIds: string[] = [];
     
     for (const planDay of week1Days) {
       if (!sessionDays.has(planDay.dayName)) {
@@ -183,6 +184,9 @@ export async function createPlanInDatabase(
             description: "Rest & Recovery"
           })
           .eq("id", planDay.id);
+        
+        // Store for creating Active Recovery sessions later
+        restDayPlanDayIds.push(planDay.id);
       }
     }
 
@@ -223,7 +227,23 @@ export async function createPlanInDatabase(
 
     console.log("✅ All workouts generated");
 
-    // 4. Duplicate Week 1 sessions to Week 2 with progressive overload
+    // 4. Create Active Recovery sessions for rest days
+    if (restDayPlanDayIds.length > 0) {
+      console.log(`🧘 Creating Active Recovery sessions for ${restDayPlanDayIds.length} rest day(s)...`);
+      const { buildActiveRecovery } = await import("./generators/recoveryGenerator");
+      
+      for (const planDayId of restDayPlanDayIds) {
+        try {
+          await buildActiveRecovery(supabase, planDayId);
+          console.log(`✅ Active Recovery session created for rest day`);
+        } catch (error: any) {
+          console.error(`❌ Error creating Active Recovery session:`, error);
+          warnings.push(`Error creating Active Recovery session: ${error.message}`);
+        }
+      }
+    }
+
+    // 5. Duplicate Week 1 sessions to Week 2 with progressive overload
     await duplicateWeekWithProgression(supabase, planDays, programme, warnings);
 
     return { planId: plan.id, warnings };
