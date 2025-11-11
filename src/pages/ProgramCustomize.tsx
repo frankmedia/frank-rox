@@ -157,7 +157,7 @@ const ProgramCustomize = () => {
               <Button
                 key={`tdtop-${n}`}
                 variant="ghost"
-                className={`w-full h-12 text-lg border ${trainingDays===n?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                className={`w-full h-12 text-lg border ${trainingDays===n?"bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-400":"border-white/30 hover:bg-white/10"}`}
                 onClick={()=>setTrainingDays(n)}
               >
                 {n}
@@ -174,7 +174,7 @@ const ProgramCustomize = () => {
               <Button
                 key={`pt-top-${v}`}
                 variant="ghost"
-                className={`w-full h-12 text-lg border ${wantsPT===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                className={`w-full h-12 text-lg border ${wantsPT===v?"bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-400":"border-white/30 hover:bg-white/10"}`}
                 onClick={()=>setWantsPT(v)}
               >
                 {v}
@@ -192,7 +192,7 @@ const ProgramCustomize = () => {
                   <Button
                     key={opt}
                     variant="ghost"
-                    className={`w-full h-12 text-lg border ${active ? "bg-yellow-500 text-black border-yellow-500" : "border-white/30"}`}
+                    className={`w-full h-12 text-lg border ${active ? "bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-400" : "border-white/30 hover:bg-white/10"}`}
                     onClick={() => toggle(opt)}
                   >
                     {opt}
@@ -251,7 +251,7 @@ const ProgramCustomize = () => {
                   <Button
                     key={`ccf-${v}`}
                     variant="ghost"
-                    className={`w-full h-12 text-lg border ${cardioClassFreq===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                    className={`w-full h-12 text-lg border ${cardioClassFreq===v?"bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-400":"border-white/30 hover:bg-white/10"}`}
                     onClick={()=>setCardioClassFreq(v)}
                   >
                     {v}
@@ -267,7 +267,7 @@ const ProgramCustomize = () => {
                 <Button
                   key={`rpw-${n}`}
                   variant="ghost"
-                  className={`w-full h-12 text-lg border ${runPerWeek === n ? "bg-yellow-500 text-black border-yellow-500" : "border-white/30"}`}
+                  className={`w-full h-12 text-lg border ${runPerWeek === n ? "bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-400" : "border-white/30 hover:bg-white/10"}`}
                   onClick={() => setRunPerWeek(n)}
                 >
                   {n}
@@ -283,7 +283,7 @@ const ProgramCustomize = () => {
                   <Button
                     key={`hsw-${v}`}
                     variant="ghost"
-                    className={`w-full h-12 text-lg border ${hillsSprints === v ? "bg-yellow-500 text-black border-yellow-500" : "border-white/30"}`}
+                    className={`w-full h-12 text-lg border ${hillsSprints === v ? "bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-400" : "border-white/30 hover:bg-white/10"}`}
                     onClick={() => setHillsSprints(v)}
                   >
                     {v}
