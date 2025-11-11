@@ -128,7 +128,7 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
             ctx.fillStyle = "#FFFFFF";
             ctx.fillText("PT", leftMargin + 70 + roxWidth, 65);
 
-            // Add date and time at TOP RIGHT in banner
+            // Add date and time at TOP RIGHT in banner (3x bigger)
             const now = new Date();
             const dateStr = now.toLocaleDateString("en-GB", { 
               day: "numeric", 
@@ -140,14 +140,14 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
               minute: "2-digit" 
             });
             
-            ctx.font = "bold 20px sans-serif";
+            ctx.font = "bold 60px sans-serif"; // Was 20px, now 60px (3x bigger)
             ctx.textAlign = "right";
             ctx.fillStyle = "#FFFFFF";
-            ctx.fillText(`${dateStr}`, img.width - rightMargin, 45);
-            ctx.fillText(`${timeStr}`, img.width - rightMargin, 70);
+            ctx.fillText(`${dateStr}`, img.width - rightMargin, 50);
+            ctx.fillText(`${timeStr}`, img.width - rightMargin, 115);
 
-        // Start workout details at bottom third of image
-        let yPos = img.height - (img.height * 0.35);
+        // Start workout details much lower (reduce bottom padding)
+        let yPos = img.height - (img.height * 0.45); // Was 0.35, now 0.45 to push text lower
 
         // Add workout name if present
         if (workoutName) {
@@ -335,15 +335,15 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
                 </span>
               </div>
               
-              {/* Right: Date & Time */}
-              <div className="text-right text-white font-bold text-sm">
+              {/* Right: Date & Time (3x bigger) */}
+              <div className="text-right text-white font-bold text-3xl leading-tight">
                 <div>{new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
                 <div>{new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
               </div>
             </div>
             
-            {/* Bottom third: Workout details */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 text-white" style={{ bottom: "0%", height: "35%" }}>
+            {/* Bottom section: Workout details (pushed lower) */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 text-white" style={{ bottom: "0%", height: "45%" }}>
               {workoutName && (
                 <div className="font-bold text-xl mb-2">
                   {workoutName}
