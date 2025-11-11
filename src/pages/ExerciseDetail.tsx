@@ -1481,10 +1481,14 @@ const ExerciseDetail = () => {
                     {distanceInputUnlocked ? (
                       <>
                         <RotateCcw className="w-6 h-6 mr-3" />
-                        {`RESTART ${exercise.durationMin < 1 ? `${Math.round(exercise.durationMin * 60)} SEC` : `${exercise.durationMin} MIN`}`}
+                        {exercise.durationMin && exercise.durationMin < 1 
+                          ? `RESTART ${Math.round(exercise.durationMin * 60)} SEC`
+                          : `RESTART ${exercise.durationMin} MIN`}
                       </>
                     ) : (
-                      `START ${exercise.durationMin < 1 ? `${Math.round(exercise.durationMin * 60)} SEC` : `${exercise.durationMin} MIN`}`
+                      exercise.durationMin && exercise.durationMin < 1 
+                        ? `START ${Math.round(exercise.durationMin * 60)} SEC`
+                        : `START ${exercise.durationMin} MIN`
                     )}
                   </Button>
                 )}
