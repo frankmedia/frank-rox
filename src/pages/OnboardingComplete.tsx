@@ -22,11 +22,23 @@ export default function OnboardingComplete() {
     // Check if already connected
     const healthFlag = localStorage.getItem("health_connected");
     const stravaFlag = localStorage.getItem("strava_connected");
-    const cameraFlag = localStorage.getItem("camera_granted");
     setHealthConnected(healthFlag === "true");
     setStravaConnected(stravaFlag === "true");
-    setCameraGranted(cameraFlag === "true");
-  }, []);
+    
+    // Check actual camera permission status (not localStorage)
+    const checkCameraPermission = async () => {
+      if (isNative) {
+        try {
+          const permissions = await CapCamera.checkPermissions();
+          setCameraGranted(permissions.camera === 'granted');
+        } catch (e) {
+          console.error("Failed to check camera permissions:", e);
+          setCameraGranted(false);
+        }
+      }
+    };
+    checkCameraPermission();
+  }, [isNative]);
 
   const handleConnectHealth = async () => {
     setLoading(true);
@@ -111,7 +123,6 @@ export default function OnboardingComplete() {
       
       if (permissions.camera === 'granted') {
         setCameraGranted(true);
-        localStorage.setItem("camera_granted", "true");
         toast.success("Camera access already granted!");
         return;
       }
@@ -120,7 +131,6 @@ export default function OnboardingComplete() {
       
       if (result.camera === 'granted') {
         setCameraGranted(true);
-        localStorage.setItem("camera_granted", "true");
         toast.success("Camera access granted!");
       } else {
         toast.error("Camera permission denied", {
