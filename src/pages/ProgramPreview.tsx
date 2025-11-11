@@ -304,10 +304,9 @@ const ProgramPreview = () => {
             <h1 className="text-3xl sm:text-4xl font-extrabold text-white">Your Weekly Structure</h1>
             <div className="text-sm text-white/70">Days/week: {desiredTrainingDays}</div>
           </div>
-          <p className="text-white/70 text-sm mt-1">Typical programme generated from your selections</p>
         </div>
       </header>
-      <main className="container max-w-3xl mx-auto px-4 pb-40 flex flex-col items-center" style={{ paddingTop: '120px' }}>
+      <main className="container max-w-3xl mx-auto px-4 pb-40 flex flex-col items-center" style={{ paddingTop: '160px' }}>
         <div className="w-full max-w-2xl mb-12 text-white/90 text-base sm:text-lg text-left">
           <div className="font-medium" dangerouslySetInnerHTML={{ 
             __html: typed
