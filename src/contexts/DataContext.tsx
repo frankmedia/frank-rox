@@ -183,7 +183,7 @@ export const DataProvider = ({ children }: DataProviderProps) => {
     }
   }, []);
 
-  // Watch for training day changes (poll localStorage every 500ms)
+  // Watch for training day changes (poll localStorage every 2 seconds - reduced frequency)
   useEffect(() => {
     const checkTrainingDay = () => {
       try {
@@ -210,9 +210,9 @@ export const DataProvider = ({ children }: DataProviderProps) => {
       }
     };
 
-    // Check immediately and then every 500ms
+    // Check immediately and then every 2 seconds (reduced from 500ms)
     checkTrainingDay();
-    const interval = setInterval(checkTrainingDay, 500);
+    const interval = setInterval(checkTrainingDay, 2000);
     return () => clearInterval(interval);
   }, [currentTrainingDay]);
 

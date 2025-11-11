@@ -237,15 +237,15 @@ const Today = () => {
   // Check if running on native app (not PWA/web)
   const isNativeApp = Capacitor.isNativePlatform();
 
-  // Refresh exercises when training day changes
+  // Clear auto-nav flag when training day changes
   useEffect(() => {
-    console.log(`🔄 Training day changed to ${currentTrainingDay}, refreshing exercises...`);
+    console.log(`🔄 Training day changed to ${currentTrainingDay}`);
     
     // Clear auto-nav flag when day changes to prevent navigating to old exercise IDs
     sessionStorage.removeItem(AUTO_NAV_FLAG);
     autoNavTriggeredRef.current = false;
     
-    refresh();
+    // Don't call refresh() here - DataContext already handles it automatically
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrainingDay]);
 
