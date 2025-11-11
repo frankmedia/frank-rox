@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dumbbell, CirclePause, HeartPulse, Calendar } from "lucide-react";
+import { App as CapacitorApp } from "@capacitor/app";
 
 // Runner icon (silhouette) without external dependencies
 const RunnerIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -267,6 +268,18 @@ const ProgramPreview = () => {
   useEffect(() => {
     setTyped(intro);
   }, [intro]);
+
+  // Handle Android back button
+  useEffect(() => {
+    const handleBackButton = CapacitorApp.addListener('backButton', () => {
+      // Navigate back in the app instead of closing it
+      navigate(-1);
+    });
+
+    return () => {
+      handleBackButton.then(listener => listener.remove());
+    };
+  }, [navigate]);
   
   const daysPerWeek = 7;
   const incomplete =
@@ -756,7 +769,7 @@ const ProgramPreview = () => {
           </div>
         )}
       </main>
-      <div className="fixed left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40">
+      <div className="fixed left-0 right-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]">
         <div className="container max-w-3xl mx-auto px-4 pb-2">
           <div className="bg-background/95 backdrop-blur border border-border rounded-xl p-2 shadow-lg">
             <div className="flex items-center gap-2">
