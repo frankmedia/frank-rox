@@ -174,6 +174,16 @@ async function buildPostWorkoutMobility(
         notes: "Weighted glute activation, squeeze at top"
       });
     }
+
+    // Band Pull-Apart (shoulder health and upper body prehab)
+    const bandPullApart = await findExercise(supabase, ["Band Pull-Apart", "Band Pull Apart"]);
+    if (bandPullApart) {
+      await addItem(supabase, stretchBlock.id, bandPullApart.id, order++, {
+        sets: 2,
+        reps: 15,
+        notes: "Shoulder prehab, squeeze shoulder blades together"
+      });
+    }
   }
 
   console.log("✅ Post-Workout Mobility created");
@@ -340,6 +350,24 @@ async function buildActiveRecovery(
       await addItem(supabase, coreBlock.id, plank.id, order++, {
         duration: "1min",
         notes: "Hold strong position, breathe steadily"
+      });
+    }
+
+    // Ankle Dorsiflexion Mobilization (ankle mobility and balance)
+    const ankleDorsi = await findExercise(supabase, ["Ankle Dorsiflexion Mobilization", "Ankle Dorsiflexion"]);
+    if (ankleDorsi) {
+      await addItem(supabase, coreBlock.id, ankleDorsi.id, order++, {
+        duration: "2min",
+        notes: "Each ankle, improve range of motion for squats and running"
+      });
+    }
+
+    // Foam Roller on Mid Back (recovery and posture reset)
+    const foamRoller = await findExercise(supabase, ["Foam Roller on Mid Back", "Foam Roller Mid Back"]);
+    if (foamRoller) {
+      await addItem(supabase, coreBlock.id, foamRoller.id, order++, {
+        duration: "2min",
+        notes: "Gentle rolling, release tension, improve posture"
       });
     }
   }
