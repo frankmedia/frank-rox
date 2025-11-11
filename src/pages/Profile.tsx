@@ -116,6 +116,10 @@ const Profile = () => {
     } catch {}
   }, []);
 
+  // Extract sex and age from onboarding profile
+  const onboardingSex = onboardingProfile?.answers?.gender || null;
+  const onboardingAge = onboardingProfile?.answers?.age || null;
+
   const formatMetric = useCallback((value: number, formatter?: (value: number) => string) => {
     if (!value || Number.isNaN(value) || value <= 0) return "--";
     return formatter ? formatter(value) : Math.round(value).toString();
