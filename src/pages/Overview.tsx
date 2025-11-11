@@ -1364,6 +1364,27 @@ const Overview = () => {
         )}
 
         <div className="grid gap-3">
+          {daySummaries.length === 0 && !loading && !isFetchingDays && (
+            <Card className="p-8 text-center space-y-4">
+              <div className="flex justify-center">
+                <Target className="w-16 h-16 text-muted-foreground" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-2">No Training Plan Yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  Complete your onboarding to get a personalized 14-day training programme tailored to your goals.
+                </p>
+              </div>
+              <Button 
+                onClick={() => navigate('/onboarding')}
+                className="w-full h-12 text-lg font-bold"
+                style={{ backgroundColor: "#FFCC00", color: "#000" }}
+              >
+                Start Onboarding
+              </Button>
+            </Card>
+          )}
+          
           {daySummaries.map((summary) => {
             const displayExercises = flattenExercisesForDisplay(summary.exercises);
             const completedCount = getCompletedExerciseCount(summary.exerciseLogs, summary.totalExercises);

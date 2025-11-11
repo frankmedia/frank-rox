@@ -125,7 +125,8 @@ const steps = [
                   type="date"
                   value={a.eventDate ?? ""}
                   onChange={e=>set("eventDate", e.target.value)}
-                  className="mt-1 h-12 text-lg"
+                  className="mt-1 h-12 text-lg bg-white text-black"
+                  style={{ colorScheme: 'light' }}
                 />
               </div>
               {weeksToEvent !== null && (

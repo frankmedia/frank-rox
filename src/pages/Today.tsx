@@ -1187,10 +1187,25 @@ const Today = () => {
               })}
             </div>
 
-            {exercises.filter(ex => ex.type !== "intro").length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No exercises planned for today</p>
-              </div>
+            {exercises.filter(ex => ex.type !== "intro").length === 0 && !loading && (
+              <Card className="p-8 text-center space-y-4 mx-4">
+                <div className="flex justify-center">
+                  <ClipboardList className="w-16 h-16 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">No Training Plan Yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Complete your onboarding to get a personalized training programme tailored to your goals.
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => navigate('/onboarding')}
+                  className="w-full h-12 text-lg font-bold"
+                  style={{ backgroundColor: "#FFCC00", color: "#000" }}
+                >
+                  Start Onboarding
+                </Button>
+              </Card>
             )}
 
             {/* Complete/Skip Day Buttons */}
