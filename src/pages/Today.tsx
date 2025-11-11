@@ -631,28 +631,6 @@ const Today = () => {
   // Handle camera share - directly open camera like Health Connect
   const handleCameraShare = async () => {
     try {
-      // Check camera permissions first
-      const permissions = await Camera.checkPermissions();
-      
-      if (permissions.camera === 'denied') {
-        // Permission denied - show toast with action to open settings
-        toast.error("Camera Permission Required", {
-          description: "Please enable camera access in your device settings",
-          duration: 10000,
-          action: {
-            label: "Open Settings",
-            onClick: async () => {
-              try {
-                await Camera.requestPermissions({ permissions: ['camera'] });
-              } catch (e) {
-                console.error("Failed to open settings:", e);
-              }
-            }
-          }
-        });
-        return;
-      }
-
       // Take photo with camera - this will request permission if needed
       const image = await Camera.getPhoto({
         quality: 90,
@@ -668,23 +646,22 @@ const Today = () => {
       }
     } catch (error: any) {
       console.error("Camera error:", error);
+      
+      // User cancelled photo - silent
       if (error.message?.includes("User cancelled") || error.message?.includes("cancel")) {
-        // User cancelled - silent, no toast
         return;
-      } else {
-        toast.error("Camera access failed", {
-          description: "Please enable camera permissions in settings",
+      }
+      
+      // Permission denied - show toast with settings link
+      if (error.message?.includes("permission") || error.message?.includes("denied")) {
+        toast.error("Camera Permission Required", {
+          description: "Enable camera access in Settings > RoxPT > Camera",
           duration: 10000,
-          action: {
-            label: "Open Settings",
-            onClick: async () => {
-              try {
-                await Camera.requestPermissions({ permissions: ['camera'] });
-              } catch (e) {
-                console.error("Failed to request permissions:", e);
-              }
-            }
-          }
+        });
+      } else {
+        // Other errors
+        toast.error("Camera access failed", {
+          description: error.message || "Please try again"
         });
       }
     }
