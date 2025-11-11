@@ -76,73 +76,75 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
         canvas.width = img.width;
         canvas.height = img.height;
 
-        // Draw the photo
-        ctx.drawImage(img, 0, 0);
+            // Draw the photo
+            ctx.drawImage(img, 0, 0);
 
-        // Add semi-transparent overlay: 10% top half, 20% bottom half
-        const midHeight = img.height / 2;
-        
-        // Top half (10% opacity)
-        ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
-        ctx.fillRect(0, 0, img.width, midHeight);
-        
-        // Bottom half (20% opacity)
-        ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
-        ctx.fillRect(0, midHeight, img.width, midHeight);
+            // Add 20% opacity overlay over entire image
+            ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+            ctx.fillRect(0, 0, img.width, img.height);
 
-        // Draw flame SVG icon at top left
-        const leftMargin = 40;
-        const rightMargin = 40;
-        
-        // Draw flame icon (yellow stroke, no fill)
-        ctx.strokeStyle = "#FFCC00";
-        ctx.lineWidth = 3;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        
-        // Scale and position flame path
-        ctx.save();
-        ctx.translate(leftMargin, 40);
-        ctx.scale(2.5, 2.5); // Make it bigger
-        ctx.beginPath();
-        // Flame SVG path
-        ctx.moveTo(8.5, 14.5);
-        ctx.bezierCurveTo(8.5, 15.88, 9.62, 17, 11, 17);
-        ctx.lineTo(11, 12);
-        ctx.bezierCurveTo(11, 10.62, 10.5, 10, 10, 9);
-        ctx.bezierCurveTo(8.928, 6.857, 9.776, 4.946, 12, 3);
-        ctx.bezierCurveTo(12.5, 5.5, 14, 7.9, 16, 9.5);
-        ctx.bezierCurveTo(18, 11.1, 19, 13, 19, 15);
-        ctx.arc(12, 15, 7, 0, 2 * Math.PI);
-        ctx.bezierCurveTo(5, 13.847, 5.433, 12.706, 6, 12);
-        ctx.bezierCurveTo(6, 13.38, 7.12, 14.5, 8.5, 14.5);
-        ctx.closePath();
-        ctx.stroke();
-        ctx.restore();
-        
-        // Add "RoxPT" text next to flame
-        ctx.fillStyle = "#FFCC00";
-        ctx.font = "bold 54px sans-serif";
-        ctx.textAlign = "left";
-        ctx.fillText("RoxPT", leftMargin + 90, 80);
+            // Top branding banner (like navigation bar)
+            const bannerHeight = 100;
+            ctx.fillStyle = "rgba(0, 0, 0, 0.85)"; // Dark banner
+            ctx.fillRect(0, 0, img.width, bannerHeight);
 
-        // Add date and time at TOP RIGHT
-        const now = new Date();
-        const dateStr = now.toLocaleDateString("en-GB", { 
-          day: "numeric", 
-          month: "short", 
-          year: "numeric" 
-        });
-        const timeStr = now.toLocaleTimeString("en-GB", { 
-          hour: "2-digit", 
-          minute: "2-digit" 
-        });
-        
-        ctx.fillStyle = "#FFCC00";
-        ctx.font = "bold 24px sans-serif";
-        ctx.textAlign = "right";
-        ctx.fillText(`${dateStr}`, img.width - rightMargin, 50);
-        ctx.fillText(`${timeStr}`, img.width - rightMargin, 80);
+            const leftMargin = 40;
+            const rightMargin = 40;
+            
+            // Draw flame icon in banner (yellow)
+            ctx.strokeStyle = "#FFCC00";
+            ctx.fillStyle = "#FFCC00";
+            ctx.lineWidth = 3;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            
+            // Scale and position flame path
+            ctx.save();
+            ctx.translate(leftMargin, 25);
+            ctx.scale(2, 2);
+            ctx.beginPath();
+            // Flame SVG path
+            ctx.moveTo(8.5, 14.5);
+            ctx.bezierCurveTo(8.5, 15.88, 9.62, 17, 11, 17);
+            ctx.lineTo(11, 12);
+            ctx.bezierCurveTo(11, 10.62, 10.5, 10, 10, 9);
+            ctx.bezierCurveTo(8.928, 6.857, 9.776, 4.946, 12, 3);
+            ctx.bezierCurveTo(12.5, 5.5, 14, 7.9, 16, 9.5);
+            ctx.bezierCurveTo(18, 11.1, 19, 13, 19, 15);
+            ctx.arc(12, 15, 7, 0, 2 * Math.PI);
+            ctx.bezierCurveTo(5, 13.847, 5.433, 12.706, 6, 12);
+            ctx.bezierCurveTo(6, 13.38, 7.12, 14.5, 8.5, 14.5);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
+            
+            // Add "Rox" in yellow + "PT" in white
+            ctx.font = "bold 48px sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillStyle = "#FFCC00";
+            ctx.fillText("Rox", leftMargin + 70, 65);
+            
+            const roxWidth = ctx.measureText("Rox").width;
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillText("PT", leftMargin + 70 + roxWidth, 65);
+
+            // Add date and time at TOP RIGHT in banner
+            const now = new Date();
+            const dateStr = now.toLocaleDateString("en-GB", { 
+              day: "numeric", 
+              month: "short", 
+              year: "numeric" 
+            });
+            const timeStr = now.toLocaleTimeString("en-GB", { 
+              hour: "2-digit", 
+              minute: "2-digit" 
+            });
+            
+            ctx.font = "bold 20px sans-serif";
+            ctx.textAlign = "right";
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillText(`${dateStr}`, img.width - rightMargin, 45);
+            ctx.fillText(`${timeStr}`, img.width - rightMargin, 70);
 
         // Start workout details at bottom third of image
         let yPos = img.height - (img.height * 0.35);
@@ -160,7 +162,7 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
         ctx.fillStyle = "#FFCC00";
         ctx.font = "bold 42px sans-serif";
         ctx.textAlign = "left";
-        ctx.fillText("✓ Workout Complete", leftMargin, yPos);
+        ctx.fillText("Workout Complete", leftMargin, yPos);
         yPos += 65;
 
         // Add exercises list (3x bigger text)
@@ -317,24 +319,27 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
               className="w-full h-auto"
             />
             
-            {/* Top half overlay (10% opacity) */}
-            <div className="absolute top-0 left-0 right-0 h-1/2 bg-black/10 pointer-events-none" />
+            {/* 20% opacity overlay over entire image */}
+            <div className="absolute inset-0 bg-black/20 pointer-events-none" />
             
-            {/* Bottom half overlay (20% opacity) */}
-            <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-black/20 pointer-events-none" />
-            
-            {/* Top left: Flame icon + RoxPT */}
-            <div className="absolute top-4 left-4 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FFCC00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
-              </svg>
-              <span className="text-yellow-400 font-bold text-2xl">RoxPT</span>
-            </div>
-            
-            {/* Top right: Date & Time */}
-            <div className="absolute top-4 right-4 text-right text-yellow-400 font-bold text-sm">
-              <div>{new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
-              <div>{new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
+            {/* Top branding banner (like navigation bar) */}
+            <div className="absolute top-0 left-0 right-0 h-20 bg-black/85 flex items-center justify-between px-4">
+              {/* Left: Flame icon + RoxPT */}
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FFCC00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+                </svg>
+                <span className="font-bold text-2xl">
+                  <span className="text-yellow-400">Rox</span>
+                  <span className="text-white">PT</span>
+                </span>
+              </div>
+              
+              {/* Right: Date & Time */}
+              <div className="text-right text-white font-bold text-sm">
+                <div>{new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
+                <div>{new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
+              </div>
             </div>
             
             {/* Bottom third: Workout details */}
@@ -345,7 +350,7 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
                 </div>
               )}
               <div className="text-yellow-400 font-bold text-lg mb-2">
-                ✓ Workout Complete
+                Workout Complete
               </div>
               <div className="text-sm space-y-1">
                 {exercises.filter(e => e.type !== "intro").slice(0, 3).map((ex, i) => (
