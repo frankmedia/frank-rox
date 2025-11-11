@@ -145,61 +145,61 @@ const steps = [
     render: (a: Answers, set: (k: keyof Answers, v: any) => void) => (
       <div className="space-y-5">
         <Card className="bg-zinc-900 border border-zinc-800 p-4 sm:p-5">
-          <Label className="text-white text-xl font-bold">Bench Press (best recent 5 reps)</Label>
+          <Label className="text-white text-xl font-bold">Bench Press (kg, best recent 5 reps)</Label>
           <div className="grid grid-cols-4 gap-2 mt-2">
             {["20","40","60","80","100","120+","Not sure"].map(v=>(
               <Button
                 key={`bench-${v}`}
                 variant="ghost"
-                className={`w-full h-12 text-lg border ${a.bench5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                className={`w-full text-lg border ${v==="Not sure"?"h-18 opacity-60":"h-12"} ${a.bench5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
                 onClick={()=>set("bench5rm", v)}
               >
-                {v} {v!=="Not sure" ? "kg" : ""}
+                {v}
               </Button>
             ))}
           </div>
         </Card>
         <Card className="bg-zinc-900 border border-zinc-800 p-4 sm:p-5">
-          <Label className="text-white text-xl font-bold">Back Squat (best recent 5 reps)</Label>
+          <Label className="text-white text-xl font-bold">Back Squat (kg, best recent 5 reps)</Label>
           <div className="grid grid-cols-4 gap-2 mt-2">
             {["20","40","60","80","100","120","120+","Not sure"].map(v=>(
               <Button
                 key={`squat-${v}`}
                 variant="ghost"
-                className={`w-full h-12 text-lg border ${a.squat5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                className={`w-full text-lg border ${v==="Not sure"?"h-18 opacity-60":"h-12"} ${a.squat5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
                 onClick={()=>set("squat5rm", v)}
               >
-                {v} {v!=="Not sure" ? "kg" : ""}
+                {v}
               </Button>
             ))}
           </div>
         </Card>
         <Card className="bg-zinc-900 border border-zinc-800 p-4 sm:p-5">
-          <Label className="text-white text-xl font-bold">Deadlift (best recent 5 reps)</Label>
+          <Label className="text-white text-xl font-bold">Deadlift (kg, best recent 5 reps)</Label>
           <div className="grid grid-cols-4 gap-2 mt-2">
             {["20","40","60","80","100","120","140+","Not sure"].map(v=>(
               <Button
                 key={`dead-${v}`}
                 variant="ghost"
-                className={`w-full h-12 text-lg border ${a.deadlift5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                className={`w-full text-lg border ${v==="Not sure"?"h-18 opacity-60":"h-12"} ${a.deadlift5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
                 onClick={()=>set("deadlift5rm", v)}
               >
-                {v} {v!=="Not sure" ? "kg" : ""}
+                {v}
               </Button>
             ))}
           </div>
         </Card>
         <Card className="bg-zinc-900 border border-zinc-800 p-4 sm:p-5">
-          <Label className="text-white text-xl font-bold">Overhead Press (best recent 5 reps)</Label>
+          <Label className="text-white text-xl font-bold">Overhead Press (kg, best recent 5 reps)</Label>
           <div className="grid grid-cols-4 gap-2 mt-2">
             {["5","10","20","30","40","50","60+","Not sure"].map(v=>(
               <Button
                 key={`ohp-${v}`}
                 variant="ghost"
-                className={`w-full h-12 text-lg border ${a.ohp5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
+                className={`w-full text-lg border ${v==="Not sure"?"h-18 opacity-60":"h-12"} ${a.ohp5rm===v?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
                 onClick={()=>set("ohp5rm", v)}
               >
-                {v} {v!=="Not sure" ? "kg" : ""}
+                {v}
               </Button>
             ))}
           </div>
