@@ -343,200 +343,205 @@ export default function ProgrammeBuilder() {
   ];
 
   useEffect(() => {
-    console.log("🔄 ProgrammeBuilder useEffect triggered");
-    // Wait for auth to load
-    if (isLoading) {
-      console.log("⏳ Auth still loading...");
-      return;
-    }
+    const initializeProgramme = async () => {
+      console.log("🔄 ProgrammeBuilder useEffect triggered");
+      // Wait for auth to load
+      if (isLoading) {
+        console.log("⏳ Auth still loading...");
+        return;
+      }
 
-    console.log("🔍 Auth loaded. User:", user);
-    console.log("🔍 localStorage frank_rock_user:", localStorage.getItem("frank_rock_user"));
+      console.log("🔍 Auth loaded. User:", user);
+      console.log("🔍 localStorage frank_rock_user:", localStorage.getItem("frank_rock_user"));
 
-    // Get user profile from localStorage
-    const profileStr = localStorage.getItem("onboarding_profile");
-    if (!profileStr) {
-      console.log("❌ No onboarding profile found");
-      navigate("/onboarding");
-      return;
-    }
+      // Get user profile from localStorage
+      const profileStr = localStorage.getItem("onboarding_profile");
+      if (!profileStr) {
+        console.log("❌ No onboarding profile found");
+        navigate("/onboarding");
+        return;
+      }
 
-    if (!user?.clientId) {
-      console.log("❌ No user or clientId. User:", user);
-      toast.error("User not authenticated");
-      navigate("/login");
-      return;
-    }
+      if (!user?.clientId) {
+        console.log("❌ No user or clientId. User:", user);
+        toast.error("User not authenticated");
+        navigate("/login");
+        return;
+      }
 
-    console.log("✅ User authenticated. ClientId:", user.clientId);
+      console.log("✅ User authenticated. ClientId:", user.clientId);
 
-    // Verify client exists in database, create if not
-    try {
-      const { data: existingClient, error: checkError } = await supabase
-        .from("clients")
-        .select("id")
-        .eq("id", user.clientId)
-        .single();
-
-      if (checkError || !existingClient) {
-        console.log("⚠️ Client not found in database, creating...");
-        const { error: insertError } = await supabase
+      // Verify client exists in database, create if not
+      try {
+        const { data: existingClient, error: checkError } = await supabase
           .from("clients")
-          .insert({
-            id: user.clientId,
-            name: user.username,
-            email: user.email
+          .select("id")
+          .eq("id", user.clientId)
+          .single();
+
+        if (checkError || !existingClient) {
+          console.log("⚠️ Client not found in database, creating...");
+          const { error: insertError } = await supabase
+            .from("clients")
+            .insert({
+              id: user.clientId,
+              name: user.username,
+              email: user.email
+            });
+
+          if (insertError) {
+            console.error("❌ Failed to create client:", insertError);
+            toast.error("Failed to create client record");
+            navigate("/login");
+            return;
+          }
+          console.log("✅ Client created successfully");
+        }
+      } catch (err) {
+        console.error("❌ Error checking/creating client:", err);
+        toast.error("Database error");
+        navigate("/login");
+        return;
+      }
+
+      const profile = JSON.parse(profileStr);
+      const prefs = profile?.training_preferences || {};
+      const answers = profile?.answers || {};
+
+      // Determine focus based on weeks to event
+      const weeksToEvent = answers.eventDate 
+        ? Math.floor((new Date(answers.eventDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
+        : null;
+
+      let focus: "base" | "build" | "race-prep" = "base";
+      if (weeksToEvent) {
+        if (weeksToEvent <= 4) focus = "race-prep";
+        else if (weeksToEvent <= 8) focus = "build";
+      }
+
+      // Get current block number from localStorage (or default to 1)
+      const lastProgramme = localStorage.getItem("current_programme");
+      let blockNumber = 1;
+      if (lastProgramme) {
+        try {
+          const parsed = JSON.parse(lastProgramme);
+          blockNumber = (parsed.blockNumber || 0) + 1; // Increment block number
+        } catch (e) {
+          console.warn("Could not parse last programme, defaulting to block 1");
+        }
+      }
+
+      // Determine if this is a DELOAD block (Block 6, 12, 18, etc.)
+      const isDeload = blockNumber % 6 === 0;
+
+      // Determine if this is a TAPER block (2 weeks before event)
+      const isTaper = weeksToEvent !== null && weeksToEvent <= 2;
+      const taperWeek = weeksToEvent === 1 ? 2 : weeksToEvent === 2 ? 1 : undefined;
+
+      console.log(`📊 Block ${blockNumber}: ${isDeload ? 'DELOAD' : isTaper ? `TAPER (Week -${taperWeek})` : 'NORMAL'}`);
+
+      const userPrefs: UserPreferences = {
+        trainingDaysPerWeek: prefs.trainingDaysPerWeek || 5,
+        runSessionsPerWeek: prefs.runSessionsPerWeek ?? 2, // Use ?? instead of || to allow 0
+        focusAreas: prefs.focusAreas || ["Running"],
+        hasHills: prefs.hillsOrSprints === "Yes",
+        focus,
+        blockNumber,
+        weeksToEvent,
+        isDeload,
+        isTaper,
+        taperWeek: taperWeek as 1 | 2 | undefined
+      };
+
+      // Generate full personalized programme
+      const allSessions = buildFullProgramme(userPrefs);
+
+      // Save to localStorage
+      const programme = {
+        sessions: allSessions,
+        preferences: userPrefs,
+        generatedAt: new Date().toISOString(),
+        blockNumber,
+        focus,
+        isDeload,
+        isTaper
+      };
+      localStorage.setItem("current_programme", JSON.stringify(programme));
+
+      // Async function to create plan in database
+      const createPlan = async () => {
+        try {
+          console.log("🚀 Creating plan in database...");
+          const result = await createPlanInDatabase(supabase, user.clientId, programme);
+          console.log("✅ Plan created:", result.planId);
+          
+          if (result.warnings.length > 0) {
+            console.warn("⚠️ Warnings:", result.warnings);
+          }
+
+          // Save plan ID to localStorage
+          localStorage.setItem("current_plan_id", result.planId);
+        } catch (error: any) {
+          console.error("❌ Failed to create plan:", error);
+          toast.error("Failed to create programme", {
+            description: error.message
           });
-
-        if (insertError) {
-          console.error("❌ Failed to create client:", insertError);
-          toast.error("Failed to create client record");
-          navigate("/login");
-          return;
         }
-        console.log("✅ Client created successfully");
-      }
-    } catch (err) {
-      console.error("❌ Error checking/creating client:", err);
-      toast.error("Database error");
-      navigate("/login");
-      return;
-    }
+      };
 
-    const profile = JSON.parse(profileStr);
-    const prefs = profile?.training_preferences || {};
-    const answers = profile?.answers || {};
+      // Animate through steps
+      let stepInterval: NodeJS.Timeout;
+      let progressInterval: NodeJS.Timeout;
 
-    // Determine focus based on weeks to event
-    const weeksToEvent = answers.eventDate 
-      ? Math.floor((new Date(answers.eventDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
-      : null;
+      const animate = async () => {
+        // Step 1: Analyzing
+        setStep(0);
+        await new Promise(resolve => setTimeout(resolve, 1200));
 
-    let focus: "base" | "build" | "race-prep" = "base";
-    if (weeksToEvent) {
-      if (weeksToEvent <= 4) focus = "race-prep";
-      else if (weeksToEvent <= 8) focus = "build";
-    }
+        // Step 2: Calibrating
+        setStep(1);
+        await new Promise(resolve => setTimeout(resolve, 1200));
 
-    // Get current block number from localStorage (or default to 1)
-    const lastProgramme = localStorage.getItem("current_programme");
-    let blockNumber = 1;
-    if (lastProgramme) {
-      try {
-        const parsed = JSON.parse(lastProgramme);
-        blockNumber = (parsed.blockNumber || 0) + 1; // Increment block number
-      } catch (e) {
-        console.warn("Could not parse last programme, defaulting to block 1");
-      }
-    }
+        // Step 3: Building
+        setStep(2);
+        await new Promise(resolve => setTimeout(resolve, 1200));
 
-    // Determine if this is a DELOAD block (Block 6, 12, 18, etc.)
-    const isDeload = blockNumber % 6 === 0;
+        // Step 4: Creating in database
+        setStep(3);
+        await createPlan();
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Determine if this is a TAPER block (2 weeks before event)
-    const isTaper = weeksToEvent !== null && weeksToEvent <= 2;
-    const taperWeek = weeksToEvent === 1 ? 2 : weeksToEvent === 2 ? 1 : undefined;
+        // Step 5: Ready
+        setStep(4);
+        setProgress(100);
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-    console.log(`📊 Block ${blockNumber}: ${isDeload ? 'DELOAD' : isTaper ? `TAPER (Week -${taperWeek})` : 'NORMAL'}`);
+        // Navigate to overview
+        navigate("/overview");
+      };
 
-    const userPrefs: UserPreferences = {
-      trainingDaysPerWeek: prefs.trainingDaysPerWeek || 5,
-      runSessionsPerWeek: prefs.runSessionsPerWeek ?? 2, // Use ?? instead of || to allow 0
-      focusAreas: prefs.focusAreas || ["Running"],
-      hasHills: prefs.hillsOrSprints === "Yes",
-      focus,
-      blockNumber,
-      weeksToEvent,
-      isDeload,
-      isTaper,
-      taperWeek: taperWeek as 1 | 2 | undefined
-    };
+      // Start animation
+      animate();
 
-    // Generate full personalized programme
-    const allSessions = buildFullProgramme(userPrefs);
-
-    // Save to localStorage
-    const programme = {
-      sessions: allSessions,
-      preferences: userPrefs,
-      generatedAt: new Date().toISOString(),
-      blockNumber,
-      focus,
-      isDeload,
-      isTaper
-    };
-    localStorage.setItem("current_programme", JSON.stringify(programme));
-
-    // Async function to create plan in database
-    const createPlan = async () => {
-      try {
-        console.log("🚀 Creating plan in database...");
-        const result = await createPlanInDatabase(supabase, user.clientId, programme);
-        console.log("✅ Plan created:", result.planId);
-        
-        if (result.warnings.length > 0) {
-          console.warn("⚠️ Warnings:", result.warnings);
-        }
-
-        // Save plan ID to localStorage
-        localStorage.setItem("current_plan_id", result.planId);
-      } catch (error: any) {
-        console.error("❌ Failed to create plan:", error);
-        toast.error("Failed to create programme", {
-          description: error.message
+      // Progress bar animation
+      progressInterval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 95) {
+            clearInterval(progressInterval);
+            return 95; // Stop at 95% until database creation is done
+          }
+          return prev + 2;
         });
-      }
+      }, 50);
+
+      return () => {
+        if (stepInterval) clearInterval(stepInterval);
+        if (progressInterval) clearInterval(progressInterval);
+      };
     };
 
-    // Animate through steps
-    let stepInterval: NodeJS.Timeout;
-    let progressInterval: NodeJS.Timeout;
-
-    const animate = async () => {
-      // Step 1: Analyzing
-      setStep(0);
-      await new Promise(resolve => setTimeout(resolve, 1200));
-
-      // Step 2: Calibrating
-      setStep(1);
-      await new Promise(resolve => setTimeout(resolve, 1200));
-
-      // Step 3: Building
-      setStep(2);
-      await new Promise(resolve => setTimeout(resolve, 1200));
-
-      // Step 4: Creating in database
-      setStep(3);
-      await createPlan();
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Step 5: Ready
-      setStep(4);
-      setProgress(100);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Navigate to overview
-      navigate("/overview");
-    };
-
-    // Start animation
-    animate();
-
-    // Progress bar animation
-    progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 95) {
-          clearInterval(progressInterval);
-          return 95; // Stop at 95% until database creation is done
-        }
-        return prev + 2;
-      });
-    }, 50);
-
-    return () => {
-      if (stepInterval) clearInterval(stepInterval);
-      if (progressInterval) clearInterval(progressInterval);
-    };
+    // Call the async initialization function
+    initializeProgramme();
   }, [navigate, user, isLoading]);
 
   return (
