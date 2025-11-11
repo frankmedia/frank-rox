@@ -259,37 +259,14 @@ const ProgramPreview = () => {
   
   const intro = `Your training programme is built on evidence-based principles in strength & conditioning, endurance physiology, and functional performance science. Whether you're ${focusType} or chasing a personal best, this plan adapts to your <span class="text-yellow-400 font-bold underline">${trainingDays}-day training week</span>${eventText ? ` <span class="text-yellow-400 font-bold underline">(only ${weeksToEvent} week${weeksToEvent === 1 ? '' : 's'} to go!)</span>` : ''}.<br/><br/>Every session optimizes energy system development, movement efficiency, and recovery — ensuring consistent progression toward race readiness.`;
   const typingIdx = useRef(0);
-  const [typingComplete, setTypingComplete] = useState(false);
-  const [showWeek1, setShowWeek1] = useState(false);
-  const [showWeek2, setShowWeek2] = useState(false);
+  const [typingComplete, setTypingComplete] = useState(true); // Show immediately
+  const [showWeek1, setShowWeek1] = useState(true); // Show immediately
+  const [showWeek2, setShowWeek2] = useState(true); // Show immediately
+  
+  // Set typed text immediately (no animation)
   useEffect(() => {
-    // Start immediately and type letter by letter
-    setTyped("");
-    typingIdx.current = 0;
-    setTypingComplete(false);
-    const speedMs = 20; // tick every 20ms (one letter at a time)
-    const id = setInterval(() => {
-      if (typingIdx.current < intro.length) {
-        setTyped(intro.slice(0, typingIdx.current + 1));
-        typingIdx.current += 1;
-      } else {
-        clearInterval(id);
-        setTypingComplete(true);
-      }
-    }, speedMs);
-    return () => clearInterval(id);
+    setTyped(intro);
   }, [intro]);
-  // After typewriter completes, fade in week 1 then week 2
-  useEffect(() => {
-    if (typed.length === intro.length && intro.length > 0) {
-      const t1 = setTimeout(() => setShowWeek1(true), 1000);
-      const t2 = setTimeout(() => setShowWeek2(true), 1500);
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
-    }
-  }, [typed, intro]);
   
   const daysPerWeek = 7;
   const incomplete =
