@@ -8,7 +8,17 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export interface CardioSessionOptions {
-  sessionType: "race-simulation" | "engine-work" | "hiit";
+  sessionType: 
+    | "machine-endurance"      // 40min steady state (Z2-3)
+    | "ski-row-threshold"      // 4 rounds: 1000m Ski + 1000m Row + 20 Wall Balls
+    | "functional-engine"      // 30min AMRAP: Row, Lunges, Burpees, KB, Wall Balls
+    | "machine-power"          // 6 rounds: 1min Ski/Row/Bike (hard) + 1min rest
+    | "sled-ski-combo"         // 5 rounds: 250m Ski + Sled Push/Pull + Air Squats
+    | "descending-ladder"      // 10-8-6-4-2: 250m Ski/Row + 10 Burpees
+    | "assault-gauntlet"       // EMOM 5min x6: 20cal Bike + Jump Squats + KB DL
+    | "hybrid-pyramid"         // Pyramid: 250-500-750-1000-750-500-250 (Ski/Row/Bike)
+    | "lactic-threshold"       // 3 rounds: 500m Row + Burpees + 250m Ski + KB Swings
+    | "hyrox-finisher";        // 4 rounds: 1000m Ski + Wall Balls + Burpees + Sled
   duration?: number; // minutes
   intensity?: "easy" | "moderate" | "hard";
   equipment?: string[]; // Available equipment
@@ -26,14 +36,35 @@ export async function createCardioSession(
   console.log(`🏃 Creating ${options.sessionType} cardio session`);
 
   switch (options.sessionType) {
-    case "race-simulation":
-      await buildRaceSimulation(supabase, planDayId, options);
+    case "machine-endurance":
+      await buildMachineEndurance(supabase, planDayId, options);
       break;
-    case "engine-work":
-      await buildEngineWork(supabase, planDayId, options);
+    case "ski-row-threshold":
+      await buildSkiRowThreshold(supabase, planDayId, options);
       break;
-    case "hiit":
-      await buildHIIT(supabase, planDayId, options);
+    case "functional-engine":
+      await buildFunctionalEngine(supabase, planDayId, options);
+      break;
+    case "machine-power":
+      await buildMachinePower(supabase, planDayId, options);
+      break;
+    case "sled-ski-combo":
+      await buildSledSkiCombo(supabase, planDayId, options);
+      break;
+    case "descending-ladder":
+      await buildDescendingLadder(supabase, planDayId, options);
+      break;
+    case "assault-gauntlet":
+      await buildAssaultGauntlet(supabase, planDayId, options);
+      break;
+    case "hybrid-pyramid":
+      await buildHybridPyramid(supabase, planDayId, options);
+      break;
+    case "lactic-threshold":
+      await buildLacticThreshold(supabase, planDayId, options);
+      break;
+    case "hyrox-finisher":
+      await buildHyroxFinisher(supabase, planDayId, options);
       break;
   }
 }
@@ -141,12 +172,11 @@ async function addItem(
 }
 
 /**
- * RACE SIMULATION
- * 
- * Format: Circuit with multiple modalities
- * Example: 4 rounds of (1km run + 50m sled push + 500m SkiErg)
+ * 1. MACHINE ENDURANCE BUILDER
+ * 40 minutes steady state (Zone 2-3)
+ * 10 min SkiErg + 10 min RowErg + 10 min Assault Bike + 10 min Cross Trainer
  */
-async function buildRaceSimulation(
+async function buildMachineEndurance(
   supabase: SupabaseClient,
   planDayId: string,
   options: CardioSessionOptions
