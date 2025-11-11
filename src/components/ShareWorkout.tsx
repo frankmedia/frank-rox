@@ -316,23 +316,46 @@ export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: i
               alt="Workout selfie" 
               className="w-full h-auto"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
             
-            {/* Overlay preview */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-              <div className="text-center mb-2">
-                <span className="text-yellow-400 font-bold text-xl">RoxPT</span>
-              </div>
+            {/* Top half overlay (10% opacity) */}
+            <div className="absolute top-0 left-0 right-0 h-1/2 bg-black/10 pointer-events-none" />
+            
+            {/* Bottom half overlay (20% opacity) */}
+            <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-black/20 pointer-events-none" />
+            
+            {/* Top left: Flame icon + RoxPT */}
+            <div className="absolute top-4 left-4 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FFCC00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+              </svg>
+              <span className="text-yellow-400 font-bold text-2xl">RoxPT</span>
+            </div>
+            
+            {/* Top right: Date & Time */}
+            <div className="absolute top-4 right-4 text-right text-yellow-400 font-bold text-sm">
+              <div>{new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
+              <div>{new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
+            </div>
+            
+            {/* Bottom third: Workout details */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 text-white" style={{ bottom: "0%", height: "35%" }}>
               {workoutName && (
-                <div className="text-center font-bold text-lg mb-1">
+                <div className="font-bold text-xl mb-2">
                   {workoutName}
                 </div>
               )}
-              <div className="text-center text-yellow-400 text-sm mb-2">
-                {new Date().toLocaleDateString("en-GB")} • {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+              <div className="text-yellow-400 font-bold text-lg mb-2">
+                ✓ Workout Complete
               </div>
-              <div className="text-xs opacity-75 text-center">
-                {exercises.filter(e => e.type !== "intro").length} exercises completed
+              <div className="text-sm space-y-1">
+                {exercises.filter(e => e.type !== "intro").slice(0, 3).map((ex, i) => (
+                  <div key={i}>• {ex.name}</div>
+                ))}
+                {exercises.filter(e => e.type !== "intro").length > 3 && (
+                  <div className="text-yellow-400 italic">
+                    ...and {exercises.filter(e => e.type !== "intro").length - 3} more
+                  </div>
+                )}
               </div>
             </div>
           </div>
