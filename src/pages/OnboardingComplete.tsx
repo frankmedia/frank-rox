@@ -218,7 +218,7 @@ export default function OnboardingComplete() {
                   style={{ backgroundColor: "#666", color: "#fff" }}
                 >
                   <Heart className="w-5 h-5" />
-                  Health Connect (Mobile App Only)
+                  Health Connect
                 </Button>
               )}
             </div>
@@ -255,7 +255,7 @@ export default function OnboardingComplete() {
                 style={{ backgroundColor: "#666", color: "#fff" }}
               >
                 <Camera className="w-5 h-5" />
-                Camera (Mobile App Only)
+                Camera Access
               </Button>
             )}
           </Card>
