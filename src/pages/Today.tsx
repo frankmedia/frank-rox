@@ -631,6 +631,28 @@ const Today = () => {
   // Handle camera share - directly open camera like Health Connect
   const handleCameraShare = async () => {
     try {
+      // Check camera permissions first
+      const permissions = await Camera.checkPermissions();
+      
+      if (permissions.camera === 'denied') {
+        // Permission denied - show toast with action to open settings
+        toast.error("Camera Permission Required", {
+          description: "Please enable camera access in your device settings",
+          duration: 10000,
+          action: {
+            label: "Open Settings",
+            onClick: async () => {
+              try {
+                await Camera.requestPermissions({ permissions: ['camera'] });
+              } catch (e) {
+                console.error("Failed to open settings:", e);
+              }
+            }
+          }
+        });
+        return;
+      }
+
       // Take photo with camera - this will request permission if needed
       const image = await Camera.getPhoto({
         quality: 90,
@@ -651,7 +673,18 @@ const Today = () => {
         return;
       } else {
         toast.error("Camera access failed", {
-          description: "Please enable camera permissions in settings"
+          description: "Please enable camera permissions in settings",
+          duration: 10000,
+          action: {
+            label: "Open Settings",
+            onClick: async () => {
+              try {
+                await Camera.requestPermissions({ permissions: ['camera'] });
+              } catch (e) {
+                console.error("Failed to request permissions:", e);
+              }
+            }
+          }
         });
       }
     }
@@ -1214,9 +1247,9 @@ const Today = () => {
                     <Button
                       onClick={handleCameraShare}
                       variant="outline"
-                      className="w-full h-12 text-base font-semibold border-yellow-500/50 hover:bg-yellow-500/10"
+                      className="w-full h-12 text-base font-semibold border-yellow-500/50 hover:bg-yellow-500/10 text-white"
                     >
-                      <Share2 className="w-5 h-5 mr-2" />
+                      <Share2 className="w-5 h-5 mr-2 text-white" />
                       Share Workout 📸
                     </Button>
 
