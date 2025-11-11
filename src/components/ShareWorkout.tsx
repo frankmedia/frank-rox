@@ -20,11 +20,12 @@ interface ShareWorkoutProps {
   workoutName?: string;
   exercises: Exercise[];
   onClose?: () => void;
+  capturedImage?: string | null; // Can be passed from parent
 }
 
-export function ShareWorkout({ workoutName, exercises, onClose }: ShareWorkoutProps) {
+export function ShareWorkout({ workoutName, exercises, onClose, capturedImage: initialImage }: ShareWorkoutProps) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(initialImage || null);
 
   const takeSelfie = async () => {
     try {

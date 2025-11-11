@@ -66,7 +66,7 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
           .single();
 
         if (planDays) {
-          const max = planDays.day_index + 1; // day_index is 0-based
+          const max = planDays.day_index; // day_index is 1-based (1-14)
           setMaxDay(max);
           console.log(`🔄 Training cycle: ${max} days (Day ${currentDay} / ${max})`);
         }

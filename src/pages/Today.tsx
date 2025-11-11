@@ -20,6 +20,8 @@ import confetti from "canvas-confetti";
 import { Capacitor } from "@capacitor/core";
 import { AppHealth } from "@/services/appHealth";
 import { ShareWorkout } from "@/components/ShareWorkout";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Share } from "@capacitor/share";
 
 const AUTO_NAV_FLAG = "rox_auto_open_first_incomplete";
 
@@ -223,6 +225,7 @@ const Today = () => {
   const [completedReady, setCompletedReady] = useState(false);
   const autoNavTriggeredRef = useRef(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
   
   // Check if running on native app (not PWA/web)
   const isNativeApp = Capacitor.isNativePlatform();
@@ -622,6 +625,35 @@ const Today = () => {
       }
     } else if (!result.cancelled) {
       toast.error("Failed to share workout");
+    }
+  };
+
+  // Handle camera share - directly open camera like Health Connect
+  const handleCameraShare = async () => {
+    try {
+      // Take photo with camera - this will request permission if needed
+      const image = await Camera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.Uri,
+        source: CameraSource.Camera,
+      });
+
+      if (image.webPath) {
+        setCapturedImage(image.webPath);
+        setShareDialogOpen(true); // Open dialog to show preview and share
+        toast.success("Photo captured!");
+      }
+    } catch (error: any) {
+      console.error("Camera error:", error);
+      if (error.message?.includes("User cancelled") || error.message?.includes("cancel")) {
+        // User cancelled - silent, no toast
+        return;
+      } else {
+        toast.error("Camera access failed", {
+          description: "Please enable camera permissions in settings"
+        });
+      }
     }
   };
 
@@ -1178,30 +1210,34 @@ const Today = () => {
 
                 {/* Share Workout Button - Native Apps Only */}
                 {isNativeApp && (
-                  <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full h-12 text-base font-semibold border-yellow-500/50 hover:bg-yellow-500/10"
-                      >
-                        <Share2 className="w-5 h-5 mr-2" />
-                        Share Workout 📸
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Share Your Progress</DialogTitle>
-                        <DialogDescription>
-                          Take a selfie and share your workout with friends!
-                        </DialogDescription>
-                      </DialogHeader>
-                      <ShareWorkout
-                        workoutName={exercises.find(ex => ex.type === "intro")?.name}
-                        exercises={exercises.filter(ex => ex.type !== "intro")}
-                        onClose={() => setShareDialogOpen(false)}
-                      />
-                    </DialogContent>
-                  </Dialog>
+                  <>
+                    <Button
+                      onClick={handleCameraShare}
+                      variant="outline"
+                      className="w-full h-12 text-base font-semibold border-yellow-500/50 hover:bg-yellow-500/10"
+                    >
+                      <Share2 className="w-5 h-5 mr-2" />
+                      Share Workout 📸
+                    </Button>
+
+                    {/* Dialog only opens AFTER photo is captured */}
+                    <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+                      <DialogContent className="max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Share Your Progress</DialogTitle>
+                          <DialogDescription>
+                            Preview and share your workout selfie!
+                          </DialogDescription>
+                        </DialogHeader>
+                        <ShareWorkout
+                          workoutName={exercises.find(ex => ex.type === "intro")?.name}
+                          exercises={exercises.filter(ex => ex.type !== "intro")}
+                          onClose={() => setShareDialogOpen(false)}
+                          capturedImage={capturedImage}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  </>
                 )}
               </div>
             )}
