@@ -233,6 +233,11 @@ const Today = () => {
   // Refresh exercises when training day changes
   useEffect(() => {
     console.log(`🔄 Training day changed to ${currentTrainingDay}, refreshing exercises...`);
+    
+    // Clear auto-nav flag when day changes to prevent navigating to old exercise IDs
+    sessionStorage.removeItem(AUTO_NAV_FLAG);
+    autoNavTriggeredRef.current = false;
+    
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrainingDay]);
