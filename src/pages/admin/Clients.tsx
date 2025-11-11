@@ -195,6 +195,52 @@ const Clients = () => {
     }
   };
 
+  const deleteClient = async (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    if (!confirm(`Are you sure you want to delete ${client?.name}? This will delete ALL their plans, sessions, exercises, and logs. This action cannot be undone.`)) return;
+    
+    try {
+      setLoading(prev => ({ ...prev, [clientId]: true }));
+      
+      // Get all plans for this client
+      const { data: plans } = await supabase
+        .from("plans")
+        .select("id")
+        .eq("client_id", clientId);
+      
+      if (plans && plans.length > 0) {
+        const planIds = plans.map(p => p.id);
+        
+        // Delete all plan_days (cascade will handle sessions, blocks, items)
+        await supabase.from("plan_days").delete().in("plan_id", planIds);
+        
+        // Delete all plans
+        await supabase.from("plans").delete().eq("client_id", clientId);
+      }
+      
+      // Delete exercise logs
+      await supabase.from("exercise_logs").delete().eq("client_id", clientId);
+      
+      // Delete the client
+      const { error } = await supabase.from("clients").delete().eq("id", clientId);
+      if (error) throw error;
+      
+      // Remove from UI
+      setClients(prev => prev.filter(c => c.id !== clientId));
+      setClientPlans(prev => {
+        const updated = { ...prev };
+        delete updated[clientId];
+        return updated;
+      });
+      
+      toast({ description: `${client?.name} deleted successfully` });
+    } catch (e: any) {
+      toast({ description: e?.message || "Failed to delete client", variant: "destructive" as any });
+    } finally {
+      setLoading(prev => ({ ...prev, [clientId]: false }));
+    }
+  };
+
   const activePlan = (clientId: string) => (clientPlans[clientId] || []).find(p => p.status === "active");
   const pastPlans = (clientId: string) => (clientPlans[clientId] || []).filter(p => p.status !== "active");
 
@@ -255,6 +301,14 @@ const Clients = () => {
                     >
                       <Activity className="w-4 h-4" />
                       Activity
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteClient(c.id); }}
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded border border-red-500 text-red-400 hover:bg-red-500/10 text-sm"
+                      title="Delete client and all data"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
                     </button>
                     {active && <span className="text-xs text-green-400">● Active Plan</span>}
                   </div>
