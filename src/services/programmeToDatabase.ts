@@ -230,11 +230,13 @@ export async function createPlanInDatabase(
     // 4. Create Active Recovery sessions for rest days
     if (restDayPlanDayIds.length > 0) {
       console.log(`🧘 Creating Active Recovery sessions for ${restDayPlanDayIds.length} rest day(s)...`);
-      const { buildActiveRecovery } = await import("./generators/recoveryGenerator");
+      const { createRecoverySession } = await import("./generators/recoveryGenerator");
       
       for (const planDayId of restDayPlanDayIds) {
         try {
-          await buildActiveRecovery(supabase, planDayId);
+          await createRecoverySession(supabase, planDayId, {
+            sessionType: "active-recovery"
+          });
           console.log(`✅ Active Recovery session created for rest day`);
         } catch (error: any) {
           console.error(`❌ Error creating Active Recovery session:`, error);
