@@ -1424,7 +1424,7 @@ const ExerciseDetail = () => {
                     {runStats || todaysDuration ? (
                       <>
                         <RotateCcw className="w-6 h-6 mr-3" />
-                        mahe this text 200% bonnSTART RECORDING
+                        RESTART RECORDING
                       </>
                     ) : (
                       'START RECORDING'
