@@ -197,31 +197,21 @@ const Clients = () => {
 
   const deleteClient = async (clientId: string) => {
     const client = clients.find(c => c.id === clientId);
-    if (!confirm(`Are you sure you want to delete ${client?.name}? This will delete ALL their plans, sessions, exercises, and logs. This action cannot be undone.`)) return;
+    if (!confirm(`Are you sure you want to delete ${client?.name}?\n\nThis will permanently delete:\n• All their plans and workouts\n• All workout logs and history\n• All progress tracking data\n\nThis action CANNOT be undone.`)) return;
     
     try {
       setLoading(prev => ({ ...prev, [clientId]: true }));
       
-      // Get all plans for this client
-      const { data: plans } = await supabase
-        .from("plans")
-        .select("id")
-        .eq("client_id", clientId);
+      // With CASCADE DELETE rules in place, we only need to delete the client
+      // The database will automatically delete:
+      // - plans (via plans.client_id FK)
+      // - plan_days (via plan_days.plan_id FK)
+      // - sessions (via sessions.plan_day_id FK)
+      // - session_blocks (via session_blocks.session_id FK)
+      // - session_block_items (via session_block_items.block_id FK)
+      // - workout_logs (via workout_logs.client_id FK)
+      // - completed_days (via completed_days.client_id FK)
       
-      if (plans && plans.length > 0) {
-        const planIds = plans.map(p => p.id);
-        
-        // Delete all plan_days (cascade will handle sessions, blocks, items)
-        await supabase.from("plan_days").delete().in("plan_id", planIds);
-        
-        // Delete all plans
-        await supabase.from("plans").delete().eq("client_id", clientId);
-      }
-      
-      // Delete exercise logs
-      await supabase.from("exercise_logs").delete().eq("client_id", clientId);
-      
-      // Delete the client
       const { error } = await supabase.from("clients").delete().eq("id", clientId);
       if (error) throw error;
       
@@ -233,7 +223,7 @@ const Clients = () => {
         return updated;
       });
       
-      toast({ description: `${client?.name} deleted successfully` });
+      toast({ description: `${client?.name} and all associated data deleted successfully` });
     } catch (e: any) {
       toast({ description: e?.message || "Failed to delete client", variant: "destructive" as any });
     } finally {
