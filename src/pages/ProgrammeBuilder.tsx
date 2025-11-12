@@ -47,33 +47,56 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
   
   // SMART SESSION DISTRIBUTION
   // Calculate how many sessions we need and adjust if it exceeds training days
-  const requestedCardio = focusAreas.has("cardio") ? (prefs.cardioSessionsPerWeek ?? 2) : 0;
+  let requestedCardio = focusAreas.has("cardio") ? (prefs.cardioSessionsPerWeek ?? 2) : 0;
   const requestedStrength = focusAreas.has("strength") ? 2 : 0;
   
   // Cardio sessions should be FULL standalone sessions (45+ min), not just finishers
   // So we count: runs + cardio + strength
   const hasCardioAndStrength = focusAreas.has("cardio") && focusAreas.has("strength");
-  const standaloneCardio = requestedCardio; // All cardio sessions are standalone
-  const totalRequested = runs + standaloneCardio + requestedStrength;
+  let standaloneCardio = requestedCardio; // All cardio sessions are standalone
+  let totalRequested = runs + standaloneCardio + requestedStrength;
   
   console.log("🏗️ BUILDING PROGRAMME:");
   console.log("  Training days:", trainingDays);
   console.log("  Runs per week:", runs);
   console.log("  Cardio per week:", requestedCardio);
   console.log("  Strength per week:", requestedStrength);
-  console.log("  Cardio embedded in strength:", hasCardioAndStrength ? 2 : 0);
   console.log("  Standalone cardio:", standaloneCardio);
   console.log("  Total sessions needed:", totalRequested);
   console.log("  Focus areas:", Array.from(focusAreas));
   
-  // If total sessions exceed training days, reduce runs proportionally
+  // PRIORITY SYSTEM: If total sessions exceed training days, reduce in order:
+  // 1. Reduce runs first (lowest priority)
+  // 2. Then reduce cardio (medium priority)
+  // 3. Keep strength (highest priority - never reduce below 2)
   if (totalRequested > trainingDays) {
     const excess = totalRequested - trainingDays;
-    runs = Math.max(0, runs - excess); // Reduce runs first
-    console.log(`⚠️ Too many sessions! Reducing runs from ${prefs.runSessionsPerWeek} to ${runs} to fit ${trainingDays} training days`);
+    
+    // Step 1: Reduce runs first
+    const runsToRemove = Math.min(runs, excess);
+    runs = runs - runsToRemove;
+    let remaining = excess - runsToRemove;
+    
+    // Step 2: If still too many sessions, reduce cardio
+    if (remaining > 0) {
+      const cardioToRemove = Math.min(standaloneCardio, remaining);
+      standaloneCardio = standaloneCardio - cardioToRemove;
+      requestedCardio = standaloneCardio;
+      remaining = remaining - cardioToRemove;
+    }
+    
+    // Recalculate total
+    totalRequested = runs + standaloneCardio + requestedStrength;
+    
+    console.log(`⚠️ Too many sessions! Adjusted to fit ${trainingDays} training days:`);
+    console.log(`  - Runs: ${prefs.runSessionsPerWeek} → ${runs}`);
+    console.log(`  - Cardio: ${prefs.cardioSessionsPerWeek ?? 2} → ${standaloneCardio}`);
+    console.log(`  - Strength: ${requestedStrength} (kept)`);
+    console.log(`  - Final total: ${totalRequested}`);
   }
   
   console.log("  Adjusted runs:", runs);
+  console.log("  Adjusted cardio:", standaloneCardio);
   console.log("  Has cardio?:", focusAreas.has("cardio"));
   
   // Volume modifiers for deload/taper
