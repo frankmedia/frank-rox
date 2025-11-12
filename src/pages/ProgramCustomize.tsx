@@ -157,7 +157,7 @@ const ProgramCustomize = () => {
                 {/* Arrow pointing down to score */}
                 <div 
                   className="absolute flex flex-col items-center transition-all duration-500"
-                  style={{ left: scorePosition, transform: 'translateX(-50%)', top: '10px' }}
+                  style={{ left: scorePosition, transform: 'translateX(-50%)', top: '45%' }}
                 >
                   <svg className="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 4l-8 8h5v8h6v-8h5z" />
