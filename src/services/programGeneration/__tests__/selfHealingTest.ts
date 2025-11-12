@@ -19,8 +19,8 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABAS
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const MAX_ITERATIONS = 2;
-const TEST_COUNT = 10; // Test 10 random configurations
+const MAX_ITERATIONS = 3;
+const TEST_COUNT = 50; // Test 50 random configurations
 
 interface TestUser {
   id: number;
@@ -312,6 +312,77 @@ async function validatePlan(user: TestUser, planId: string): Promise<ValidationI
   if (user.profile.runsPerWeek > 0) {
     const runIssues = await validateRunProgression(planDays);
     issues.push(...runIssues);
+  }
+
+  // Check for duplicate sessions on same day
+  for (const day of planDays) {
+    const { data: sessions } = await supabase
+      .from('sessions')
+      .select('id, name')
+      .eq('plan_day_id', day.id);
+    
+    if (sessions && sessions.length > 1) {
+      const workoutSessions = sessions.filter(s => !s.name.toLowerCase().includes('recovery'));
+      if (workoutSessions.length > 1) {
+        issues.push({
+          severity: 'error',
+          code: 'DUPLICATE_SESSIONS',
+          message: `Day ${day.day_index}: Multiple workout sessions on same day (${workoutSessions.length})`
+        });
+      }
+    }
+  }
+
+  // Check for missing exercises in workout sessions
+  for (const day of planDays.slice(0, 7)) {
+    const { data: sessions } = await supabase
+      .from('sessions')
+      .select('id, name, session_blocks(id, session_block_items(id))')
+      .eq('plan_day_id', day.id);
+    
+    const workoutSessions = sessions?.filter(s => !s.name.toLowerCase().includes('recovery')) || [];
+    for (const session of workoutSessions) {
+      const blocks = (session as any).session_blocks || [];
+      let totalItems = 0;
+      for (const block of blocks) {
+        totalItems += (block.session_block_items || []).length;
+      }
+      
+      if (totalItems === 0) {
+        issues.push({
+          severity: 'error',
+          code: 'EMPTY_SESSION',
+          message: `Day ${day.day_index}: Session "${session.name}" has no exercises`
+        });
+      }
+    }
+  }
+
+  // Check for missing finishers on strength days
+  for (const day of planDays.slice(0, 7)) {
+    const { data: sessions } = await supabase
+      .from('sessions')
+      .select('id, name, session_blocks(id, title, block_type)')
+      .eq('plan_day_id', day.id)
+      .ilike('name', '%strength%');
+    
+    if (sessions && sessions.length > 0) {
+      const session = sessions[0];
+      const blocks = (session as any).session_blocks || [];
+      const hasFinisher = blocks.some((b: any) => 
+        b.title?.toLowerCase().includes('finisher') || 
+        b.block_type === 'amrap' ||
+        b.block_type === 'circuit'
+      );
+      
+      if (!hasFinisher) {
+        issues.push({
+          severity: 'warning',
+          code: 'MISSING_FINISHER',
+          message: `Day ${day.day_index}: Strength session missing 4min finisher`
+        });
+      }
+    }
   }
 
   return issues;
