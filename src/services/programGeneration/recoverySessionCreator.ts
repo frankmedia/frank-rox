@@ -160,6 +160,7 @@ export async function createRecoverySessionsForRestDays(
       try {
         const sessionId = await createRecoverySessionForRestDay(supabase, planDay.id);
         sessionIds.push(sessionId);
+        console.log(`   ✅ Recovery session created: ${sessionId} for Day ${planDay.day_index}`);
       } catch (error: any) {
         const errorMsg = `Failed to create recovery session for Day ${planDay.day_index}: ${error.message}`;
         console.error(`❌ ${errorMsg}`);
