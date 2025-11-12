@@ -173,6 +173,7 @@ export async function createPlanInDatabase(
 
     // 3. Identify rest days (will create recovery sessions after main workouts)
     const sessionDays = new Set(programme.sessions.map(s => s.day));
+    console.log(`📅 Session days: ${Array.from(sessionDays).join(', ')}`);
 
     // 4. Generate workouts for each session
     console.log(`📋 Programme has ${programme.sessions.length} sessions:`);
@@ -1240,7 +1241,7 @@ async function duplicateWeekWithProgression(
         .eq("id", week2Day.id);
     }
 
-    // Get Week 1 sessions
+    // Get Week 1 sessions (including recovery sessions!)
     const { data: week1Sessions } = await supabase
       .from("sessions")
       .select(`
@@ -1254,10 +1255,17 @@ async function duplicateWeekWithProgression(
       `)
       .eq("plan_day_id", week1Day.id);
 
-    if (!week1Sessions || week1Sessions.length === 0) continue;
+    if (!week1Sessions || week1Sessions.length === 0) {
+      console.log(`   Day ${i + 1}: No sessions to duplicate`);
+      continue;
+    }
+
+    console.log(`   Day ${i + 1}: Duplicating ${week1Sessions.length} session(s) to Day ${i + 8}`);
 
     // Duplicate each session to Week 2 with progression
     for (const session of week1Sessions) {
+      console.log(`     - Duplicating: ${session.name}`);
+
       const { data: newSession, error: sessionError } = await supabase
         .from("sessions")
         .insert({

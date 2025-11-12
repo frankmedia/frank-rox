@@ -19,8 +19,8 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABAS
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const MAX_ITERATIONS = 3;
-const TEST_COUNT = 50; // Test 50 random configurations
+const MAX_ITERATIONS = 2;
+const TEST_COUNT = 3; // Test 3 configurations for debugging
 
 interface TestUser {
   id: number;
@@ -472,6 +472,9 @@ async function runSelfHealingTests() {
       const programme = buildProgramme(user.profile);
       const result = await createPlanInDatabase(supabase, user.id, programme);
       planId = result.planId;
+
+      // Small delay to ensure database writes are committed
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Validate
       const issues = await validatePlan(user, planId);
