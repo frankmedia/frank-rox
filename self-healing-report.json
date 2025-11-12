@@ -1,17 +1,98 @@
 {
-  "timestamp": "2025-11-12T20:34:57.329Z",
+  "timestamp": "2025-11-12T21:30:17.080Z",
   "summary": {
-    "total": 10,
+    "total": 50,
     "passed": 0,
-    "failed": 10,
-    "totalAutoFixes": 76
+    "failed": 50,
+    "totalAutoFixes": 480
   },
   "results": [
     {
-      "user": "autotest_1762979315851",
+      "user": "autotest_1762980036694",
       "profile": {
-        "trainingDays": 3,
-        "runsPerWeek": 0,
+        "trainingDays": 6,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "male",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762980100652",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Wall balls"
+        ],
+        "focus": "race-prep",
+        "gender": "male",
+        "level": "intermediate"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762980153454",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 2,
         "cardioPerWeek": 0,
         "focusAreas": [
           "Running",
@@ -20,56 +101,12 @@
         ],
         "equipment": [],
         "focus": "build",
-        "gender": "male",
-        "level": "beginner"
-      },
-      "passed": false,
-      "autoFixed": 10,
-      "issues": [
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 3: Rest day missing recovery session"
-        },
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 4: Rest day missing recovery session"
-        },
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 5: Rest day missing recovery session"
-        },
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 6: Rest day missing recovery session"
-        },
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 7: Rest day missing recovery session"
-        }
-      ]
-    },
-    {
-      "user": "autotest_1762979360134",
-      "profile": {
-        "trainingDays": 6,
-        "runsPerWeek": 0,
-        "cardioPerWeek": 1,
-        "focusAreas": [
-          "Running",
-          "Strength"
-        ],
-        "equipment": [],
-        "focus": "build",
         "gender": "female",
-        "level": "beginner"
+        "level": "advanced"
       },
       "passed": false,
-      "autoFixed": 8,
+      "autoFixed": 9,
       "issues": [
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 4: Rest day missing recovery session"
-        },
         {
           "code": "MISSING_RECOVERY",
           "message": "Day 5: Rest day missing recovery session"
@@ -81,15 +118,19 @@
         {
           "code": "MISSING_RECOVERY",
           "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
         }
       ]
     },
     {
-      "user": "autotest_1762979397464",
+      "user": "autotest_1762980213815",
       "profile": {
         "trainingDays": 3,
         "runsPerWeek": 0,
-        "cardioPerWeek": 0,
+        "cardioPerWeek": 1,
         "focusAreas": [
           "Running",
           "Strength"
@@ -102,17 +143,13 @@
           "Heavy dumbbells",
           "Sled push/pull"
         ],
-        "focus": "base",
+        "focus": "build",
         "gender": "male",
-        "level": "beginner"
+        "level": "advanced"
       },
       "passed": false,
-      "autoFixed": 10,
+      "autoFixed": 12,
       "issues": [
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 3: Rest day missing recovery session"
-        },
         {
           "code": "MISSING_RECOVERY",
           "message": "Day 4: Rest day missing recovery session"
@@ -128,15 +165,19 @@
         {
           "code": "MISSING_RECOVERY",
           "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
         }
       ]
     },
     {
-      "user": "autotest_1762979438902",
+      "user": "autotest_1762980282654",
       "profile": {
-        "trainingDays": 4,
+        "trainingDays": 5,
         "runsPerWeek": 0,
-        "cardioPerWeek": 0,
+        "cardioPerWeek": 2,
         "focusAreas": [
           "Running",
           "Strength"
@@ -147,7 +188,212 @@
         "level": "advanced"
       },
       "passed": false,
-      "autoFixed": 10,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762980341685",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 0,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762980405161",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Wall balls"
+        ],
+        "focus": "base",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762980458610",
+      "profile": {
+        "trainingDays": 3,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "female",
+        "level": "intermediate"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762980524905",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Wall balls"
+        ],
+        "focus": "race-prep",
+        "gender": "male",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762980576643",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 0,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "build",
+        "gender": "female",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 15,
       "issues": [
         {
           "code": "MISSING_RECOVERY",
@@ -168,11 +414,99 @@
         {
           "code": "MISSING_RECOVERY",
           "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
         }
       ]
     },
     {
-      "user": "autotest_1762979482080",
+      "user": "autotest_1762980644726",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "base",
+        "gender": "female",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762980711658",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "build",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762980789063",
       "profile": {
         "trainingDays": 3,
         "runsPerWeek": 1,
@@ -185,17 +519,14 @@
         "equipment": [
           "SkiErg",
           "RowErg",
-          "Assault Bike",
-          "Wall balls",
-          "Heavy dumbbells",
-          "Sled push/pull"
+          "Wall balls"
         ],
         "focus": "build",
-        "gender": "female",
-        "level": "beginner"
+        "gender": "male",
+        "level": "advanced"
       },
       "passed": false,
-      "autoFixed": 8,
+      "autoFixed": 12,
       "issues": [
         {
           "code": "MISSING_RECOVERY",
@@ -212,15 +543,158 @@
         {
           "code": "MISSING_RECOVERY",
           "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
         }
       ]
     },
     {
-      "user": "autotest_1762979517538",
+      "user": "autotest_1762980865355",
       "profile": {
-        "trainingDays": 4,
+        "trainingDays": 5,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Wall balls"
+        ],
+        "focus": "base",
+        "gender": "male",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762980936529",
+      "profile": {
+        "trainingDays": 3,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "build",
+        "gender": "male",
+        "level": "intermediate"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762980999425",
+      "profile": {
+        "trainingDays": 3,
         "runsPerWeek": 0,
-        "cardioPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Wall balls"
+        ],
+        "focus": "base",
+        "gender": "female",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 15,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 3: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981067740",
+      "profile": {
+        "trainingDays": 3,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
         "focusAreas": [
           "Strength",
           "Cardio"
@@ -230,12 +704,86 @@
           "RowErg",
           "Wall balls"
         ],
-        "focus": "race-prep",
+        "focus": "base",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981129928",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "build",
         "gender": "female",
         "level": "beginner"
       },
       "passed": false,
       "autoFixed": 6,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981175471",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 0,
+        "cardioPerWeek": 2,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "build",
+        "gender": "female",
+        "level": "intermediate"
+      },
+      "passed": false,
+      "autoFixed": 9,
       "issues": [
         {
           "code": "MISSING_RECOVERY",
@@ -248,14 +796,1224 @@
         {
           "code": "MISSING_RECOVERY",
           "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
         }
       ]
     },
     {
-      "user": "autotest_1762979554666",
+      "user": "autotest_1762981235926",
       "profile": {
         "trainingDays": 3,
         "runsPerWeek": 0,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "WRONG_SESSION_COUNT",
+          "message": "Week 1: Expected 3 sessions, got 2"
+        },
+        {
+          "code": "WEEK2_DUPLICATION_FAILED",
+          "message": "Week 2: Expected 3 sessions, got 2"
+        },
+        {
+          "code": "DUPLICATE_SESSIONS",
+          "message": "Day 10: Multiple workout sessions on same day (2)"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981300802",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 2,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "male",
+        "level": "intermediate"
+      },
+      "passed": false,
+      "autoFixed": 3,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981345530",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981404175",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 3,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Wall balls"
+        ],
+        "focus": "race-prep",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 6,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981451171",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "build",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 6,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981496755",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "base",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981554568",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 3,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "base",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 3,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981591518",
+      "profile": {
+        "trainingDays": 3,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "build",
+        "gender": "male",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981658484",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "race-prep",
+        "gender": "female",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981720357",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "build",
+        "gender": "female",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981778202",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 0,
+        "cardioPerWeek": 2,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "female",
+        "level": "intermediate"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981839851",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "base",
+        "gender": "male",
+        "level": "intermediate"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981894598",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "base",
+        "gender": "male",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 6,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762981955250",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 2,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "female",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 3,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982010954",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Wall balls"
+        ],
+        "focus": "base",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 6,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982065447",
+      "profile": {
+        "trainingDays": 3,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "base",
+        "gender": "male",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982134104",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 0,
+        "cardioPerWeek": 2,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982194657",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 3,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "build",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 6,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982242656",
+      "profile": {
+        "trainingDays": 3,
+        "runsPerWeek": 0,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "build",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 15,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 3: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982316242",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 3,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Wall balls"
+        ],
+        "focus": "race-prep",
+        "gender": "female",
+        "level": "intermediate"
+      },
+      "passed": false,
+      "autoFixed": 3,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982360413",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "build",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982412319",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 3,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "base",
+        "gender": "female",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 6,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982465291",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 0,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [],
+        "focus": "base",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 15,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 3: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982541972",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 0,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "build",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 15,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 3: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982617270",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Wall balls"
+        ],
+        "focus": "race-prep",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982676544",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 0,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982738610",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "build",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982797320",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "base",
+        "gender": "male",
+        "level": "intermediate"
+      },
+      "passed": false,
+      "autoFixed": 9,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982851183",
+      "profile": {
+        "trainingDays": 3,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Wall balls"
+        ],
+        "focus": "base",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": false,
+      "autoFixed": 12,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 4: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 5: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982912051",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Wall balls"
+        ],
+        "focus": "race-prep",
+        "gender": "female",
+        "level": "advanced"
+      },
+      "passed": false,
+      "autoFixed": 6,
+      "issues": [
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 6: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_RECOVERY",
+          "message": "Day 7: Rest day missing recovery session"
+        },
+        {
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
+        }
+      ]
+    },
+    {
+      "user": "autotest_1762982958259",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 1,
         "cardioPerWeek": 1,
         "focusAreas": [
           "Running",
@@ -275,43 +2033,7 @@
         "level": "advanced"
       },
       "passed": false,
-      "autoFixed": 8,
-      "issues": [
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 4: Rest day missing recovery session"
-        },
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 5: Rest day missing recovery session"
-        },
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 6: Rest day missing recovery session"
-        },
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 7: Rest day missing recovery session"
-        }
-      ]
-    },
-    {
-      "user": "autotest_1762979596893",
-      "profile": {
-        "trainingDays": 6,
-        "runsPerWeek": 0,
-        "cardioPerWeek": 2,
-        "focusAreas": [
-          "Running",
-          "Strength"
-        ],
-        "equipment": [],
-        "focus": "race-prep",
-        "gender": "female",
-        "level": "advanced"
-      },
-      "passed": false,
-      "autoFixed": 6,
+      "autoFixed": 9,
       "issues": [
         {
           "code": "MISSING_RECOVERY",
@@ -324,77 +2046,10 @@
         {
           "code": "MISSING_RECOVERY",
           "message": "Day 7: Rest day missing recovery session"
-        }
-      ]
-    },
-    {
-      "user": "autotest_1762979634283",
-      "profile": {
-        "trainingDays": 6,
-        "runsPerWeek": 3,
-        "cardioPerWeek": 0,
-        "focusAreas": [
-          "Strength",
-          "Cardio"
-        ],
-        "equipment": [
-          "SkiErg",
-          "RowErg",
-          "Wall balls"
-        ],
-        "focus": "race-prep",
-        "gender": "male",
-        "level": "advanced"
-      },
-      "passed": false,
-      "autoFixed": 4,
-      "issues": [
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 6: Rest day missing recovery session"
         },
         {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 7: Rest day missing recovery session"
-        }
-      ]
-    },
-    {
-      "user": "autotest_1762979663490",
-      "profile": {
-        "trainingDays": 4,
-        "runsPerWeek": 2,
-        "cardioPerWeek": 0,
-        "focusAreas": [
-          "Strength",
-          "Cardio"
-        ],
-        "equipment": [
-          "SkiErg",
-          "RowErg",
-          "Assault Bike",
-          "Wall balls",
-          "Heavy dumbbells",
-          "Sled push/pull"
-        ],
-        "focus": "build",
-        "gender": "male",
-        "level": "beginner"
-      },
-      "passed": false,
-      "autoFixed": 6,
-      "issues": [
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 5: Rest day missing recovery session"
-        },
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 6: Rest day missing recovery session"
-        },
-        {
-          "code": "MISSING_RECOVERY",
-          "message": "Day 7: Rest day missing recovery session"
+          "code": "MISSING_FINISHER",
+          "message": "Day 2: Strength session missing 4min finisher"
         }
       ]
     }
