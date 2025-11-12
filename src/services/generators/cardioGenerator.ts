@@ -685,25 +685,29 @@ async function buildHybridPyramid(
   const distances = [250, 500, 750, 1000, 750, 500, 250];
   const machines = ["SkiErg", "RowErg", "Assault Bike"];
 
-  for (let i = 0; i < distances.length; i++) {
-    const distance = Math.round(distances[i] * modifier);
-    const machine = machines[i % machines.length];
-    
-    const { data: roundBlock } = await supabase
-      .from("session_blocks")
-      .insert({
-        session_id: sessionData.id,
-        block_type: "cardio",
-        title: `${distance}m ${machine}`,
-        parameters: { format: "standard", intensity: "easy" },
-      })
-      .select()
-      .single();
+  // Create ONE circuit block with all exercises as children
+  const { data: pyramidBlock } = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionData.id,
+      block_type: "circuit",
+      title: "Hybrid Pyramid",
+      parameters: { format: "circuit", intensity: "easy" },
+      rounds: 1, // One round through the pyramid
+    })
+    .select()
+    .single();
 
-    if (roundBlock) {
+  if (pyramidBlock) {
+    let order = 0;
+    
+    for (let i = 0; i < distances.length; i++) {
+      const distance = Math.round(distances[i] * modifier);
+      const machine = machines[i % machines.length];
+      
       const exercise = await findExercise(supabase, [machine]);
       if (exercise) {
-        await addItem(supabase, roundBlock.id, exercise.id, 0, {
+        await addItem(supabase, pyramidBlock.id, exercise.id, order++, {
           distance: `${distance}m`,
           notes: "Steady pace, controlled breathing"
         });
