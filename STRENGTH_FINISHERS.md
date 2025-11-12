@@ -98,9 +98,14 @@ The system automatically rotates through 3 finisher types based on the day index
 ### Database Integration
 - Finishers are automatically added to all strength sessions
 - Uses `session_blocks` with appropriate `block_type`:
-  - Finisher #1: `amrap`
-  - Finisher #2: `amrap` (max effort variant)
-  - Finisher #3: `circuit`
+  - Finisher #1: `amrap` (with `time_cap: 4` in parameters)
+  - Finisher #2: `amrap` (with `time_cap: 1` in parameters, 4 rounds)
+  - Finisher #3: `circuit` (2 rounds, no rest)
+- Exercise data stored in `session_block_items`:
+  - `distance_m`: Distance in meters (e.g., 100 for 100m SkiErg)
+  - `duration_sec`: Duration in seconds (e.g., 30 for 30 seconds)
+  - `reps`: Rep count (e.g., 10 for burpee box jumps)
+  - All params also stored in `extra` field for compatibility
 
 ### Rotation Logic
 ```typescript
