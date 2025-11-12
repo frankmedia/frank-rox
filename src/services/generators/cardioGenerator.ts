@@ -303,7 +303,7 @@ async function buildSkiRowThreshold(
     // Step-Ups - 10 reps per leg (ID: 5056c0a2-bb89-43de-8ffb-716bdc899d25)
     const stepUps = await findExercise(supabase, ["Step-Ups", "Step Ups"]);
     if (stepUps) {
-      await addItem(supabase, stepUps.id, stepUps.id, order++, {
+      await addItem(supabase, circuit1.id, stepUps.id, order++, {
         reps: Math.round(10 * modifier),
         notes: "10 per leg - knee height (40-50cm), alternate legs or complete per side"
       });
@@ -347,7 +347,7 @@ async function buildSkiRowThreshold(
     // Plank Shoulder Taps - 20 taps (ID: 9a9f850e-dd26-45a8-8022-b81164091d67)
     const plankTaps = await findExercise(supabase, ["Plank Shoulder Taps", "Plank Shoulder Tap"]);
     if (plankTaps) {
-      await addItem(supabase, plankTaps.id, plankTaps.id, order++, {
+      await addItem(supabase, circuit2.id, plankTaps.id, order++, {
         reps: Math.round(20 * modifier),
         notes: "20 taps total (10 each side) - minimize hip rotation"
       });
@@ -394,7 +394,7 @@ async function buildSkiRowThreshold(
     // Farmer Carry - 20-30m (ID: 45fa718b-0f3a-41ed-a7cd-baa4bfd0f821)
     const farmerCarry = await findExercise(supabase, ["Farmer Carry", "Farmers Carry", "DB Farmers Carry"]);
     if (farmerCarry) {
-      await addItem(supabase, farmerCarry.id, farmerCarry.id, order++, {
+      await addItem(supabase, circuit3.id, farmerCarry.id, order++, {
         distance: `${Math.round(25 * modifier)}m`,
         notes: "20-30m moderate-heavy load, tall posture"
       });
