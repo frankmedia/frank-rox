@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Dumbbell, Clock, Target, Repeat } from "lucide-react";
+import { ArrowLeft, Check, Dumbbell, Clock, Target, Repeat, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Timer } from "@/components/Timer";
@@ -157,6 +157,28 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
   const [timerDuration, setTimerDuration] = useState(90);
   const [hasUnsavedProgress, setHasUnsavedProgress] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  
+  // Video carousel state
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  
+  // Collect all videos from exercises
+  const videosWithExercises = exercises
+    .map((ex, index) => ({ exercise: ex, index, mediaUrl: ex.mediaUrl }))
+    .filter(item => item.mediaUrl);
+  
+  // Extract YouTube ID from URL
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+  
+  // Get YouTube thumbnail URL
+  const getYouTubeThumbnail = (url: string) => {
+    const videoId = getYouTubeId(url);
+    return videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : null;
+  };
   
   // Load user data and cached progress on mount
   useEffect(() => {
@@ -351,6 +373,108 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
           </p>
         </Card>
         
+        {/* Video Carousel - All videos at the top */}
+        {videosWithExercises.length > 0 && (
+          <Card className="p-4 bg-black/5 border-0">
+            <div className="relative">
+              {/* Main Video Display */}
+              <div className="w-full mb-3">
+                <ExerciseMedia 
+                  url={videosWithExercises[currentVideoIndex]?.mediaUrl || ""} 
+                  alt={videosWithExercises[currentVideoIndex]?.exercise.name || ""}
+                />
+              </div>
+              
+              {/* Video Thumbnail Carousel */}
+              {videosWithExercises.length > 1 && (
+                <div className="relative">
+                  <div 
+                    ref={carouselRef}
+                    className="flex gap-3 overflow-x-auto scrollbar-hide pb-2"
+                    style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
+                  >
+                    {videosWithExercises.map((item, index) => {
+                      const thumbnail = getYouTubeThumbnail(item.mediaUrl || "");
+                      const isActive = index === currentVideoIndex;
+                      
+                      return (
+                        <div
+                          key={index}
+                          onClick={() => setCurrentVideoIndex(index)}
+                          className={`flex-shrink-0 w-32 h-20 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                            isActive ? 'border-primary scale-105' : 'border-transparent opacity-70 hover:opacity-100'
+                          }`}
+                          style={{ scrollSnapAlign: 'start' }}
+                        >
+                          {thumbnail ? (
+                            <div className="relative w-full h-full">
+                              <img 
+                                src={thumbnail} 
+                                alt={item.exercise.name}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <Play className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 truncate">
+                                {item.exercise.name}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-full h-full bg-muted flex items-center justify-center">
+                              <Play className="w-8 h-8 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Navigation Arrows */}
+                  {videosWithExercises.length > 3 && (
+                    <>
+                      {currentVideoIndex > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute left-0 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full h-8 w-8"
+                          onClick={() => {
+                            const newIndex = Math.max(0, currentVideoIndex - 1);
+                            setCurrentVideoIndex(newIndex);
+                            carouselRef.current?.scrollTo({
+                              left: newIndex * 140,
+                              behavior: 'smooth'
+                            });
+                          }}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {currentVideoIndex < videosWithExercises.length - 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full h-8 w-8"
+                          onClick={() => {
+                            const newIndex = Math.min(videosWithExercises.length - 1, currentVideoIndex + 1);
+                            setCurrentVideoIndex(newIndex);
+                            carouselRef.current?.scrollTo({
+                              left: newIndex * 140,
+                              behavior: 'smooth'
+                            });
+                          }}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+        
         {/* Progress Display */}
         <div className="text-center space-y-2">
           <p className="text-base text-foreground/70">Sets completed</p>
@@ -399,6 +523,11 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                                   {ex.sets} × {ex.reps}
                                 </span>
                               )}
+                              {!ex.sets && ex.reps && (
+                                <span className="text-4xl font-bold text-foreground">
+                                  {ex.reps}
+                                </span>
+                              )}
                               {ex.suggestedKg && ex.suggestedKg > 0 && (
                               <span className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
                                 <Dumbbell className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
@@ -424,22 +553,6 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                             </div>
                           </div>
                       </div>
-                      
-                      {/* Exercise Media (YouTube/Video) */}
-                      {ex.mediaUrl && (
-                        <div
-                          className="w-full"
-                          onClick={(e) => {
-                            // Prevent media clicks from toggling exercise completion
-                            e.stopPropagation();
-                          }}
-                        >
-                          <ExerciseMedia 
-                            url={ex.mediaUrl} 
-                            alt={ex.name}
-                          />
-                        </div>
-                      )}
                       
                       {/* Round Circles - wrap to next line if needed */}
                       <div className="flex flex-wrap gap-2 justify-center">

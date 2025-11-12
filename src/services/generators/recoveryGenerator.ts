@@ -59,10 +59,11 @@ function roundToPlateWeight(weight: number): number {
 }
 
 /**
- * Helper: Round weight for dumbbell exercises (1kg increments)
+ * Helper: Round weight for dumbbell/kettlebell exercises (must be EVEN numbers: 2kg increments)
  */
 function roundToDumbbellWeight(weight: number): number {
-  return Math.round(weight);
+  // Round to nearest even number (2kg increments)
+  return Math.round(weight / 2) * 2;
 }
 
 /**

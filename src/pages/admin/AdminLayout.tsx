@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { Menu, X } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `px-4 py-2 transition-colors relative ${
@@ -18,6 +19,20 @@ const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("frank_rock_user");
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setIsAdmin(userData.role === 'admin');
+      } catch (e) {
+        console.error('Error parsing user:', e);
+      }
+    }
+  }, [user]);
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
@@ -38,12 +53,21 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
               <NavLink to="/admin/clients" className={navLinkClass}>
                 Clients
               </NavLink>
-              <NavLink to="/admin/exercises" className={navLinkClass}>
-                Exercises
-              </NavLink>
-              <NavLink to="/admin/templates" className={navLinkClass}>
-                Templates
-              </NavLink>
+              {isAdmin && (
+                <NavLink to="/admin/personal-trainers" className={navLinkClass}>
+                  Personal Trainers
+                </NavLink>
+              )}
+              {isAdmin && (
+                <NavLink to="/admin/exercises" className={navLinkClass}>
+                  Exercises
+                </NavLink>
+              )}
+              {isAdmin && (
+                <NavLink to="/admin/templates" className={navLinkClass}>
+                  Templates
+                </NavLink>
+              )}
               <NavLink to="/admin/settings" className={navLinkClass}>
                 Settings
               </NavLink>
@@ -68,12 +92,21 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
               <NavLink to="/admin/clients" className={mobileNavLinkClass} onClick={closeMobileMenu}>
                 Clients
               </NavLink>
-              <NavLink to="/admin/exercises" className={mobileNavLinkClass} onClick={closeMobileMenu}>
-                Exercises
-              </NavLink>
-              <NavLink to="/admin/templates" className={mobileNavLinkClass} onClick={closeMobileMenu}>
-                Templates
-              </NavLink>
+              {isAdmin && (
+                <NavLink to="/admin/personal-trainers" className={mobileNavLinkClass} onClick={closeMobileMenu}>
+                  Personal Trainers
+                </NavLink>
+              )}
+              {isAdmin && (
+                <NavLink to="/admin/exercises" className={mobileNavLinkClass} onClick={closeMobileMenu}>
+                  Exercises
+                </NavLink>
+              )}
+              {isAdmin && (
+                <NavLink to="/admin/templates" className={mobileNavLinkClass} onClick={closeMobileMenu}>
+                  Templates
+                </NavLink>
+              )}
               <NavLink to="/admin/settings" className={mobileNavLinkClass} onClick={closeMobileMenu}>
                 Settings
               </NavLink>

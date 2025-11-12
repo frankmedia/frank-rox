@@ -73,7 +73,11 @@ function buildWeek(pref: TrainingPreferences, desiredTrainingDays: number, weekN
   }
   
   const requestedStrength = focus.has("strength") ? 2 : 0;
-  const totalRequested = runs + requestedCardio + requestedStrength;
+  
+  // Calculate standalone cardio (cardio not embedded in strength days)
+  const hasCardioAndStrength = focus.has("cardio") && focus.has("strength");
+  const standaloneCardio = hasCardioAndStrength ? Math.max(0, requestedCardio - 2) : requestedCardio;
+  const totalRequested = runs + standaloneCardio + requestedStrength;
   
   // If total sessions exceed training days, reduce runs first
   if (totalRequested > desiredTrainingDays) {
@@ -82,179 +86,130 @@ function buildWeek(pref: TrainingPreferences, desiredTrainingDays: number, weekN
     console.log(`⚠️ Preview: Reducing runs from ${pref.runSessionsPerWeek} to ${runs} to fit ${desiredTrainingDays} training days`);
   }
   
-  console.log(`📊 Preview: ${runs} runs + ${requestedCardio} cardio + ${requestedStrength} strength = ${runs + requestedCardio + requestedStrength} sessions in ${desiredTrainingDays} days`);
+  console.log(`📊 Preview: ${runs} runs + ${standaloneCardio} standalone cardio + ${requestedStrength} strength (with ${hasCardioAndStrength ? 2 : 0} embedded cardio) = ${runs + standaloneCardio + requestedStrength} sessions in ${desiredTrainingDays} days`);
 
-  // Base hybrid training template with multiple blocks per day
-  // Week 2 increases volume/intensity by ~10%
+  // Build actual programme structure (matching ProgrammeBuilder logic)
   const isWeek2 = weekNumber === 2;
+  const schedule: Array<Omit<DayPlan, "day" | "icons">> = [];
   
-  const baseTemplate: Omit<DayPlan, "day" | "icons">[] = [
-    { 
-      title: isWeek2 ? "Strength Lower + Moderate Engine (💪 + ❤️)" : "Strength Lower + Easy Engine (💪 + ❤️)", 
-      subtitle: "Heavy compound lifts + aerobic capacity work",
-      detail: isWeek2 ? "Back squats, Bulgarian split squats, RDLs + 25min Z2 RowErg" : "Back squats, Bulgarian split squats, RDLs + 20min Z2 RowErg",
-      blocks: [
-        { type: "strength", icon: Dumbbell, intensity: "hard" },
-        { type: "cardio", icon: HeartIcon, intensity: isWeek2 ? "moderate" : "easy" },
-      ],
-      dayIntensity: "hard"
-    },
-    { 
-      title: isWeek2 ? "Running Intervals + (🏃)" : "Running Intervals (🏃)", 
-      subtitle: "Lactate threshold + speed work",
-      detail: isWeek2 ? "10× 400m @ race pace, 90sec rest between reps" : "8× 400m @ race pace, 90sec rest between reps",
-      blocks: [
-        { type: "run", icon: RunnerIcon, intensity: "hard" },
-      ],
-      dayIntensity: "hard"
-    },
-    { 
-      title: "Active Recovery (⏸️)", 
-      subtitle: "CNS recovery + mobility work",
-      detail: "20–30min yoga, foam rolling, dynamic stretching",
-      blocks: [
-        { type: "recovery", icon: CirclePause, intensity: "easy" },
-      ],
-      dayIntensity: "easy"
-    },
-    { 
-      title: "Strength Upper + Short Engine (💪 + ❤️)", 
-      subtitle: "Pressing power + anaerobic capacity",
-      detail: isWeek2 ? "Bench press, strict press, weighted pull-ups + 18min EMOM SkiErg" : "Bench press, strict press, weighted pull-ups + 15min EMOM SkiErg",
-      blocks: [
-        { type: "strength", icon: Dumbbell, intensity: isWeek2 ? "hard" : "moderate" },
-        { type: "cardio", icon: HeartIcon, intensity: "moderate" },
-      ],
-      dayIntensity: "hard"
-    },
-    { 
-      title: "Race Simulation (🏃 + ❤️)", 
-      subtitle: "Hybrid conditioning + race specificity",
-      detail: isWeek2 ? "5 rounds: 1km run + 50m sled push + 500m SkiErg, 3min rest" : "4 rounds: 1km run + 50m sled push + 500m SkiErg, 3min rest",
-      blocks: [
-        { type: "run", icon: RunnerIcon, intensity: "hard" },
-        { type: "cardio", icon: HeartIcon, intensity: "hard" },
-      ],
-      dayIntensity: "hard"
-    },
-    { 
-      title: "Long Run (🏃)", 
+  // 1. Add Running Sessions (if user wants them)
+  if (runs >= 1) {
+    // Long run
+    schedule.push({
+      title: "Long Run (🏃)",
       subtitle: "Aerobic base development",
-      detail: isWeek2 ? "50–65min steady state @ Z2 (conversational pace)" : "45–60min steady state @ Z2 (conversational pace)",
-      blocks: [
-        { type: "run", icon: RunnerIcon, intensity: "moderate" },
-      ],
+      detail: isWeek2 ? "8km steady @ Z2 pace" : "7km steady @ Z2 pace",
+      blocks: [{ type: "run", icon: RunnerIcon, intensity: "easy" }],
       dayIntensity: "moderate"
-    },
-    { 
-      title: "Rest (⏸️)", 
+    });
+  }
+  
+  if (runs >= 2) {
+    // Intervals
+    schedule.push({
+      title: "Running Intervals (🏃)",
+      subtitle: "Lactate threshold + speed work",
+      detail: isWeek2 ? "8×500m @ race pace, 90s rest" : "6×500m @ race pace, 90s rest",
+      blocks: [{ type: "run", icon: RunnerIcon, intensity: "hard" }],
+      dayIntensity: "hard"
+    });
+  }
+  
+  if (runs >= 3) {
+    // Tempo
+    schedule.push({
+      title: "Tempo Run (🏃)",
+      subtitle: "Sustained threshold pace",
+      detail: isWeek2 ? "5km @ steady pace (Z3)" : "4km @ steady pace (Z3)",
+      blocks: [{ type: "run", icon: RunnerIcon, intensity: "moderate" }],
+      dayIntensity: "moderate"
+    });
+  }
+  
+  // 2. Add Strength Sessions (if selected)
+  if (focus.has("strength")) {
+    if (requestedStrength >= 1) {
+      // Lower body
+      schedule.push({
+        title: hasCardioAndStrength ? "Strength Lower + Cardio (💪 + ❤️)" : "Strength Lower (💪)",
+        subtitle: "Heavy compound lifts" + (hasCardioAndStrength ? " + cardio finisher" : ""),
+        detail: hasCardioAndStrength 
+          ? "Squats, split squats, RDLs + 15min cardio"
+          : "Squats, split squats, RDLs, leg press",
+        blocks: hasCardioAndStrength 
+          ? [
+              { type: "strength", icon: Dumbbell, intensity: "hard" },
+              { type: "cardio", icon: HeartIcon, intensity: "moderate" }
+            ]
+          : [{ type: "strength", icon: Dumbbell, intensity: "hard" }],
+        dayIntensity: "hard"
+      });
+    }
+    
+    if (requestedStrength >= 2) {
+      // Upper body
+      schedule.push({
+        title: hasCardioAndStrength ? "Strength Upper + Cardio (💪 + ❤️)" : "Strength Upper (💪)",
+        subtitle: "Pressing & pulling power" + (hasCardioAndStrength ? " + cardio finisher" : ""),
+        detail: hasCardioAndStrength
+          ? "Bench, rows, shoulder press + 15min cardio"
+          : "Bench, rows, shoulder press, accessories",
+        blocks: hasCardioAndStrength
+          ? [
+              { type: "strength", icon: Dumbbell, intensity: "hard" },
+              { type: "cardio", icon: HeartIcon, intensity: "moderate" }
+            ]
+          : [{ type: "strength", icon: Dumbbell, intensity: "hard" }],
+        dayIntensity: "hard"
+      });
+    }
+  }
+  
+  // 3. Add Standalone Cardio Sessions (if selected and not embedded)
+  if (focus.has("cardio") && standaloneCardio > 0) {
+    for (let i = 0; i < standaloneCardio; i++) {
+      schedule.push({
+        title: i === 0 ? "Conditioning (❤️)" : "Engine Work (❤️)",
+        subtitle: i === 0 ? "Mixed cardio intervals" : "Steady-state cardio",
+        detail: i === 0 
+          ? "RowErg, SkiErg, or Bike intervals"
+          : "20-30min Z2 on machine of choice",
+        blocks: [{ type: "cardio", icon: HeartIcon, intensity: i === 0 ? "moderate" : "easy" }],
+        dayIntensity: i === 0 ? "moderate" : "easy"
+      });
+    }
+  }
+  
+  // 4. Fill remaining days with rest/recovery
+  const sessionsNeeded = Math.min(desiredTrainingDays, schedule.length);
+  const restDaysNeeded = 7 - sessionsNeeded;
+  
+  for (let i = 0; i < restDaysNeeded; i++) {
+    schedule.push({
+      title: "Active Recovery (⏸️)",
+      subtitle: "Mobility & regeneration",
+      detail: "Yoga, stretching, foam rolling",
+      blocks: [{ type: "recovery", icon: CirclePause, intensity: "easy" }],
+      dayIntensity: "easy"
+    });
+  }
+
+  // Ensure we have exactly 7 days (pad with rest if needed)
+  while (schedule.length < 7) {
+    schedule.push({
+      title: "Rest (⏸️)",
       subtitle: "Complete recovery",
-      detail: "Full rest day for adaptation and supercompensation",
+      detail: "Full rest day",
       blocks: [],
       dayIntensity: "rest"
-    }
-  ];
-
-  // Step 1: Filter by focus areas (keep running always, filter strength/cardio based on selection)
-  const filtered = baseTemplate.map(day => {
-    let blocks = [...day.blocks];
-    
-    // Only filter if user has made specific focus selections
-    if (focus.size > 0) {
-      if (!focus.has("strength")) {
-        blocks = blocks.filter(b => b.type !== "strength");
-      }
-      if (!focus.has("cardio")) {
-        // Keep cardio if it's the only block (like Day 3 recovery) or if running focus needs engine work
-        const isOnlyBlock = blocks.length === 1 && blocks[0].type === "cardio";
-        const isRecovery = blocks.some(b => b.type === "recovery");
-        if (!isOnlyBlock && !isRecovery) {
-          blocks = blocks.filter(b => b.type !== "cardio");
-        }
-      }
-    }
-    
-    return { ...day, blocks };
-  });
-
-  // Step 2: Limit sessions based on smart distribution
-  // Limit runs
-  let totalRunBlocks = filtered.reduce((sum, day) => 
-    sum + day.blocks.filter(b => b.type === "run").length, 0
-  );
-  
-  if (totalRunBlocks > runs) {
-    // Remove runs from lowest priority days first (Day 5 race sim, then Day 2 intervals)
-    const runDayPriority = [4, 1, 5]; // indices to remove from
-    for (const idx of runDayPriority) {
-      if (totalRunBlocks <= runs) break;
-      filtered[idx].blocks = filtered[idx].blocks.filter(b => b.type !== "run");
-      totalRunBlocks--;
-    }
-  }
-  
-  // Limit cardio (if user didn't select cardio focus, remove all cardio blocks)
-  if (requestedCardio === 0) {
-    filtered.forEach(day => {
-      day.blocks = day.blocks.filter(b => b.type !== "cardio");
-    });
-  }
-  
-  // Limit strength (if user didn't select strength focus, remove all strength blocks)
-  if (requestedStrength === 0) {
-    filtered.forEach(day => {
-      day.blocks = day.blocks.filter(b => b.type !== "strength");
     });
   }
 
-  // Step 3: Compute day intensity
-  const computeDayIntensity = (blocks: SessionBlock[]): "rest" | "easy" | "moderate" | "hard" => {
-    if (blocks.length === 0) return "rest";
-    if (blocks.some(b => b.intensity === "hard")) return "hard";
-    if (blocks.some(b => b.intensity === "moderate")) return "moderate";
-    return "easy";
-  };
-
-  // Step 4: Trim to desired training days (remove lowest priority first)
-  const removalPriority = [2, 6, 1, 3, 0, 5, 4]; // Recovery, rest, intervals, upper strength, lower strength, long run, race sim (remove in this order)
-  let activeDays = filtered.filter(d => d.blocks.length > 0).length;
-  
-  if (activeDays > desiredTrainingDays) {
-    for (const idx of removalPriority) {
-      if (activeDays <= desiredTrainingDays) break;
-      if (filtered[idx].blocks.length > 0 && idx !== 6) { // Never remove Day 7 (it's already rest)
-        filtered[idx].blocks = [];
-        filtered[idx].dayIntensity = "rest";
-        activeDays--;
-      }
-    }
-  }
-
-  // Step 5: Fill if not enough days (rare case)
-  if (activeDays < desiredTrainingDays) {
-    const fillBlocks: SessionBlock[] = [
-      { type: "run", icon: RunnerIcon, intensity: "easy" },
-      { type: "strength", icon: Dumbbell, intensity: "moderate" },
-      { type: "cardio", icon: HeartIcon, intensity: "easy" },
-    ];
-    let fillIdx = 0;
-    
-    for (let i = 0; i < 7 && activeDays < desiredTrainingDays; i++) {
-      if (filtered[i].blocks.length === 0 && i !== 6) { // Don't fill Day 7 (rest)
-        filtered[i].blocks = [fillBlocks[fillIdx % fillBlocks.length]];
-        filtered[i].dayIntensity = computeDayIntensity(filtered[i].blocks);
-        activeDays++;
-        fillIdx++;
-      }
-    }
-  }
-
-  // Step 6: Finalize with icons array
-  const result: DayPlan[] = filtered.map((t, i) => ({
+  // Map schedule to days of the week
+  const result: DayPlan[] = schedule.slice(0, 7).map((session, i) => ({
     day: days[i],
-    ...t,
-    dayIntensity: computeDayIntensity(t.blocks),
-    icons: t.blocks.length === 0 ? [CirclePause] : t.blocks.map(b => b.icon)
+    ...session,
+    icons: session.blocks.length === 0 ? [CirclePause] : session.blocks.map(b => b.icon)
   }));
 
   return result;

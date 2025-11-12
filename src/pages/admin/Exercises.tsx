@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/utils/supabaseClient";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Info, X } from "lucide-react";
 
 interface ExerciseRow { id: string; name: string; modality?: string | null; primary_area?: string | null; pattern?: string | null; tags?: string | null; equipment?: string[] | null; notes?: string | null; media?: any | null; youtube?: string | null }
 
 const Exercises = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [rows, setRows] = useState<ExerciseRow[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +29,35 @@ const Exercises = () => {
   };
 
   useEffect(() => {
+    // Wait for auth to load
+    if (authLoading) return;
+    
+    // Redirect if not authenticated
+    if (!isAuthenticated) {
+      console.warn('⚠️ Not authenticated, redirecting to login');
+      navigate('/login');
+      return;
+    }
+    
+    // Only allow admins to access exercises page
+    const storedUser = localStorage.getItem("frank_rock_user");
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        if (user.role !== 'admin') {
+          console.warn('⚠️ Access denied: Admin role required');
+          toast({ description: "Access denied: Admin only", variant: "destructive" as any });
+          navigate('/admin');
+          return;
+        }
+      } catch (e) {
+        console.error('Error parsing user:', e);
+        navigate('/login');
+        return;
+      }
+    }
+    
+    // Load exercises
     (async () => {
       try {
         setLoading(true);
@@ -48,7 +81,7 @@ const Exercises = () => {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [authLoading, isAuthenticated, navigate]);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -76,7 +109,17 @@ const Exercises = () => {
   async function saveRow(id: string) {
     try {
       const changes = dirty[id];
-      if (!changes || Object.keys(changes).length === 0) return;
+      console.log('💾 Saving row:', { id, changes, dirty });
+      
+      if (!changes || Object.keys(changes).length === 0) {
+        console.log('⚠️ No changes to save');
+        toast({ description: "No changes to save", variant: "destructive" as any });
+        return;
+      }
+      
+      const hasYoutubeChange = Object.prototype.hasOwnProperty.call(changes, 'youtube');
+      const youtubeValue = hasYoutubeChange ? changes.youtube : undefined;
+
       // Normalize blanks to nulls where appropriate
       const payload: any = { ...changes };
       if (payload.tags === "") payload.tags = null;
@@ -90,40 +133,117 @@ const Exercises = () => {
       if (Object.prototype.hasOwnProperty.call(payload, 'youtube')) {
         const current = rows.find(r => r.id === id)?.media || {};
         const nextMedia = { ...current, youtube: payload.youtube || null };
-        payload.media = nextMedia;
+        // Ensure media is properly formatted for JSONB - remove null youtube if empty
+        if (nextMedia.youtube === null || nextMedia.youtube === '') {
+          delete nextMedia.youtube;
+        }
+        // Only set media if it has content, otherwise set to null
+        payload.media = Object.keys(nextMedia).length > 0 ? nextMedia : null;
         delete payload.youtube;
       }
 
-      const { data, error } = await supabase
+      // Remove any undefined values from payload
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
+
+      console.log('📤 Sending payload:', payload);
+      console.log('📤 Payload keys:', Object.keys(payload));
+      console.log('📤 Payload JSON:', JSON.stringify(payload, null, 2));
+
+      const { data: updateData, error, count } = await supabase
         .from("exercises")
         .update(payload)
         .eq("id", id)
-        .select("id,name,modality,primary_area,pattern,tags,equipment,notes,media")
-        .maybeSingle();
-      if (error) throw error;
-      if (data) {
-        let mediaObj: any = null;
-        if ((data as any).media) {
-          try { mediaObj = typeof (data as any).media === 'string' ? JSON.parse((data as any).media) : (data as any).media; } catch { mediaObj = (data as any).media; }
+        .select();
+
+      console.log('📥 Response:', { error, count, affectedRows: updateData?.length });
+
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        console.error('❌ Error code:', error.code);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error details:', error.details);
+        console.error('❌ Error hint:', error.hint);
+        
+        if (error.code === 'PGRST116' || error.message?.includes('406') || error.message?.includes('permission') || error.message?.includes('row-level security')) {
+          throw new Error(`Update failed: ${error.message || 'Permission denied. Please check RLS policies allow UPDATE for authenticated users.'}`);
         }
-        const youtube = mediaObj?.youtube ?? null;
-        setRows(prev => prev.map(r => r.id === id ? {
-          id: String((data as any).id),
-          name: (data as any).name,
-          modality: (data as any).modality,
-          primary_area: (data as any).primary_area,
-          pattern: (data as any).pattern,
-          tags: (data as any).tags,
-          equipment: (data as any).equipment,
-          notes: (data as any).notes,
-          media: mediaObj,
-          youtube,
-        } as ExerciseRow : r));
-        setDirty(prev => { const cp = { ...prev }; delete cp[id]; return cp; });
-        toast({ description: "Row updated" });
+        
+        throw error;
       }
+
+      // Check if update actually affected any rows
+      if (!updateData || updateData.length === 0) {
+        console.error('❌ Update affected 0 rows - likely missing database permissions');
+        throw new Error('Update failed: 0 rows affected. Run this SQL in Supabase:\n\nGRANT UPDATE ON TABLE public.exercises TO authenticated;');
+      }
+
+      const { data: refreshedRow, error: refreshError } = await supabase
+        .from("exercises")
+        .select("id,name,modality,primary_area,pattern,tags,equipment,notes,media")
+        .eq("id", id)
+        .single();
+
+      if (refreshError) {
+        console.error("❌ Failed to refresh row after update:", refreshError);
+        throw new Error(
+          `Update succeeded but failed to fetch latest data: ${
+            refreshError.message || "Unknown error"
+          }`
+        );
+      }
+
+      let mediaObj: any = null;
+      if ((refreshedRow as any).media) {
+        try {
+          mediaObj =
+            typeof (refreshedRow as any).media === "string"
+              ? JSON.parse((refreshedRow as any).media)
+              : (refreshedRow as any).media;
+        } catch (parseErr) {
+          console.warn("⚠️ Failed to parse media JSON", parseErr);
+          mediaObj = (refreshedRow as any).media;
+        }
+      }
+      const youtube = mediaObj?.youtube ?? null;
+
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? ({
+                id: String((refreshedRow as any).id),
+                name: (refreshedRow as any).name,
+                modality: (refreshedRow as any).modality,
+                primary_area: (refreshedRow as any).primary_area,
+                pattern: (refreshedRow as any).pattern,
+                tags: (refreshedRow as any).tags,
+                equipment: (refreshedRow as any).equipment,
+                notes: (refreshedRow as any).notes,
+                media: mediaObj,
+                youtube,
+              } as ExerciseRow)
+            : r
+        )
+      );
+
+      setDirty(prev => {
+        const cp = { ...prev };
+        delete cp[id];
+        return cp;
+      });
+
+      console.log('✅ Row updated successfully');
+      toast({ description: "Row updated", title: "Success" });
     } catch (e: any) {
-      toast({ description: e?.message || "Update failed", variant: "destructive" as any });
+      console.error('❌ Error in saveRow:', e);
+      toast({ 
+        description: e?.message || "Update failed", 
+        title: "Error",
+        variant: "destructive" as any 
+      });
     }
   }
 

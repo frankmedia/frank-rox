@@ -516,10 +516,11 @@ async function generateStrengthWorkout(
     return Math.round(weight / 2.5) * 2.5;
   }
 
-  // Helper: Round weight for dumbbell exercises (typically 1kg increments, sometimes 0.5kg)
+  // Helper: Round weight for dumbbell/kettlebell exercises (must be EVEN numbers: 2kg increments)
+  // Most gyms have dumbbells/kettlebells in even increments: 2kg, 4kg, 6kg, 8kg, 10kg, 12kg, 14kg, 16kg, 18kg, 20kg, etc.
   function roundToDumbbellWeight(weight: number): number {
-    // Round to nearest 1kg increment (most gyms have 1kg dumbbell increments)
-    return Math.round(weight);
+    // Round to nearest even number (2kg increments)
+    return Math.round(weight / 2) * 2;
   }
 
   // Helper: Calculate working weight based on percentage of 1RM
@@ -850,8 +851,8 @@ async function generateStrengthWorkout(
           const isDB = row.name.toLowerCase().includes("db ") || row.name.toLowerCase().includes("dumbbell") || row.name.toLowerCase().includes("single arm");
           
           if (isDB) {
-            // DB Bent-Over Row: use 25-30% of bench 1RM per hand (much lighter than barbell)
-            const rawWeight = oneRM * 0.28; // 28% of bench 1RM per hand
+            // DB Bent-Over Row: use 35-38% of bench 1RM per hand (pulling exercises are typically heavier than pushing)
+            const rawWeight = oneRM * 0.36; // 36% of bench 1RM per hand
             const finalWeight = roundToDumbbellWeight(rawWeight);
             await supabase.from("session_block_items").insert({
               block_id: mainBlock.id,
@@ -952,9 +953,9 @@ async function generateStrengthWorkout(
         // DB Bicep Curl - ENDURANCE (3×12 @ 60%)
         const curl = await findExercise(["DB Bicep Curl", "Bicep Curl"]);
         if (curl) {
-          // DB Bicep Curl: use 12-15% of bench 1RM per hand (accessory exercise, much lighter)
+          // DB Bicep Curl: use 15-18% of bench 1RM per hand (accessory exercise, but still challenging)
           const oneRM = calculate1RM(strengthData.bench5rm);
-          const rawWeight = oneRM * 0.13; // 13% of bench 1RM per hand
+          const rawWeight = oneRM * 0.16; // 16% of bench 1RM per hand
           const finalWeight = roundToDumbbellWeight(rawWeight);
           await supabase.from("session_block_items").insert({
             block_id: accessoryBlock.id,
@@ -1403,9 +1404,10 @@ async function duplicateWeekWithProgression(
     return null;
   };
 
-  // Helper: Round weight for dumbbell exercises (typically 1kg increments)
+  // Helper: Round weight for dumbbell/kettlebell exercises (must be EVEN numbers: 2kg increments)
   const roundToDumbbellWeight = (weight: number): number => {
-    return Math.round(weight);
+    // Round to nearest even number (2kg increments)
+    return Math.round(weight / 2) * 2;
   };
 
   // Get clientId from first plan day

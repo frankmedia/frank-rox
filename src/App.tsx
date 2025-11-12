@@ -38,6 +38,7 @@ import Notes from "./pages/admin/Notes";
 import Settings from "./pages/admin/Settings";
 import PlanDetail from "./pages/admin/PlanDetail";
 import Exercises from "./pages/admin/Exercises";
+import PersonalTrainers from "./pages/admin/PersonalTrainers";
 import ClientFeedback from "./pages/admin/ClientFeedback";
 import Templates from "./pages/admin/Templates";
 import TemplateEditorV2 from "./pages/admin/TemplateEditorV2";
@@ -239,6 +240,7 @@ const App = () => (
               <Route index element={<AdminDashboard />} />
               <Route path="clients" element={<Clients />} />
               <Route path="clients/:clientId/feedback" element={<ClientFeedback />} />
+              <Route path="personal-trainers" element={<PersonalTrainers />} />
               <Route path="workouts" element={<Workouts />} />
               <Route path="exercises" element={<Exercises />} />
               <Route path="templates" element={<Templates />} />
