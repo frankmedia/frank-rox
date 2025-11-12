@@ -586,6 +586,34 @@ const Overview = () => {
 
           // Filter out intro cards for exercise count
           const workoutExercises = exercises.filter(e => e.type !== "intro");
+          
+          // Count exercises properly: multiple circuit/AMRAP blocks from same session = 1 exercise
+          // Group circuits/AMRAPs by their base name (e.g., "Circuit 1/3", "Circuit 2/3" → "Circuit")
+          const seenCircuitSessions = new Set<string>();
+          const exerciseCount = workoutExercises.reduce((count, ex) => {
+            // If it's a child exercise (part of a circuit/AMRAP), don't count it separately
+            if (ex._isChildExercise) {
+              return count;
+            }
+            
+            // If it's a group header (circuit/AMRAP), check if we've already counted this session
+            if (ex.isGroupHeader && (ex.type === "circuit" || ex.type === "amrap")) {
+              // Extract base name (e.g., "Circuit 1/3" → "Circuit", "Threshold Circuit" → "Threshold Circuit")
+              const baseName = ex.name.replace(/\s+\d+\/\d+$/, '').trim();
+              const sessionKey = `${baseName}_${ex.type}`;
+              
+              if (seenCircuitSessions.has(sessionKey)) {
+                // Already counted this circuit/AMRAP session
+                return count;
+              }
+              
+              seenCircuitSessions.add(sessionKey);
+              return count + 1;
+            }
+            
+            // Otherwise it's a standalone exercise, count it
+            return count + 1;
+          }, 0);
 
           // Fetch workout logs for this day
           const { data: logs } = await supabase
@@ -607,7 +635,7 @@ const Overview = () => {
           summaries.push({
             day,
             exercises,
-            totalExercises: workoutExercises.length,
+            totalExercises: exerciseCount,
             isCompleted,
             isRestDay,
             hasWeights,
