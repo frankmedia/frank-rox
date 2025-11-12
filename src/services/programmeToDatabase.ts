@@ -8,6 +8,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRunSession, type RunSessionOptions } from "./generators/runGenerator";
 import { addStrengthFinisher, getFinisherRotation } from "./generators/strengthFinisher";
+import { createRecoverySessionsForRestDays } from "./programGeneration/recoverySessionCreator";
+import { applyProgressionToItem, applyProgressionToBlock } from "./programGeneration/progression";
 
 type SessionBlock = {
   day: string;
@@ -169,27 +171,8 @@ export async function createPlanInDatabase(
 
     console.log(`✅ Created ${planDays.length} plan days out of 14`);
 
-    // 3. Mark rest days and create Active Recovery sessions (days without sessions in Week 1)
+    // 3. Identify rest days (will create recovery sessions after main workouts)
     const sessionDays = new Set(programme.sessions.map(s => s.day));
-    const week1Days = planDays.slice(0, 7); // First 7 days only
-    const restDayPlanDayIds: string[] = [];
-    
-    for (const planDay of week1Days) {
-      if (!sessionDays.has(planDay.dayName)) {
-        // Mark as rest day
-        console.log(`🛌 Marking ${planDay.dayName} as rest day`);
-        await supabase
-          .from("plan_days")
-          .update({ 
-            is_rest: true,
-            description: "Rest & Recovery"
-          })
-          .eq("id", planDay.id);
-        
-        // Store for creating Active Recovery sessions later
-        restDayPlanDayIds.push(planDay.id);
-      }
-    }
 
     // 4. Generate workouts for each session
     console.log(`📋 Programme has ${programme.sessions.length} sessions:`);
@@ -228,27 +211,15 @@ export async function createPlanInDatabase(
 
     console.log("✅ All workouts generated");
 
-    // 4. Create Active Recovery sessions for rest days
-    if (restDayPlanDayIds.length > 0) {
-      console.log(`🧘 Creating Active Recovery sessions for ${restDayPlanDayIds.length} rest day(s)...`);
-      const { createRecoverySession } = await import("./generators/recoveryGenerator");
-      
-      // Fetch strength data from client
-      const strengthData = await fetchStrengthData(supabase, clientId);
-      
-      for (const planDayId of restDayPlanDayIds) {
-        try {
-          await createRecoverySession(supabase, planDayId, {
-            sessionType: "active-recovery",
-            strengthData
-          });
-          console.log(`✅ Active Recovery session created for rest day`);
-        } catch (error: any) {
-          console.error(`❌ Error creating Active Recovery session:`, error);
-          warnings.push(`Error creating Active Recovery session: ${error.message}`);
-        }
-      }
-    }
+    // 4. Create Active Recovery sessions for ALL rest days (NEW CLEAN LOGIC)
+    const { sessionIds: recoverySessionIds, errors: recoveryErrors } = await createRecoverySessionsForRestDays(
+      supabase,
+      planDays,
+      sessionDays
+    );
+    
+    warnings.push(...recoveryErrors);
+    console.log(`✅ Created ${recoverySessionIds.length} recovery sessions for rest days`);
 
     // 5. Duplicate Week 1 sessions to Week 2 with progressive overload
     await duplicateWeekWithProgression(supabase, planDays, programme, warnings);
@@ -1292,16 +1263,15 @@ async function duplicateWeekWithProgression(
         continue;
       }
 
-      // Duplicate blocks with progression
+      // Duplicate blocks with progression (CLEAN NEW LOGIC)
       for (const block of session.session_blocks || []) {
         const progressedParams = applyProgression(block.parameters, block.block_type);
 
-        // PROGRESSIVE OVERLOAD: +2 rounds for interval circuits
-        let progressedRounds = block.rounds;
-        if (block.parameters?.format === "circuit" && block.rounds) {
-          progressedRounds = block.rounds + 2; // +2 intervals per week
-          console.log(`📈 Interval progression: ${block.rounds} → ${progressedRounds} rounds`);
-        }
+        // Apply progression to block (rounds, etc.)
+        const progressedBlock = applyProgressionToBlock({
+          rounds: block.rounds,
+          parameters: block.parameters,
+        });
 
         const { data: newBlock, error: blockError } = await supabase
           .from("session_blocks")
@@ -1309,7 +1279,7 @@ async function duplicateWeekWithProgression(
             session_id: newSession.id,
             block_type: block.block_type,
             title: block.title,
-            rounds: progressedRounds, // Use progressed rounds
+            rounds: progressedBlock.rounds,
             parameters: progressedParams,
           })
           .select()
@@ -1320,57 +1290,25 @@ async function duplicateWeekWithProgression(
           continue;
         }
 
-        // Duplicate items with progression
+        // Duplicate items with progression (CLEAN NEW LOGIC)
         for (const item of block.session_block_items || []) {
           const progressedExtra = applyItemProgression(item.extra, block.block_type);
 
-          // Apply progression to numeric columns
-          let progressedDistance = item.distance_m;
-          let progressedDuration = item.duration_sec;
-          let progressedSets = item.sets;
-          let progressedReps = item.reps;
-
-          // Check if this is a warm-up block (skip progression for warm-ups)
-          const isWarmup = block.title?.toLowerCase().includes("warm") || 
-                          block.title?.toLowerCase().includes("activation");
-
-          // PROGRESSIVE OVERLOAD: +2 reps for ALL exercises (strength, hypertrophy, endurance)
-          // BUT NOT for warm-ups! (warm-ups stay at 10 reps for consistency)
-          if (item.reps && block.block_type === "strength" && !isWarmup) {
-            progressedReps = item.reps + 2; // +2 reps per week
-          }
-
-          // PROGRESSIVE OVERLOAD: +15 seconds for timed exercises (plank, holds)
-          // BUT NOT for warm-ups! Cap at 2 minutes (120 seconds)
-          if (item.duration_sec && !item.distance_m && block.block_type === "strength" && !isWarmup) {
-            const newDuration = item.duration_sec + 15; // +15 seconds for holds/planks
-            progressedDuration = Math.min(newDuration, 120); // Cap at 2 minutes
-          }
-
-          // RUNNING: Keep intervals the same (no +2 rounds)
-          // Progression comes from natural RPE improvement (8/10 effort gets faster over time)
-          // This respects time constraints and prevents overtraining
-
-          // RUNNING: Increase distance by standard increments (not percentage)
-          if (item.distance_m && block.block_type === "cardio") {
-            // Round to nearest km, then add 1km
-            const currentKm = Math.round(item.distance_m / 1000);
-            if (currentKm >= 10) {
-              progressedDistance = (currentKm + 2) * 1000; // +2km for long runs
-            } else if (currentKm >= 5) {
-              progressedDistance = (currentKm + 1) * 1000; // +1km for medium runs
-            } else {
-              progressedDistance = item.distance_m; // Keep same for short distances
+          // Apply progression using clean module
+          const progressed = applyProgressionToItem(
+            {
+              sets: item.sets,
+              reps: item.reps,
+              distance_m: item.distance_m,
+              duration_sec: item.duration_sec,
+              rest_sec: item.rest_sec,
+            },
+            {
+              block_type: block.block_type,
+              title: block.title,
+              parameters: block.parameters,
             }
-          }
-
-          // RUNNING: Recalculate duration based on new distance (don't just add time)
-          // Duration should match distance at 6 min/km pace
-          if (progressedDistance && progressedDistance !== item.distance_m && block.block_type === "cardio") {
-            const newKm = progressedDistance / 1000;
-            progressedDuration = Math.round(newKm * 6 * 60); // 6 min/km in seconds
-            console.log(`📏 Recalculated run duration: ${newKm}km → ${Math.round(progressedDuration / 60)} min`);
-          }
+          );
 
           await supabase
             .from("session_block_items")
@@ -1379,11 +1317,11 @@ async function duplicateWeekWithProgression(
               exercise_id: item.exercise_id,
               status: "draft",
               item_order: item.item_order,
-              sets: progressedSets,
-              reps: progressedReps, // Use progressed reps (+2)
-              distance_m: progressedDistance,
-              duration_sec: progressedDuration,
-              rest_sec: item.rest_sec,
+              sets: progressed.sets,
+              reps: progressed.reps,
+              distance_m: progressed.distance_m,
+              duration_sec: progressed.duration_sec,
+              rest_sec: progressed.rest_sec,
               notes: item.notes ? `Week 2: ${item.notes}` : null,
               extra: progressedExtra,
             });
