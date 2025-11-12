@@ -1,73 +1,66 @@
-# 🧪 Quick Test - Strength Workout Generation
+# 🧪 QUICK TEST GUIDE
 
-## Step 1: Delete Old Plan
+## Run the Test (3 Steps)
+
+### 1. Get Your Client ID
+
+In Supabase SQL Editor:
 ```sql
-DELETE FROM plans WHERE client_id = 19;
+SELECT id, name, email FROM clients WHERE name = 'frank';
 ```
 
-## Step 2: Regenerate
-1. Navigate to: `http://localhost:8081/onboarding-complete`
-2. Click "Let's Go 🚀"
-3. Watch console for NEW logs:
+Copy the `id` value.
 
-### Expected Console Logs:
-```
-🚀 Creating plan in database...
-💪 Strength data: { bench5rm: XX, squat5rm: XX, deadlift5rm: XX, ohp5rm: XX }
-📋 Programme has X sessions:
-  1. Monday: Strength Lower + Easy Engine (strength)
-  2. Tuesday: Running Intervals (run)
-  ...
+### 2. Update test-generation.js
 
-🏋️ Generating strength workout for Monday (plan_day 1)
-💪 Generating strength workout: Strength Lower + Easy Engine
-📊 Onboarding data: { bench5rm: "XX", squat5rm: "XX", ... }
-💪 Strength data: { bench5rm: XX, squat5rm: XX, deadlift5rm: XX, ohp5rm: XX }
-🔧 Starting lower body workout generation
-📋 Creating warm-up block for session [session-id]
-✅ Warm-up block created: [block-id]
-✅ Strength workout "Strength Lower + Easy Engine" generated successfully
+```javascript
+const SUPABASE_URL = 'https://your-project.supabase.co';
+const SUPABASE_ANON_KEY = 'your-anon-key';
+const TEST_CLIENT_ID = 'paste-id-here'; // ← Paste the ID from step 1
 ```
 
-### If You See Errors:
-```
-❌ Failed to create warm-up block: [error details]
-```
+### 3. Run It
 
-Copy the FULL error message and send it to me!
-
-## Step 3: Verify in Database
-```sql
-SELECT 
-  pd.day_index,
-  pd.description as day_name,
-  s.name as session_name,
-  sb.block_type,
-  sb.title as block_title,
-  COUNT(sbi.id) as exercise_count
-FROM plan_days pd
-LEFT JOIN sessions s ON s.plan_day_id = pd.id
-LEFT JOIN session_blocks sb ON sb.session_id = s.id
-LEFT JOIN session_block_items sbi ON sbi.block_id = sb.id
-WHERE pd.plan_id = (SELECT id FROM plans WHERE client_id = 19 ORDER BY created_at DESC LIMIT 1)
-GROUP BY pd.day_index, pd.description, s.name, sb.block_type, sb.title
-ORDER BY pd.day_index, sb.block_order;
+```bash
+node test-generation.js
 ```
 
-### Expected Result:
-- Day 1 (Monday) should have:
-  - Warm-up block (1 exercise)
-  - Main Work block (4 exercises)
-  - Core block (1 exercise)
-- Day 3 (Wednesday) should have:
-  - Warm-up block (1 exercise)
-  - Main Work block (4 exercises)
-  - Accessory block (2 exercises)
+## What You Should See
 
-## Step 4: Check Today Page
-Navigate to: `http://localhost:8081/today`
+```
+✅ Day 2 (Tuesday): 1 session(s), 13 exercise(s)  ← Recovery session
+✅ Day 6 (Saturday): 1 session(s), 1 exercise(s)
+      Run: 7.0km • 42min
+✅ Day 9 (Tuesday): 1 session(s), 13 exercise(s)  ← Recovery session
+✅ Day 13 (Saturday): 1 session(s), 1 exercise(s)
+      Run: 8.0km • 48min  ← CRITICAL: Should be 48min, not 42min!
 
-Should see strength exercises with:
-- ✅ Weight (e.g., "92kg")
-- ✅ Notes (e.g., "Strength - 80% 1RM, focus on depth...")
+Week 2 run progression:
+   Week 1 (Day 6):  7.0km • 42min
+   Week 2 (Day 13): 8.0km • 48min
+   ✅ Duration correct (48min = 8.0km × 6 min/km)
+```
 
+## ✅ PASS = All These Are True
+
+- Day 2 has 13 exercises (recovery)
+- Day 9 has 13 exercises (recovery)
+- Day 13 shows "8.0km • **48min**" (not 42min!)
+- No "❌" errors
+
+## ❌ FAIL = Any of These
+
+- Day 2 or Day 9 shows "0 exercise(s)"
+- Day 13 shows "8.0km • 42min" (wrong!)
+- "❌ Duration WRONG!" message
+- "❌ MISSING recovery session!" message
+
+## If Tests Fail
+
+1. Check you're using the latest code: `git pull`
+2. Delete your plan in Supabase:
+   ```sql
+   DELETE FROM plans WHERE client_id = 'your-client-id';
+   ```
+3. Regenerate in UI: Go to `/program-builder` → "Generate Plan"
+4. Run test again: `node test-generation.js`
