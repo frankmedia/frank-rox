@@ -58,6 +58,12 @@ const ExerciseDetail = () => {
     };
   }, []);
   
+  // Reset rating when exercise ID changes (prevent cached ratings from showing)
+  useEffect(() => {
+    console.log('🔄 Exercise ID changed, resetting rating to 0');
+    setRating(0);
+  }, [id]);
+  
   // Save in-progress weights and completions to localStorage
   const saveInProgressData = useCallback((weights: string[], completed: boolean[]) => {
     if (!exercise) return;
@@ -174,6 +180,7 @@ const ExerciseDetail = () => {
             });
             
             // Reset rating and existing log ID for new exercise
+            // IMPORTANT: Always reset to 0 first to prevent cached ratings from showing
             setRating(0);
             setExistingLogId(null);
             setEditMode(false);
@@ -183,6 +190,7 @@ const ExerciseDetail = () => {
             setTodaysDuration("");
             setRunStats(null);
             setShowWorkoutTimer(false);
+            setDistanceInputUnlocked(false);
             
             // Initialize edit fields with current exercise data
             setEditName(ex.name || "");
@@ -296,15 +304,20 @@ const ExerciseDetail = () => {
                     
                     if (todayLog.duration) {
                       setTodaysDuration(todayLog.duration.toString());
-                    setDistanceInputUnlocked(true);
+                      setDistanceInputUnlocked(true);
                     }
                     
                     if (todayLog.distance) {
                       setTodaysDistance(todayLog.distance.toString());
                     }
                     
-                    if (todayLog.rating) {
+                    // Only set rating if it matches THIS exercise exactly
+                    if (todayLog.rating && todayLog.exerciseName?.trim().toLowerCase() === ex.name.trim().toLowerCase()) {
+                      console.log('🔥 Restoring rating:', todayLog.rating, 'for exercise:', ex.name);
                       setRating(todayLog.rating);
+                    } else {
+                      console.log('🔥 No rating to restore or exercise name mismatch');
+                      setRating(0);
                     }
                     
                     toast.info("Exercise already logged today", {
