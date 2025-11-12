@@ -129,6 +129,9 @@ const getExerciseMeta = (exercise: Exercise) => {
   } else if (exercise.sets && exercise.reps) {
     // Regular strength training
     meta.push(`${exercise.sets}×${exercise.reps}`);
+  } else if (exercise.reps && !exercise.sets) {
+    // Circuit exercises with reps but no sets (e.g., Air Squats, Wall Balls in circuits)
+    meta.push(`${exercise.reps} reps`);
   }
   
   if (exercise.suggestedKg) {

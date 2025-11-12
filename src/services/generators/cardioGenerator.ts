@@ -199,14 +199,15 @@ async function buildMachineEndurance(
 
   const duration = durationPerMachine; // Duration per machine
 
-  // Create main block
+  // Create main block (use circuit format so it groups as ONE exercise)
   const { data: mainBlock } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
-      block_type: "cardio",
-      title: "Steady State Endurance",
-      parameters: { format: "standard", intensity: "easy" },
+      block_type: "circuit",
+      title: "Machine Endurance",
+      parameters: { format: "circuit", intensity: "easy" },
+      rounds: 1, // One round through all machines
     })
     .select()
     .single();
