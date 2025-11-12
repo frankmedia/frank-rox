@@ -257,72 +257,75 @@ async function buildSkiRowThreshold(
   modifier: number
 ) {
   const totalDuration = options.duration || 50; // Total session duration
-  // Each round takes ~6-8 minutes, so for 50 min we want 6-7 rounds
-  const baseRounds = Math.max(6, Math.round(totalDuration / 8));
+  // Each circuit = 3 rounds × ~6 min = 18 minutes MAX
+  // For 50 min session, we need 2-3 circuits with rest between
+  const numCircuits = Math.max(2, Math.round(totalDuration / 20));
   
   const sessionData = await createSession(
     supabase,
     planDayId,
     "Ski-Row Threshold",
-    `${totalDuration} minute threshold work combining ergs and functional movement. Focus on consistent splits across all rounds. This builds lactate tolerance and mental toughness.`
+    `${totalDuration} minute threshold work: ${numCircuits} circuits of erg work and functional movements. Rest 3-4 min between circuits.`
   );
 
-  const rounds = Math.round(baseRounds * modifier);
+  const roundsPerCircuit = 3; // Keep circuits to 15-20 min MAX
   const distance = Math.round(1000 * modifier);
   const wallBalls = Math.round(20 * modifier);
 
-  // Create main circuit
-  const { data: circuitBlock } = await supabase
-    .from("session_blocks")
-    .insert({
-      session_id: sessionData.id,
-      block_type: "cardio",
-      title: "Threshold Circuit",
-      rounds: rounds,
-      rest_between_rounds_s: 120,
-      parameters: { format: "circuit", intensity: "hard" },
-    })
-    .select()
-    .single();
-
-  if (circuitBlock) {
-    let order = 0;
-
-    await addItem(supabase, circuitBlock.id, SKIERG_ID, order++, {
-      distance: `${distance}m`,
-      notes: "Consistent splits, tall catch"
-    });
-
-    await addItem(supabase, circuitBlock.id, ROWERG_ID, order++, {
-      distance: `${distance}m`,
-      notes: "Even pacing, 20-24 spm"
-    });
-
-    // Add Air Squats for cardio conditioning
-    const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
-    const { data: airSquat } = await supabase
-      .from("exercises")
-      .select("id, name")
-      .eq("id", AIR_SQUAT_ID)
+  // Create multiple circuits (15-20 min each)
+  for (let circuitNum = 1; circuitNum <= numCircuits; circuitNum++) {
+    const { data: circuitBlock } = await supabase
+      .from("session_blocks")
+      .insert({
+        session_id: sessionData.id,
+        block_type: "cardio",
+        title: `Circuit ${circuitNum}/${numCircuits}`,
+        rounds: roundsPerCircuit,
+        rest_between_rounds_s: 90, // 90s rest between rounds
+        parameters: { format: "circuit", intensity: "hard" },
+      })
+      .select()
       .single();
-    
-    if (airSquat) {
-      await addItem(supabase, circuitBlock.id, airSquat.id, order++, {
-        reps: 20,
-        notes: "Fast tempo, full depth, cardio conditioning"
-      });
-    }
 
-    const wallBall = await findExercise(supabase, ["Wall Balls", "Wall Ball"]);
-    if (wallBall) {
-      await addItem(supabase, circuitBlock.id, wallBall.id, order++, {
-        reps: wallBalls,
-        notes: "Full depth squat, hit target"
+    if (circuitBlock) {
+      let order = 0;
+
+      await addItem(supabase, circuitBlock.id, SKIERG_ID, order++, {
+        distance: `${distance}m`,
+        notes: "Consistent splits, tall catch"
       });
+
+      await addItem(supabase, circuitBlock.id, ROWERG_ID, order++, {
+        distance: `${distance}m`,
+        notes: "Even pacing, 20-24 spm"
+      });
+
+      // Add Air Squats for cardio conditioning
+      const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
+      const { data: airSquat } = await supabase
+        .from("exercises")
+        .select("id, name")
+        .eq("id", AIR_SQUAT_ID)
+        .single();
+      
+      if (airSquat) {
+        await addItem(supabase, circuitBlock.id, airSquat.id, order++, {
+          reps: 20,
+          notes: "Fast tempo, full depth, cardio conditioning"
+        });
+      }
+
+      const wallBall = await findExercise(supabase, ["Wall Balls", "Wall Ball"]);
+      if (wallBall) {
+        await addItem(supabase, circuitBlock.id, wallBall.id, order++, {
+          reps: wallBalls,
+          notes: "Full depth squat, hit target"
+        });
+      }
     }
   }
 
-  console.log("✅ Ski-Row Threshold created");
+  console.log(`✅ Ski-Row Threshold created with ${numCircuits} circuits`);
 }
 
 /**
