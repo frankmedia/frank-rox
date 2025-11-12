@@ -84,7 +84,8 @@ async function createBlock(
   sessionId: string,
   blockType: "cardio" | "intervals" | "strength",
   title: string,
-  parameters: Record<string, any> = {}
+  parameters: Record<string, any> = {},
+  orderIndex?: number
 ): Promise<string> {
   const res = await supabase
     .from("session_blocks")
@@ -94,6 +95,7 @@ async function createBlock(
       title,
       rounds: parameters.rounds || 1,
       parameters,
+      order_index: orderIndex,
     })
     .select("id")
     .single();
@@ -326,7 +328,8 @@ async function buildIntervals(
     sessionId,
     "cardio",
     "Warm-up · 10min easy",
-    { format: "warmup", duration: 10 }
+    { format: "warmup", duration: 10 },
+    1 // Order: 1st
   );
   await addItem(supabase, warmupId, runExerciseId, 0, {
     sets: 1,
@@ -347,7 +350,8 @@ async function buildIntervals(
       rounds: reps, // Number of intervals
       rest_between_rounds: parseRestToSeconds(restDuration), // Rest between intervals in seconds
       intensity: "hard",
-    }
+    },
+    2 // Order: 2nd
   );
   await addItem(supabase, mainId, runExerciseId, 0, {
     sets: 1, // Each round is 1 set
@@ -363,7 +367,8 @@ async function buildIntervals(
     sessionId,
     "cardio",
     "Cool-down · 5min easy",
-    { format: "cooldown", duration: 5 }
+    { format: "cooldown", duration: 5 },
+    3 // Order: 3rd
   );
   await addItem(supabase, cooldownId, runExerciseId, 0, {
     sets: 1,
