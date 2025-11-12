@@ -671,26 +671,6 @@ const Today = () => {
 
   return (
     <div ref={containerRef} className="min-h-screen bg-background pb-20 overflow-y-auto relative" style={{ paddingTop: 0 }}>
-      {/* Pull-to-Refresh Indicator */}
-      <div 
-        className="absolute top-0 left-0 right-0 flex items-center justify-center transition-all z-50 pointer-events-none"
-        style={{
-          height: `${pullDistance}px`,
-          opacity: Math.min(pullDistance / 150, 1),
-        }}
-      >
-        <div className="flex flex-col items-center gap-2 mt-4">
-          {isRefreshing ? (
-            <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#FFCC00' }} />
-          ) : (
-            <Flame className="w-8 h-8" style={{ color: '#FFCC00', transform: `rotate(${pullDistance * 2.4}deg)` }} />
-          )}
-          <span className="text-sm font-semibold text-muted-foreground">
-            {isRefreshing ? "Refreshing..." : "Pull down to refresh"}
-          </span>
-        </div>
-      </div>
-
       {/* Header */}
       <header 
         className="sticky z-10 bg-background border-b border-border"
