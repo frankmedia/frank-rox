@@ -156,12 +156,9 @@ const ProgramCustomize = () => {
               <div className="relative pt-8 pb-2">
                 {/* Arrow pointing down to score */}
                 <div 
-                  className="absolute top-0 flex flex-col items-center transition-all duration-500"
-                  style={{ left: scorePosition, transform: 'translateX(-50%)' }}
+                  className="absolute flex flex-col items-center transition-all duration-500"
+                  style={{ left: scorePosition, transform: 'translateX(-50%)', top: '10px' }}
                 >
-                  <div className="text-2xl font-extrabold text-yellow-500 mb-1">
-                    {athleteScore}
-                  </div>
                   <svg className="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 4l-8 8h5v8h6v-8h5z" />
                   </svg>

@@ -266,7 +266,23 @@ async function buildLongRun(
 ) {
   const distance = options.distance || "8km";
   const pace = options.pace || "Zone 2 (conversational)";
-  const duration = options.duration || "60min";
+  
+  // Calculate duration based on distance if not provided
+  // Assume ~6:00 min/km pace for Zone 2 running (conversational)
+  let duration = options.duration;
+  if (!duration && distance) {
+    const distanceMatch = distance.match(/(\d+(?:\.\d+)?)/);
+    if (distanceMatch) {
+      const km = parseFloat(distanceMatch[1]);
+      const minutes = Math.round(km * 6); // 6 min/km pace
+      duration = `${minutes}min`;
+      console.log(`📏 Calculated duration for ${distance}: ${duration} (@ 6:00/km pace)`);
+    } else {
+      duration = "60min"; // Fallback
+    }
+  } else if (!duration) {
+    duration = "60min"; // Fallback if no distance either
+  }
 
   // Main block
   const blockId = await createBlock(

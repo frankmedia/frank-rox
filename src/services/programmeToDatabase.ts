@@ -1364,15 +1364,12 @@ async function duplicateWeekWithProgression(
             }
           }
 
-          // RUNNING: Increase duration for warm-ups/cool-downs
-          if (item.duration_sec && item.distance_m && block.block_type === "cardio") {
-            if (item.duration_sec >= 30) {
-              progressedDuration = item.duration_sec + 10; // +10 min for long runs
-            } else if (item.duration_sec >= 10) {
-              progressedDuration = item.duration_sec + 5; // +5 min for medium runs
-            } else {
-              progressedDuration = item.duration_sec; // Keep same for short durations
-            }
+          // RUNNING: Recalculate duration based on new distance (don't just add time)
+          // Duration should match distance at 6 min/km pace
+          if (progressedDistance && progressedDistance !== item.distance_m && block.block_type === "cardio") {
+            const newKm = progressedDistance / 1000;
+            progressedDuration = Math.round(newKm * 6 * 60); // 6 min/km in seconds
+            console.log(`📏 Recalculated run duration: ${newKm}km → ${Math.round(progressedDuration / 60)} min`);
           }
 
           await supabase
