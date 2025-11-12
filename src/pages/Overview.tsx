@@ -292,14 +292,8 @@ const Overview = () => {
     return stats;
   }, [healthData, formatMetric]);
 
-  // Pull-to-refresh
-  const { containerRef, pullDistance, isRefreshing } = usePullToRefresh({
-    onRefresh: async () => {
-      await fetchHealthData();
-      toast.success("Refreshed!", { duration: 2000 });
-    },
-    threshold: 150,
-  });
+  // Container ref for scrolling (pull-to-refresh removed per user request)
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const ExerciseRow = ({ exercise }: { exercise: DisplayExercise }) => {
     const [offset, setOffset] = useState(0);

@@ -11,7 +11,6 @@ import { TrainingDaySelector } from "@/components/TrainingDaySelector";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { ExerciseListSkeleton } from "@/components/ExerciseCardSkeleton";
 import { shareWorkout } from "@/utils/share";
 import { supabase } from "@/utils/supabaseClient";
@@ -249,17 +248,8 @@ const Today = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrainingDay]);
 
-  // Pull-to-refresh with MUCH bigger threshold
-  const { containerRef, pullDistance, isRefreshing } = usePullToRefresh({
-    onRefresh: async () => {
-      await Promise.all([
-        refresh(),
-        healthConnected ? fetchHealthData() : Promise.resolve()
-      ]);
-      toast.success("Refreshed!", { duration: 2000 });
-    },
-    threshold: 150, // Much bigger pull required
-  });
+  // Container ref for scrolling (pull-to-refresh removed per user request)
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Load completed exercises from today (user-specific) using hybrid cache
   const loadCompletedExercises = () => {
