@@ -58,20 +58,65 @@ async function addItem(
   order: number,
   params: any = {}
 ) {
-  const { error } = await supabase.from("session_block_items").insert({
+  const payload: Record<string, any> = {
     block_id: blockId,
     exercise_id: exerciseId,
     item_order: order,
-    sets: params.sets || null,
-    reps: params.reps || null,
-    duration_sec: params.duration ? params.duration * 60 : null,
-    distance_km: params.distance || null,
-    weight_kg: params.weight || null,
-    notes: params.notes || null,
-  });
+    status: "draft",
+  };
+
+  // Add optional fields
+  if (params.sets) payload.sets = params.sets;
+  if (params.reps) payload.reps = params.reps;
+  if (params.weight) payload.weight_kg = params.weight;
+  if (params.notes) payload.notes = params.notes;
+
+  // Handle distance - convert to meters
+  if (params.distance) {
+    if (typeof params.distance === 'string') {
+      const distStr = String(params.distance);
+      const distMatch = distStr.match(/(\d+(?:\.\d+)?)\s*(m|km)/i);
+      if (distMatch) {
+        const value = parseFloat(distMatch[1]);
+        const unit = distMatch[2].toLowerCase();
+        payload.distance_m = Math.round(unit === 'km' ? value * 1000 : value);
+      }
+    } else {
+      // Assume it's in km (decimal like 0.1 for 100m)
+      payload.distance_m = Math.round(params.distance * 1000);
+    }
+  }
+
+  // Handle duration - convert to seconds
+  if (params.duration) {
+    if (typeof params.duration === 'string') {
+      const durStr = String(params.duration);
+      const durMatch = durStr.match(/(\d+(?:\.\d+)?)\s*min/i);
+      if (durMatch) {
+        payload.duration_sec = Math.round(parseFloat(durMatch[1]) * 60);
+      } else {
+        // Try seconds
+        const secMatch = durStr.match(/(\d+(?:\.\d+)?)\s*s/i);
+        if (secMatch) {
+          payload.duration_sec = Math.round(parseFloat(secMatch[1]));
+        }
+      }
+    } else {
+      // Assume it's in minutes (decimal like 0.5 for 30 seconds)
+      payload.duration_sec = Math.round(params.duration * 60);
+    }
+  }
+
+  // Store all params in extra as well for compatibility
+  if (Object.keys(params).length) {
+    payload.extra = params;
+  }
+
+  const { error } = await supabase.from("session_block_items").insert(payload);
 
   if (error) {
     console.error(`❌ Failed to add item to block ${blockId}:`, error);
+    throw error;
   }
 }
 
@@ -91,11 +136,11 @@ async function buildFinisher1_BurpeeBoxSkiAMRAP(
     .insert({
       session_id: sessionId,
       block_type: "amrap",
-      title: "4 Min AMRAP",
+      title: "AMRAP Finisher",
       parameters: { 
         format: "amrap",
         intensity: "hard",
-        duration: 4
+        time_cap: 4 // UI looks for this
       },
       rounds: 1,
       duration_sec: 240, // 4 minutes
@@ -122,7 +167,7 @@ async function buildFinisher1_BurpeeBoxSkiAMRAP(
     // SkiErg 100m
     const SKIERG_ID = "917c05c6-5adf-4d3b-887e-ff2a292fa079";
     await addItem(supabase, amrapBlock.id, SKIERG_ID, order++, {
-      distance: 0.1, // 100m = 0.1km
+      distance: "100m", // Will be converted to distance_m = 100
       notes: "Fast and aggressive - full send",
     });
 
@@ -148,11 +193,11 @@ async function buildFinisher2_MaxEffort1Min(
     .insert({
       session_id: sessionId,
       block_type: "amrap",
-      title: variant === "erg" ? "Max Cals in 1 Min" : "Max Burpees in 1 Min",
+      title: variant === "erg" ? "Max Cals - 1 Min" : "Max Burpees - 1 Min",
       parameters: { 
         format: "amrap",
         intensity: "max",
-        duration: 1
+        time_cap: 1 // 1 minute per round
       },
       rounds: 4, // 4 rounds with 1min rest
       duration_sec: 60, // 1 minute work
@@ -175,6 +220,7 @@ async function buildFinisher2_MaxEffort1Min(
       const chosenErgId = ergIds[Math.floor(Math.random() * ergIds.length)];
       
       await addItem(supabase, maxBlock.id, chosenErgId, 0, {
+        duration: "1min", // 1 minute
         notes: "Max effort - ALL OUT for 1 minute. Record your calories!",
       });
     } else {
@@ -182,6 +228,7 @@ async function buildFinisher2_MaxEffort1Min(
       const burpeeExercise = await findExercise(supabase, ["Burpee", "Burpees"]);
       if (burpeeExercise) {
         await addItem(supabase, maxBlock.id, burpeeExercise.id, 0, {
+          duration: "1min", // 1 minute
           notes: "Max reps in 1 minute - chest to floor, full jump. Record your score!",
         });
       }
@@ -210,11 +257,10 @@ async function buildFinisher3_4MinCircuit(
     .insert({
       session_id: sessionId,
       block_type: "circuit",
-      title: "4 Min Circuit",
+      title: "Circuit Finisher",
       parameters: { 
         format: "circuit",
-        intensity: "hard",
-        duration: 4
+        intensity: "hard"
       },
       rounds: 2, // 2 rounds
       rest_between_rounds_s: 0, // No rest between rounds
@@ -229,7 +275,7 @@ async function buildFinisher3_4MinCircuit(
     const burpeeExercise = await findExercise(supabase, ["Burpee", "Burpees"]);
     if (burpeeExercise) {
       await addItem(supabase, circuitBlock.id, burpeeExercise.id, order++, {
-        duration: 0.5, // 30 seconds
+        duration: "30s", // 30 seconds
         notes: "30 seconds max effort",
       });
     }
@@ -242,7 +288,7 @@ async function buildFinisher3_4MinCircuit(
     ]);
     if (starJumpExercise) {
       await addItem(supabase, circuitBlock.id, starJumpExercise.id, order++, {
-        duration: 0.5, // 30 seconds
+        duration: "30s", // 30 seconds
         notes: "30 seconds explosive",
       });
     }
@@ -255,7 +301,7 @@ async function buildFinisher3_4MinCircuit(
     ]);
     if (lungeJumpExercise) {
       await addItem(supabase, circuitBlock.id, lungeJumpExercise.id, order++, {
-        duration: 0.5, // 30 seconds
+        duration: "30s", // 30 seconds
         notes: "30 seconds alternating legs",
       });
     }
@@ -269,7 +315,7 @@ async function buildFinisher3_4MinCircuit(
     ]);
     if (pressUpExercise) {
       await addItem(supabase, circuitBlock.id, pressUpExercise.id, order++, {
-        duration: 0.5, // 30 seconds
+        duration: "30s", // 30 seconds
         notes: "30 seconds chest to floor",
       });
     }
