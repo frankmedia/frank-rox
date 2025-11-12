@@ -141,27 +141,52 @@ const ProgramCustomize = () => {
       </header>
       <main className="container max-w-2xl mx-auto px-4 pb-40 h-[calc(100vh-4rem)] overflow-y-auto" style={{ paddingTop: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>
         {/* Athlete Score Display */}
-        {profile && (
-          <Card className="p-5 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5 border-yellow-500/30 mb-4">
-            <div className="flex items-center justify-between">
-              <div>
+        {profile && (() => {
+          const athleteScore = Math.round((profile.running_score + profile.strength_score + (profile.cardio_composite_score || profile.cardio_conditioning_score || 0)) / 3);
+          const scorePosition = `${athleteScore}%`;
+          
+          return (
+            <Card className="p-5 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5 border-yellow-500/30 mb-4">
+              <div className="mb-3">
                 <p className="text-sm text-white/70 mb-1">Your Programme is Based On</p>
-                <p className="text-2xl font-bold text-white">Athlete Score</p>
+                <p className="text-xl font-bold text-white">Athlete Score</p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="text-4xl font-extrabold text-yellow-500">
-                    {Math.round((profile.running_score + profile.strength_score + (profile.cardio_composite_score || profile.cardio_conditioning_score || 0)) / 3)}
+              
+              {/* Score Line with Arrow */}
+              <div className="relative pt-8 pb-2">
+                {/* Arrow pointing down to score */}
+                <div 
+                  className="absolute top-0 flex flex-col items-center transition-all duration-500"
+                  style={{ left: scorePosition, transform: 'translateX(-50%)' }}
+                >
+                  <div className="text-2xl font-extrabold text-yellow-500 mb-1">
+                    {athleteScore}
                   </div>
-                  <div className="text-xs text-white/50">out of 100</div>
+                  <svg className="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 4l-8 8h5v8h6v-8h5z" />
+                  </svg>
                 </div>
-                <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
+                
+                {/* Score Line */}
+                <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 transition-all duration-500"
+                    style={{ width: scorePosition }}
+                  />
+                </div>
+                
+                {/* Scale markers */}
+                <div className="flex justify-between mt-1 text-xs text-white/40">
+                  <span>0</span>
+                  <span>25</span>
+                  <span>50</span>
+                  <span>75</span>
+                  <span>100</span>
+                </div>
               </div>
-            </div>
-          </Card>
-        )}
+            </Card>
+          );
+        })()}
         
         {/* Sprint Session Toggle */}
         <Card className="p-5 bg-zinc-900 border-zinc-800 mb-4">
