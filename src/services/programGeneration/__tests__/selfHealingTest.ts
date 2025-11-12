@@ -19,8 +19,8 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABAS
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const MAX_ITERATIONS = 3;
-const TEST_COUNT = 5; // Test 5 random configurations
+const MAX_ITERATIONS = 2;
+const TEST_COUNT = 10; // Test 10 random configurations
 
 interface TestUser {
   id: number;
@@ -211,7 +211,9 @@ async function validatePlan(user: TestUser, planId: string): Promise<ValidationI
       .select('id, name, session_blocks(id, session_block_items(id, distance_m, duration_sec, sets, reps))')
       .eq('plan_day_id', day.id);
 
-    const hasSession = sessions && sessions.length > 0;
+    // Filter out recovery sessions - they don't count as workout sessions
+    const workoutSessions = sessions?.filter(s => !s.name.toLowerCase().includes('recovery')) || [];
+    const hasSession = workoutSessions.length > 0;
 
     if (hasSession) {
       week1Sessions++;
@@ -288,10 +290,12 @@ async function validatePlan(user: TestUser, planId: string): Promise<ValidationI
   for (const day of planDays.slice(7, 14)) {
     const { data: sessions } = await supabase
       .from('sessions')
-      .select('id')
+      .select('id, name')
       .eq('plan_day_id', day.id);
 
-    if (sessions && sessions.length > 0) {
+    // Filter out recovery sessions
+    const workoutSessions = sessions?.filter(s => !s.name.toLowerCase().includes('recovery')) || [];
+    if (workoutSessions.length > 0) {
       week2Sessions++;
     }
   }

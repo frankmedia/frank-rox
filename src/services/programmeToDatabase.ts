@@ -1229,6 +1229,17 @@ async function duplicateWeekWithProgression(
 
     if (!week1Day || !week2Day) continue;
 
+    // If Week 1 day is a rest day, mark Week 2 day as rest too
+    if (week1Day.is_rest) {
+      await supabase
+        .from("plan_days")
+        .update({ 
+          is_rest: true,
+          description: "Rest & Recovery"
+        })
+        .eq("id", week2Day.id);
+    }
+
     // Get Week 1 sessions
     const { data: week1Sessions } = await supabase
       .from("sessions")
