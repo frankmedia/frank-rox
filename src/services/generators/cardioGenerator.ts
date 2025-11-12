@@ -258,75 +258,115 @@ async function buildSkiRowThreshold(
   modifier: number
 ) {
   const totalDuration = options.duration || 50; // Total session duration
-  // Each circuit = 3 rounds × ~6 min = 18 minutes MAX
-  // For 50 min session, we need 2-3 circuits with rest between
-  const numCircuits = Math.max(2, Math.round(totalDuration / 20));
   
   const sessionData = await createSession(
     supabase,
     planDayId,
     "Ski-Row Threshold",
-    `${totalDuration} minute threshold work: ${numCircuits} circuits of erg work and functional movements. Rest 3-4 min between circuits.`
+    `${totalDuration} minute threshold work: 3 different circuits of erg work and functional movements. Rest 3-4 min between circuits.`
   );
 
-  const roundsPerCircuit = 3; // Keep circuits to 15-20 min MAX
+  const roundsPerCircuit = 3; // 3 rounds per circuit
   const distance = Math.round(1000 * modifier);
-  const wallBalls = Math.round(20 * modifier);
 
-  // Create multiple circuits (15-20 min each)
-  for (let circuitNum = 1; circuitNum <= numCircuits; circuitNum++) {
-    const { data: circuitBlock } = await supabase
-      .from("session_blocks")
-      .insert({
-        session_id: sessionData.id,
-        block_type: "cardio",
-        title: `Circuit ${circuitNum}/${numCircuits}`,
-        rounds: roundsPerCircuit,
-        rest_between_rounds_s: 90, // 90s rest between rounds
-        parameters: { format: "circuit", intensity: "hard" },
-      })
-      .select()
-      .single();
+  // CIRCUIT 1: SkiErg + Air Squats
+  const { data: circuit1 } = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionData.id,
+      block_type: "cardio",
+      title: "Circuit 1/3",
+      rounds: roundsPerCircuit,
+      rest_between_rounds_s: 90,
+      parameters: { format: "circuit", intensity: "hard" },
+      order_index: 1,
+    })
+    .select()
+    .single();
 
-    if (circuitBlock) {
-      let order = 0;
+  if (circuit1) {
+    let order = 0;
+    await addItem(supabase, circuit1.id, SKIERG_ID, order++, {
+      distance: `${distance}m`,
+      notes: "Consistent splits, tall catch"
+    });
 
-      await addItem(supabase, circuitBlock.id, SKIERG_ID, order++, {
-        distance: `${distance}m`,
-        notes: "Consistent splits, tall catch"
+    const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
+    await addItem(supabase, circuit1.id, AIR_SQUAT_ID, order++, {
+      reps: 20,
+      notes: "Fast tempo, full depth"
+    });
+  }
+
+  // CIRCUIT 2: RowErg + Wall Balls
+  const { data: circuit2 } = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionData.id,
+      block_type: "cardio",
+      title: "Circuit 2/3",
+      rounds: roundsPerCircuit,
+      rest_between_rounds_s: 90,
+      parameters: { format: "circuit", intensity: "hard" },
+      order_index: 2,
+    })
+    .select()
+    .single();
+
+  if (circuit2) {
+    let order = 0;
+    await addItem(supabase, circuit2.id, ROWERG_ID, order++, {
+      distance: `${distance}m`,
+      notes: "Even pacing, 20-24 spm"
+    });
+
+    const wallBall = await findExercise(supabase, ["Wall Balls", "Wall Ball"]);
+    if (wallBall) {
+      await addItem(supabase, circuit2.id, wallBall.id, order++, {
+        reps: Math.round(20 * modifier),
+        notes: "Full depth squat, hit target"
       });
-
-      await addItem(supabase, circuitBlock.id, ROWERG_ID, order++, {
-        distance: `${distance}m`,
-        notes: "Even pacing, 20-24 spm"
-      });
-
-      // Add Air Squats for cardio conditioning
-      const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
-      const { data: airSquat } = await supabase
-        .from("exercises")
-        .select("id, name")
-        .eq("id", AIR_SQUAT_ID)
-        .single();
-      
-      if (airSquat) {
-        await addItem(supabase, circuitBlock.id, airSquat.id, order++, {
-          reps: 20,
-          notes: "Fast tempo, full depth, cardio conditioning"
-        });
-      }
-
-      const wallBall = await findExercise(supabase, ["Wall Balls", "Wall Ball"]);
-      if (wallBall) {
-        await addItem(supabase, circuitBlock.id, wallBall.id, order++, {
-          reps: wallBalls,
-          notes: "Full depth squat, hit target"
-        });
-      }
     }
   }
 
-  console.log(`✅ Ski-Row Threshold created with ${numCircuits} circuits`);
+  // CIRCUIT 3: Assault Bike + Burpees
+  const { data: circuit3 } = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionData.id,
+      block_type: "cardio",
+      title: "Circuit 3/3",
+      rounds: roundsPerCircuit,
+      rest_between_rounds_s: 90,
+      parameters: { format: "circuit", intensity: "hard" },
+      order_index: 3,
+    })
+    .select()
+    .single();
+
+  if (circuit3) {
+    let order = 0;
+    
+    // Assault Bike
+    const assaultBike = await findExercise(supabase, ["Assault Bike", "Air Bike"]);
+    if (assaultBike) {
+      await addItem(supabase, circuit3.id, assaultBike.id, order++, {
+        distance: `${Math.round(750 * modifier)}m`, // 750m on bike
+        notes: "Powerful arms + legs"
+      });
+    }
+
+    // Burpees
+    const burpees = await findExercise(supabase, ["Burpees", "Burpee"]);
+    if (burpees) {
+      await addItem(supabase, circuit3.id, burpees.id, order++, {
+        reps: Math.round(15 * modifier),
+        notes: "Chest to floor, full extension"
+      });
+    }
+  }
+
+  console.log(`✅ Ski-Row Threshold created with 3 different circuits`);
 }
 
 /**
