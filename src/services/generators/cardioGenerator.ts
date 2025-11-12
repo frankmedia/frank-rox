@@ -263,19 +263,19 @@ async function buildSkiRowThreshold(
     supabase,
     planDayId,
     "Ski-Row Threshold",
-    `${totalDuration} minute threshold work: 3 different circuits of erg work and functional movements. Rest 3-4 min between circuits.`
+    `${totalDuration} minute threshold work: 3 different circuits targeting leg drive, power endurance, and aerobic capacity. Rest 3-4 min between circuits.`
   );
 
   const roundsPerCircuit = 3; // 3 rounds per circuit
-  const distance = Math.round(1000 * modifier);
 
-  // CIRCUIT 1: SkiErg + Air Squats
+  // CIRCUIT 1: Leg drive + posterior chain endurance
   const { data: circuit1 } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
       title: "Circuit 1/3",
+      notes: "Focus: Leg drive + posterior chain endurance",
       rounds: roundsPerCircuit,
       rest_between_rounds_s: 90,
       parameters: { format: "circuit", intensity: "hard" },
@@ -286,25 +286,38 @@ async function buildSkiRowThreshold(
 
   if (circuit1) {
     let order = 0;
+    
+    // SkiErg - 500m (ID: 917c05c6-5adf-4d3b-887e-ff2a292fa079)
     await addItem(supabase, circuit1.id, SKIERG_ID, order++, {
-      distance: `${distance}m`,
+      distance: `${Math.round(500 * modifier)}m`,
       notes: "Consistent splits, tall catch"
     });
 
+    // Air Squat - 20 reps (ID: d035abfc-002c-438d-933f-4c304accb805)
     const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
     await addItem(supabase, circuit1.id, AIR_SQUAT_ID, order++, {
-      reps: 20,
+      reps: Math.round(20 * modifier),
       notes: "Fast tempo, full depth"
     });
+
+    // Step-Ups - 10 reps per leg (ID: 5056c0a2-bb89-43de-8ffb-716bdc899d25)
+    const stepUps = await findExercise(supabase, ["Step-Ups", "Step Ups"]);
+    if (stepUps) {
+      await addItem(supabase, stepUps.id, stepUps.id, order++, {
+        reps: Math.round(10 * modifier),
+        notes: "10 per leg - knee height (40-50cm), alternate legs or complete per side"
+      });
+    }
   }
 
-  // CIRCUIT 2: RowErg + Wall Balls
+  // CIRCUIT 2: Power endurance + trunk control
   const { data: circuit2 } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
       title: "Circuit 2/3",
+      notes: "Focus: Power endurance + trunk control",
       rounds: roundsPerCircuit,
       rest_between_rounds_s: 90,
       parameters: { format: "circuit", intensity: "hard" },
@@ -315,11 +328,14 @@ async function buildSkiRowThreshold(
 
   if (circuit2) {
     let order = 0;
+    
+    // RowErg - 500m (ID: d8f8bf07-c315-40a4-ae0c-b3fcb4db74e2)
     await addItem(supabase, circuit2.id, ROWERG_ID, order++, {
-      distance: `${distance}m`,
+      distance: `${Math.round(500 * modifier)}m`,
       notes: "Even pacing, 20-24 spm"
     });
 
+    // Wall Balls - 20 reps (ID: 8833980d-fc4f-42e8-83ce-7e3c22d8c28e)
     const wallBall = await findExercise(supabase, ["Wall Balls", "Wall Ball"]);
     if (wallBall) {
       await addItem(supabase, circuit2.id, wallBall.id, order++, {
@@ -327,15 +343,25 @@ async function buildSkiRowThreshold(
         notes: "Full depth squat, hit target"
       });
     }
+
+    // Plank Shoulder Taps - 20 taps (ID: 9a9f850e-dd26-45a8-8022-b81164091d67)
+    const plankTaps = await findExercise(supabase, ["Plank Shoulder Taps", "Plank Shoulder Tap"]);
+    if (plankTaps) {
+      await addItem(supabase, plankTaps.id, plankTaps.id, order++, {
+        reps: Math.round(20 * modifier),
+        notes: "20 taps total (10 each side) - minimize hip rotation"
+      });
+    }
   }
 
-  // CIRCUIT 3: Assault Bike + Burpees
+  // CIRCUIT 3: Aerobic power + grip & stability
   const { data: circuit3 } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
       title: "Circuit 3/3",
+      notes: "Focus: Aerobic power + grip & stability",
       rounds: roundsPerCircuit,
       rest_between_rounds_s: 90,
       parameters: { format: "circuit", intensity: "hard" },
@@ -347,16 +373,16 @@ async function buildSkiRowThreshold(
   if (circuit3) {
     let order = 0;
     
-    // Assault Bike
+    // Assault Bike - 300m (ID: ebd2356a-1244-4cb2-9449-423a481e377c)
     const assaultBike = await findExercise(supabase, ["Assault Bike", "Air Bike"]);
     if (assaultBike) {
       await addItem(supabase, circuit3.id, assaultBike.id, order++, {
-        distance: `${Math.round(750 * modifier)}m`, // 750m on bike
+        distance: `${Math.round(300 * modifier)}m`,
         notes: "Powerful arms + legs"
       });
     }
 
-    // Burpees
+    // Burpees - 15 reps (ID: 17b4533b-fa0f-48e4-9155-0860cd41ad23)
     const burpees = await findExercise(supabase, ["Burpees", "Burpee"]);
     if (burpees) {
       await addItem(supabase, circuit3.id, burpees.id, order++, {
@@ -364,9 +390,74 @@ async function buildSkiRowThreshold(
         notes: "Chest to floor, full extension"
       });
     }
+
+    // Farmer Carry - 20-30m (ID: 45fa718b-0f3a-41ed-a7cd-baa4bfd0f821)
+    const farmerCarry = await findExercise(supabase, ["Farmer Carry", "Farmers Carry", "DB Farmers Carry"]);
+    if (farmerCarry) {
+      await addItem(supabase, farmerCarry.id, farmerCarry.id, order++, {
+        distance: `${Math.round(25 * modifier)}m`,
+        notes: "20-30m moderate-heavy load, tall posture"
+      });
+    }
   }
 
-  console.log(`✅ Ski-Row Threshold created with 3 different circuits`);
+  // OPTIONAL FINISHER: Hyrox race specificity (2-3 rounds)
+  const { data: finisher } = await supabase
+    .from("session_blocks")
+    .insert({
+      session_id: sessionData.id,
+      block_type: "cardio",
+      title: "Optional Finisher",
+      notes: "For Hyrox race specificity",
+      rounds: 2,
+      rest_between_rounds_s: 180, // 3 min rest
+      parameters: { format: "circuit", intensity: "race_pace" },
+      order_index: 4,
+    })
+    .select()
+    .single();
+
+  if (finisher) {
+    let order = 0;
+    
+    // Run - 400m (ID: b0c6d459-bc2e-4066-a9e0-74a5dc124c8c)
+    const run = await findExercise(supabase, ["Run", "1km Run Hyrox Pace"]);
+    if (run) {
+      await addItem(supabase, finisher.id, run.id, order++, {
+        distance: `${Math.round(400 * modifier)}m`,
+        notes: "Race pace"
+      });
+    }
+
+    // Sled Push - 20m (ID: a10d0c72-2a2d-4fe8-8e6d-c2e0f42e52c1)
+    const sledPush = await findExercise(supabase, ["Sled Push"]);
+    if (sledPush) {
+      await addItem(supabase, sledPush.id, sledPush.id, order++, {
+        distance: `${Math.round(20 * modifier)}m`,
+        notes: "Fast short steps, drive through legs"
+      });
+    }
+
+    // Sled Pull - 20m (ID: 4cf7c483-2455-4354-bea9-395f19f5c312)
+    const sledPull = await findExercise(supabase, ["Sled Pull"]);
+    if (sledPull) {
+      await addItem(supabase, sledPull.id, sledPull.id, order++, {
+        distance: `${Math.round(20 * modifier)}m`,
+        notes: "Upright posture, heels down"
+      });
+    }
+
+    // Lunges - 20 reps (ID: b076d033-62f7-416f-9738-5e8141fca7e2 or 6ca8cc8f-dca0-4545-80f2-53a8170fa567)
+    const lunges = await findExercise(supabase, ["Lunges", "Walking Lunges", "Lunge"]);
+    if (lunges) {
+      await addItem(supabase, lunges.id, lunges.id, order++, {
+        reps: Math.round(20 * modifier),
+        notes: "Controlled tempo, knee tracks toes"
+      });
+    }
+  }
+
+  console.log(`✅ Ski-Row Threshold created with 3 circuits + optional Hyrox finisher`);
 }
 
 /**
