@@ -248,7 +248,7 @@ async function buildMachineEndurance(
 
 /**
  * 2. SKI-ROW THRESHOLD
- * 4 rounds: 1000m Ski + 1000m Row + 20 Wall Balls
+ * 6-8 rounds: 1000m Ski + 1000m Row + 20 Air Squats + 20 Wall Balls
  */
 async function buildSkiRowThreshold(
   supabase: SupabaseClient,
@@ -256,14 +256,18 @@ async function buildSkiRowThreshold(
   options: CardioSessionOptions,
   modifier: number
 ) {
+  const totalDuration = options.duration || 50; // Total session duration
+  // Each round takes ~6-8 minutes, so for 50 min we want 6-7 rounds
+  const baseRounds = Math.max(6, Math.round(totalDuration / 8));
+  
   const sessionData = await createSession(
     supabase,
     planDayId,
     "Ski-Row Threshold",
-    "Threshold work combining ergs and functional movement. Focus on consistent splits across all rounds. This builds lactate tolerance and mental toughness."
+    `${totalDuration} minute threshold work combining ergs and functional movement. Focus on consistent splits across all rounds. This builds lactate tolerance and mental toughness.`
   );
 
-  const rounds = Math.round(4 * modifier);
+  const rounds = Math.round(baseRounds * modifier);
   const distance = Math.round(1000 * modifier);
   const wallBalls = Math.round(20 * modifier);
 

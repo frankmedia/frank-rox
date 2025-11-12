@@ -41,7 +41,7 @@ export const CARDIO_WORKOUTS: CardioWorkoutDefinition[] = [
     category: "aerobic",
     requiredEquipment: ["SkiErg", "RowErg"],
     optionalEquipment: ["Assault Bike"],
-    duration: 40
+    duration: 50 // Full 50-minute session
   },
   {
     type: "ski-row-threshold",
@@ -50,7 +50,7 @@ export const CARDIO_WORKOUTS: CardioWorkoutDefinition[] = [
     category: "threshold",
     requiredEquipment: ["SkiErg", "RowErg", "Wall balls"],
     optionalEquipment: [],
-    duration: 35
+    duration: 50 // Increased to 50 minutes (more rounds)
   },
   {
     type: "functional-engine",
@@ -59,7 +59,7 @@ export const CARDIO_WORKOUTS: CardioWorkoutDefinition[] = [
     category: "mixed",
     requiredEquipment: ["RowErg", "Wall balls"],
     optionalEquipment: ["Heavy dumbbells"],
-    duration: 30
+    duration: 45 // Increased to 45 minutes
   },
   {
     type: "machine-power",
@@ -68,7 +68,7 @@ export const CARDIO_WORKOUTS: CardioWorkoutDefinition[] = [
     category: "power",
     requiredEquipment: ["SkiErg", "RowErg"],
     optionalEquipment: ["Assault Bike"],
-    duration: 30
+    duration: 45 // Increased to 45 minutes
   },
   {
     type: "sled-ski-combo",
