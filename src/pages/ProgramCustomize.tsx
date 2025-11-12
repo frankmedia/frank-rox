@@ -13,20 +13,20 @@ type Preferences = {
   hillsOrSprints: "Yes" | "No" | null;
   wantsPTCheckins?: boolean;
   equipment?: string[];
-  cardioClassFrequency?: "Never" | "1× per week" | "2–3× per week" | "4+× per week";
+  cardioClassesPerWeek?: number; // Changed from frequency to number (1-3)
   trainingDaysPerWeek?: number;
 };
 
 const ProgramCustomize = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [selected, setSelected] = useState<string[]>([]);
-  const [runPerWeek, setRunPerWeek] = useState<number>(0);
-  const [hillsSprints, setHillsSprints] = useState<"Yes" | "No" | null>(null);
+  const [selected, setSelected] = useState<string[]>(["Running", "Strength", "Cardio"]); // All selected by default
+  const [runPerWeek, setRunPerWeek] = useState<number>(2);
+  const [hillsSprints, setHillsSprints] = useState<"Yes" | "No">("Yes"); // Default to Yes
   const [wantsPT, setWantsPT] = useState<"Yes" | "No" | null>(null);
-  const [equip, setEquip] = useState<string[]>([]);
-  const [cardioClassFreq, setCardioClassFreq] = useState<"Never" | "1× per week" | "2–3× per week" | "4+× per week" | null>(null);
-  const [trainingDays, setTrainingDays] = useState<number>(3);
+  const [equip, setEquip] = useState<string[]>(["Sled push/pull", "Wall balls", "Sandbags", "Heavy dumbbells", "SkiErg", "RowErg"]); // All selected by default
+  const [cardioClasses, setCardioClasses] = useState<number>(1); // Changed to number, default 1
+  const [trainingDays, setTrainingDays] = useState<number>(5); // Default to 5 days
 
   const profile = useMemo(() => {
     try {
@@ -55,34 +55,23 @@ const ProgramCustomize = () => {
     if (prefs && prefs.focusAreas && prefs.focusAreas.length > 0) {
       // Use existing preferences
       setSelected(prefs.focusAreas);
-      setRunPerWeek(prefs.runSessionsPerWeek ?? 2); // Default to 2 runs
-      setHillsSprints(prefs.hillsOrSprints ?? null);
+      setRunPerWeek(prefs.runSessionsPerWeek ?? 2);
+      setHillsSprints(prefs.hillsOrSprints ?? "Yes");
       setWantsPT(prefs.wantsPTCheckins ? "Yes" : "No");
-      // Force equipment to RowErg/SkiErg if empty
-      setEquip((prefs.equipment && prefs.equipment.length > 0) ? prefs.equipment : ["RowErg", "SkiErg"]);
-      setCardioClassFreq(prefs.cardioClassFrequency ?? "Never");
-      setTrainingDays(typeof prefs.trainingDaysPerWeek === "number" ? prefs.trainingDaysPerWeek : 3);
-    } else {
-      // First time: pre-select based on scores < 60
-      setSelected(recommendedOptions);
-      // Pre-select 2 runs per week
-      setRunPerWeek(2);
-      // Pre-select RowErg and SkiErg for cardio/strength
-      setEquip(["RowErg", "SkiErg"]);
-      // Only set cardio class frequency if Cardio is recommended
-      if (recommendedOptions.includes("Cardio")) {
-        setCardioClassFreq("Never");
-      }
+      setEquip((prefs.equipment && prefs.equipment.length > 0) ? prefs.equipment : ["Sled push/pull", "Wall balls", "Sandbags", "Heavy dumbbells", "SkiErg", "RowErg"]);
+      setCardioClasses(prefs.cardioClassesPerWeek ?? 1);
+      setTrainingDays(typeof prefs.trainingDaysPerWeek === "number" ? prefs.trainingDaysPerWeek : 5);
     }
-  }, [profile, recommendedOptions]);
+    // If no preferences, keep the defaults set in useState
+  }, [profile]);
 
   const buildPrefs = (): Preferences => ({
     focusAreas: selected,
     runSessionsPerWeek: runPerWeek,
-    hillsOrSprints: runPerWeek > 1 ? (hillsSprints ?? "No") : null,
+    hillsOrSprints: hillsSprints,
     wantsPTCheckins: wantsPT === "Yes",
     equipment: equip,
-    cardioClassFrequency: selected.includes("Cardio") ? cardioClassFreq ?? "Never" : undefined,
+    cardioClassesPerWeek: selected.includes("Cardio") ? cardioClasses : undefined,
     trainingDaysPerWeek: trainingDays,
   });
 
@@ -95,7 +84,7 @@ const ProgramCustomize = () => {
     } catch {
       // ignore
     }
-  }, [selected, runPerWeek, hillsSprints, wantsPT, equip, cardioClassFreq]); 
+  }, [selected, runPerWeek, hillsSprints, wantsPT, equip, cardioClasses, trainingDays]); 
 
   const toggle = (name: string) => {
     setSelected((cur) => (cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]));
@@ -151,6 +140,47 @@ const ProgramCustomize = () => {
         </div>
       </header>
       <main className="container max-w-2xl mx-auto px-4 pb-40 h-[calc(100vh-4rem)] overflow-y-auto" style={{ paddingTop: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>
+        {/* Athlete Score Display */}
+        {profile && (
+          <Card className="p-5 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5 border-yellow-500/30 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white/70 mb-1">Your Programme is Based On</p>
+                <p className="text-2xl font-bold text-white">Athlete Score</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="text-4xl font-extrabold text-yellow-500">
+                    {Math.round((profile.running_score + profile.strength_score + (profile.cardio_composite_score || profile.cardio_conditioning_score || 0)) / 3)}
+                  </div>
+                  <div className="text-xs text-white/50">out of 100</div>
+                </div>
+                <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </div>
+            </div>
+          </Card>
+        )}
+        
+        {/* Sprint Session Toggle */}
+        <Card className="p-5 bg-zinc-900 border-zinc-800 mb-4">
+          <Label className="text-white text-xl font-bold">Include sprint session?</Label>
+          <p className="text-sm text-white/60 mt-1">One high-intensity sprint or hill session per week</p>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {(["Yes","No"] as const).map(v=>(
+              <Button
+                key={`sprint-${v}`}
+                variant="ghost"
+                className={`w-full h-12 text-lg border ${hillsSprints===v?"bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-400":"border-white/30 hover:bg-white/10"}`}
+                onClick={()=>setHillsSprints(v)}
+              >
+                {v}
+              </Button>
+            ))}
+          </div>
+        </Card>
+        
         {/* Training days - priority card */}
         <Card className="p-5 bg-zinc-900 border-zinc-800 mb-4">
           <Label className="text-white text-xl font-bold">Training days per week</Label>
@@ -246,17 +276,17 @@ const ProgramCustomize = () => {
           )}
           {selected.includes("Cardio") && (
             <div>
-              <Label className="text-white text-xl font-bold">Cardio classes</Label>
-              <p className="text-sm text-white/60 mt-1">Do you attend HIIT, CrossFit, circuit or spin classes?</p>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {(["Never","1× per week","2–3× per week","4+× per week"] as const).map(v=>(
+              <Label className="text-white text-xl font-bold">Cardio classes per week</Label>
+              <p className="text-sm text-white/60 mt-1">HIIT, CrossFit, circuit or spin classes (max 3/week)</p>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {[1, 2, 3].map(n=>(
                   <Button
-                    key={`ccf-${v}`}
+                    key={`cc-${n}`}
                     variant="ghost"
-                    className={`w-full h-12 text-lg border ${cardioClassFreq===v?"bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-400":"border-white/30 hover:bg-white/10"}`}
-                    onClick={()=>setCardioClassFreq(v)}
+                    className={`w-full h-12 text-lg border ${cardioClasses===n?"bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-400":"border-white/30 hover:bg-white/10"}`}
+                    onClick={()=>setCardioClasses(n)}
                   >
-                    {v}
+                    {n}
                   </Button>
                 ))}
               </div>
@@ -277,23 +307,6 @@ const ProgramCustomize = () => {
               ))}
             </div>
           </div>
-          {runPerWeek > 1 && (
-            <div>
-              <Label className="text-white text-xl font-bold">Include one hills or sprint session weekly?</Label>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {(["Yes", "No"] as const).map((v) => (
-                  <Button
-                    key={`hsw-${v}`}
-                    variant="ghost"
-                    className={`w-full h-12 text-lg border ${hillsSprints === v ? "bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-400" : "border-white/30 hover:bg-white/10"}`}
-                    onClick={() => setHillsSprints(v)}
-                  >
-                    {v}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
         </Card>
       </main>
       <div className="fixed left-0 right-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]">
