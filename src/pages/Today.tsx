@@ -1131,8 +1131,8 @@ const Today = () => {
               const hasMultipleIntros = introCards.length > 1;
               
               return introCards.length > 0 && (
-                <div className={hasMultipleIntros ? "overflow-x-auto -mx-2 px-2 pb-2" : ""} style={{ WebkitOverflowScrolling: 'touch' }}>
-                  <div className={hasMultipleIntros ? "flex gap-4" : ""} style={hasMultipleIntros ? { width: 'max-content' } : {}}>
+                <div className={hasMultipleIntros ? "overflow-x-auto -mx-2 px-2 pb-2" : "-mx-2"} style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <div className={hasMultipleIntros ? "flex gap-4" : "px-2"} style={hasMultipleIntros ? { width: 'max-content' } : {}}>
                     {introCards.map((intro) => (
                       <Card key={intro.id} className={`p-6 bg-primary/5 border-primary/20 ${hasMultipleIntros ? 'flex-shrink-0 w-80' : 'w-full'}`}>
                         <div className="flex items-start gap-3">
