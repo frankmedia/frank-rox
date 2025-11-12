@@ -80,22 +80,7 @@ async function testProgram() {
   for (const day of planDays.slice(0, 14)) {
     const { data: sessions } = await supabase
       .from('sessions')
-      .select(`
-        id,
-        name,
-        session_blocks (
-          id,
-          title,
-          session_block_items (
-            id,
-            sets,
-            reps,
-            distance_m,
-            duration_sec,
-            exercises (name)
-          )
-        )
-      `)
+      .select('id, name, session_blocks(id, title, session_block_items(id, sets, reps, distance_m, duration_sec, exercises(name)))')
       .eq('plan_day_id', day.id);
 
     const sessionCount = sessions?.length || 0;
@@ -149,16 +134,7 @@ async function testProgram() {
     if (week1Run) {
       const { data: week2Sessions } = await supabase
         .from('sessions')
-        .select(`
-          name,
-          session_blocks (
-            session_block_items (
-              distance_m,
-              duration_sec,
-              exercises (name)
-            )
-          )
-        )
+        .select('name, session_blocks(session_block_items(distance_m, duration_sec, exercises(name)))')
         .eq('plan_day_id', day2.id);
 
       const week2Run = week2Sessions?.find(s => s.name.toLowerCase().includes('run'));
