@@ -178,7 +178,7 @@ async function addItem(
 
 /**
  * 1. MACHINE ENDURANCE BUILDER
- * 40 minutes steady state (Zone 2-3)
+ * 45-60 minutes steady state (Zone 2-3)
  */
 async function buildMachineEndurance(
   supabase: SupabaseClient,
@@ -186,14 +186,18 @@ async function buildMachineEndurance(
   options: CardioSessionOptions,
   modifier: number
 ) {
+  const totalDuration = options.duration || 50; // Total session duration in minutes
+  const numMachines = 4; // SkiErg, RowErg, Bike, Cross Trainer
+  const durationPerMachine = Math.round((totalDuration / numMachines) * modifier);
+  
   const sessionData = await createSession(
     supabase,
     planDayId,
     "Machine Endurance Builder",
-    "40 minutes steady state aerobic work. Keep heart rate in Zone 2-3 (conversational pace). Build your aerobic base across multiple modalities."
+    `${totalDuration} minutes steady state aerobic work. Keep heart rate in Zone 2-3 (conversational pace). Build your aerobic base across multiple modalities.`
   );
 
-  const duration = Math.round(10 * modifier); // Base 10min per machine
+  const duration = durationPerMachine; // Duration per machine
 
   // Create main block
   const { data: mainBlock } = await supabase

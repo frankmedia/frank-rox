@@ -1146,11 +1146,11 @@ async function generateCardioWorkout(
     // Delete the placeholder session we just created
     await supabase.from("sessions").delete().eq("id", sessionData.id);
     
-    // Create proper cardio session
+    // Create proper cardio session (45-60 min for full conditioning)
     await createCardioSession(supabase, planDayId, {
       sessionType,
       intensity: session.effort as "easy" | "moderate" | "hard",
-      duration: 30,
+      duration: 50, // 50 minutes for full cardio sessions
       allowRunning, // Pass the allowRunning flag
       intensityModifier: 1.0 // Base intensity for Week 1
     });

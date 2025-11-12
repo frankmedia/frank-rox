@@ -74,19 +74,40 @@ function buildWeek(pref: TrainingPreferences, desiredTrainingDays: number, weekN
   
   const requestedStrength = focus.has("strength") ? 2 : 0;
   
-  // Calculate standalone cardio (cardio not embedded in strength days)
+  // UPDATED: Cardio sessions are FULL standalone sessions (45+ min), not finishers
   const hasCardioAndStrength = focus.has("cardio") && focus.has("strength");
-  const standaloneCardio = hasCardioAndStrength ? Math.max(0, requestedCardio - 2) : requestedCardio;
-  const totalRequested = runs + standaloneCardio + requestedStrength;
+  let standaloneCardio = requestedCardio; // All cardio is standalone
+  let totalRequested = runs + standaloneCardio + requestedStrength;
   
-  // If total sessions exceed training days, reduce runs first
+  // PRIORITY SYSTEM: If total sessions exceed training days, reduce in order:
+  // 1. Reduce runs first (lowest priority)
+  // 2. Then reduce cardio (medium priority)
+  // 3. Keep strength (highest priority - never reduce below 2)
   if (totalRequested > desiredTrainingDays) {
     const excess = totalRequested - desiredTrainingDays;
-    runs = Math.max(0, runs - excess);
-    console.log(`⚠️ Preview: Reducing runs from ${pref.runSessionsPerWeek} to ${runs} to fit ${desiredTrainingDays} training days`);
+    
+    // Step 1: Reduce runs first
+    const runsToRemove = Math.min(runs, excess);
+    runs = runs - runsToRemove;
+    let remaining = excess - runsToRemove;
+    
+    // Step 2: If still too many sessions, reduce cardio
+    if (remaining > 0) {
+      const cardioToRemove = Math.min(standaloneCardio, remaining);
+      standaloneCardio = standaloneCardio - cardioToRemove;
+      remaining = remaining - cardioToRemove;
+    }
+    
+    // Recalculate total
+    totalRequested = runs + standaloneCardio + requestedStrength;
+    
+    console.log(`⚠️ Preview: Adjusted to fit ${desiredTrainingDays} training days:`);
+    console.log(`  - Runs: ${pref.runSessionsPerWeek} → ${runs}`);
+    console.log(`  - Cardio: ${requestedCardio} → ${standaloneCardio}`);
+    console.log(`  - Strength: ${requestedStrength} (kept)`);
   }
   
-  console.log(`📊 Preview: ${runs} runs + ${standaloneCardio} standalone cardio + ${requestedStrength} strength (with ${hasCardioAndStrength ? 2 : 0} embedded cardio) = ${runs + standaloneCardio + requestedStrength} sessions in ${desiredTrainingDays} days`);
+  console.log(`📊 Preview: ${runs} runs + ${standaloneCardio} cardio + ${requestedStrength} strength = ${totalRequested} sessions in ${desiredTrainingDays} days`);
 
   // Build actual programme structure (matching ProgrammeBuilder logic)
   const isWeek2 = weekNumber === 2;
@@ -131,17 +152,10 @@ function buildWeek(pref: TrainingPreferences, desiredTrainingDays: number, weekN
     if (requestedStrength >= 1) {
       // Lower body
       schedule.push({
-        title: hasCardioAndStrength ? "Strength Lower + Cardio (💪 + ❤️)" : "Strength Lower (💪)",
-        subtitle: "Heavy compound lifts" + (hasCardioAndStrength ? " + cardio finisher" : ""),
-        detail: hasCardioAndStrength 
-          ? "Squats, split squats, RDLs + 15min cardio"
-          : "Squats, split squats, RDLs, leg press",
-        blocks: hasCardioAndStrength 
-          ? [
-              { type: "strength", icon: Dumbbell, intensity: "hard" },
-              { type: "cardio", icon: HeartIcon, intensity: "moderate" }
-            ]
-          : [{ type: "strength", icon: Dumbbell, intensity: "hard" }],
+        title: "Strength Lower (💪)",
+        subtitle: "Heavy compound lifts",
+        detail: "Squats, split squats, RDLs, leg press",
+        blocks: [{ type: "strength", icon: Dumbbell, intensity: "hard" }],
         dayIntensity: "hard"
       });
     }
@@ -149,17 +163,10 @@ function buildWeek(pref: TrainingPreferences, desiredTrainingDays: number, weekN
     if (requestedStrength >= 2) {
       // Upper body
       schedule.push({
-        title: hasCardioAndStrength ? "Strength Upper + Cardio (💪 + ❤️)" : "Strength Upper (💪)",
-        subtitle: "Pressing & pulling power" + (hasCardioAndStrength ? " + cardio finisher" : ""),
-        detail: hasCardioAndStrength
-          ? "Bench, rows, shoulder press + 15min cardio"
-          : "Bench, rows, shoulder press, accessories",
-        blocks: hasCardioAndStrength
-          ? [
-              { type: "strength", icon: Dumbbell, intensity: "hard" },
-              { type: "cardio", icon: HeartIcon, intensity: "moderate" }
-            ]
-          : [{ type: "strength", icon: Dumbbell, intensity: "hard" }],
+        title: "Strength Upper (💪)",
+        subtitle: "Pressing & pulling power",
+        detail: "Bench, rows, shoulder press, accessories",
+        blocks: [{ type: "strength", icon: Dumbbell, intensity: "hard" }],
         dayIntensity: "hard"
       });
     }
