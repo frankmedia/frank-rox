@@ -50,10 +50,10 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
   const requestedCardio = focusAreas.has("cardio") ? (prefs.cardioSessionsPerWeek ?? 2) : 0;
   const requestedStrength = focusAreas.has("strength") ? 2 : 0;
   
-  // If both cardio and strength are selected, cardio will be embedded in strength days
-  // So we only need: runs + strength + (standalone cardio - 2)
+  // Cardio sessions should be FULL standalone sessions (45+ min), not just finishers
+  // So we count: runs + cardio + strength
   const hasCardioAndStrength = focusAreas.has("cardio") && focusAreas.has("strength");
-  const standaloneCardio = hasCardioAndStrength ? Math.max(0, requestedCardio - 2) : requestedCardio;
+  const standaloneCardio = requestedCardio; // All cardio sessions are standalone
   const totalRequested = runs + standaloneCardio + requestedStrength;
   
   console.log("🏗️ BUILDING PROGRAMME:");
@@ -221,17 +221,14 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
   if (focusAreas.has("strength")) {
     // Use fixed 2 strength sessions (from smart distribution)
     const strengthDays = requestedStrength;
-    const hasCardioFocus = focusAreas.has("cardio");
     
     if (strengthDays >= 1) {
       const lowerDay = getNextDay(["Monday", "Thursday"]);
       sessions.push({
         day: lowerDay,
         type: "strength",
-        title: hasCardioFocus ? "Strength Lower + Cardio Finisher" : "Strength Lower",
-        detail: hasCardioFocus 
-          ? "Back squats, Bulgarian split squats, RDLs + 15min cardio finisher"
-          : "Back squats, Bulgarian split squats, RDLs, leg press",
+        title: "Strength Lower",
+        detail: "Back squats, Bulgarian split squats, RDLs, leg press",
         effort: "hard"
       });
       usedDays.add(lowerDay);
@@ -242,10 +239,8 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
       sessions.push({
         day: upperDay,
         type: "strength",
-        title: hasCardioFocus ? "Strength Upper + Cardio Finisher" : "Strength Upper",
-        detail: hasCardioFocus
-          ? "Bench press, strict press, weighted pull-ups + 15min cardio finisher"
-          : "Bench press, strict press, weighted pull-ups, rows",
+        title: "Strength Upper",
+        detail: "Bench press, strict press, weighted pull-ups, rows",
         effort: "hard"
       });
       usedDays.add(upperDay);
@@ -267,38 +262,15 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
   // 2b. Fill remaining training days with cardio (if not already at capacity)
   // This ensures people with 5+ training days get enough sessions
   const remainingAfterStrength = trainingDays - usedDays.size;
-  if (remainingAfterStrength > 0 && focusAreas.has("strength") && !focusAreas.has("cardio")) {
-    // Add cardio to fill gaps for strength-focused athletes
-    if (remainingAfterStrength >= 1) {
-      const cardioDay = getNextDay(["Tuesday", "Thursday", "Saturday"]);
-      sessions.push({
-        day: cardioDay,
-        type: "cardio",
-        title: "Conditioning",
-        detail: "30min mixed: RowErg, SkiErg, or Bike intervals",
-        effort: "moderate"
-      });
-      usedDays.add(cardioDay);
-    }
-    
-    if (remainingAfterStrength >= 2) {
-      const cardioDay2 = getNextDay(["Friday", "Wednesday", "Sunday"]);
-      sessions.push({
-        day: cardioDay2,
-        type: "cardio",
-        title: "Engine Work",
-        detail: "20min steady-state on erg of choice",
-        effort: "easy"
-      });
-      usedDays.add(cardioDay2);
-    }
-  }
-
+  
   // 3. Add Cardio/Conditioning Sessions (using smart selector)
   if (focusAreas.has("cardio")) {
     // Use cardioSessionsPerWeek from onboarding, or default to 2
     const requestedCardio = prefs.cardioSessionsPerWeek ?? 2;
-    const cardioDays = Math.min(requestedCardio, trainingDays - usedDays.size);
+    // If cardio is embedded in strength (as finishers), those count toward the total
+    // So we only add standalone cardio for the remaining requested sessions
+    const availableDays = trainingDays - usedDays.size;
+    const cardioDays = Math.min(standaloneCardio, availableDays);
     
     console.log(`  Requested cardio sessions: ${requestedCardio}, available days: ${trainingDays - usedDays.size}, scheduling: ${cardioDays}`);
     
