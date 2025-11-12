@@ -370,7 +370,7 @@ export function IntervalTimer({
       </div>
       
       {/* Header: Round Progress */}
-      <Card className="w-full p-6 bg-primary/10 border-primary">
+      <Card className="w-full p-6 bg-yellow-500/5 border-yellow-500/30">
         <div className="text-center">
           <p className="text-sm text-muted-foreground mb-2">
             {phase === "COMPLETE" ? "Workout Complete" : "Interval Training"}
@@ -378,7 +378,7 @@ export function IntervalTimer({
           <h2 className="text-4xl font-bold">
             Round {currentRound} of {totalRounds}
           </h2>
-          <p className="text-2xl text-primary mt-2">
+          <p className="text-2xl text-yellow-500 mt-2">
             {distanceDisplay}
           </p>
         </div>

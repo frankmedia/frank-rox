@@ -1321,10 +1321,10 @@ const ExerciseDetail = () => {
             {/* DISTANCE-BASED: Use stopwatch to record time */}
             {exercise.targetDistanceKm && exercise.targetDistanceKm > 0 ? (
               <>
-                <Card className="p-6 bg-primary/10 border-primary mb-4">
+                <Card className="p-6 bg-yellow-500/5 border-yellow-500/30 mb-4">
                   <p className="flex items-center justify-center gap-3 text-4xl font-extrabold">
-                    <Target className="w-6 h-6 text-primary" />
-                    <span className="text-primary">
+                    <Target className="w-6 h-6 text-yellow-500" />
+                    <span className="text-yellow-500">
                       {exercise.targetDistanceKm < 1 ? `${(exercise.targetDistanceKm * 1000).toFixed(0)}m` : `${exercise.targetDistanceKm}km`}
                     </span>
                   </p>
