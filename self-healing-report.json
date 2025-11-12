@@ -1,29 +1,26 @@
 {
-  "timestamp": "2025-11-12T22:33:24.497Z",
+  "timestamp": "2025-11-12T22:36:50.610Z",
   "summary": {
-    "total": 3,
-    "passed": 3,
+    "total": 10,
+    "passed": 10,
     "failed": 0,
     "totalAutoFixes": 0
   },
   "results": [
     {
-      "user": "autotest_1762986743710",
+      "user": "autotest_1762986859625",
       "profile": {
-        "trainingDays": 6,
+        "trainingDays": 3,
         "runsPerWeek": 1,
         "cardioPerWeek": 0,
         "focusAreas": [
+          "Running",
           "Strength",
           "Cardio"
         ],
-        "equipment": [
-          "SkiErg",
-          "RowErg",
-          "Wall balls"
-        ],
+        "equipment": [],
         "focus": "race-prep",
-        "gender": "female",
+        "gender": "male",
         "level": "advanced"
       },
       "passed": true,
@@ -31,7 +28,7 @@
       "issues": []
     },
     {
-      "user": "autotest_1762986765947",
+      "user": "autotest_1762986876051",
       "profile": {
         "trainingDays": 3,
         "runsPerWeek": 0,
@@ -42,6 +39,89 @@
         ],
         "equipment": [],
         "focus": "base",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": true,
+      "autoFixed": 0,
+      "issues": []
+    },
+    {
+      "user": "autotest_1762986892831",
+      "profile": {
+        "trainingDays": 5,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 1,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "base",
+        "gender": "female",
+        "level": "beginner"
+      },
+      "passed": true,
+      "autoFixed": 0,
+      "issues": []
+    },
+    {
+      "user": "autotest_1762986906350",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 2,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "male",
+        "level": "intermediate"
+      },
+      "passed": true,
+      "autoFixed": 0,
+      "issues": []
+    },
+    {
+      "user": "autotest_1762986919085",
+      "profile": {
+        "trainingDays": 3,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "male",
+        "level": "beginner"
+      },
+      "passed": true,
+      "autoFixed": 0,
+      "issues": []
+    },
+    {
+      "user": "autotest_1762986933226",
+      "profile": {
+        "trainingDays": 6,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
         "gender": "female",
         "level": "intermediate"
       },
@@ -50,10 +130,10 @@
       "issues": []
     },
     {
-      "user": "autotest_1762986787460",
+      "user": "autotest_1762986947133",
       "profile": {
-        "trainingDays": 5,
-        "runsPerWeek": 3,
+        "trainingDays": 4,
+        "runsPerWeek": 0,
         "cardioPerWeek": 0,
         "focusAreas": [
           "Running",
@@ -62,11 +142,81 @@
         "equipment": [
           "SkiErg",
           "RowErg",
-          "Wall balls"
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
+        ],
+        "focus": "build",
+        "gender": "male",
+        "level": "intermediate"
+      },
+      "passed": true,
+      "autoFixed": 0,
+      "issues": []
+    },
+    {
+      "user": "autotest_1762986964386",
+      "profile": {
+        "trainingDays": 3,
+        "runsPerWeek": 1,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "build",
+        "gender": "male",
+        "level": "intermediate"
+      },
+      "passed": true,
+      "autoFixed": 0,
+      "issues": []
+    },
+    {
+      "user": "autotest_1762986981039",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [
+          "SkiErg",
+          "RowErg",
+          "Assault Bike",
+          "Wall balls",
+          "Heavy dumbbells",
+          "Sled push/pull"
         ],
         "focus": "base",
         "gender": "female",
-        "level": "intermediate"
+        "level": "advanced"
+      },
+      "passed": true,
+      "autoFixed": 0,
+      "issues": []
+    },
+    {
+      "user": "autotest_1762986995639",
+      "profile": {
+        "trainingDays": 4,
+        "runsPerWeek": 2,
+        "cardioPerWeek": 0,
+        "focusAreas": [
+          "Running",
+          "Strength",
+          "Cardio"
+        ],
+        "equipment": [],
+        "focus": "race-prep",
+        "gender": "male",
+        "level": "beginner"
       },
       "passed": true,
       "autoFixed": 0,

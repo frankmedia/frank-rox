@@ -20,7 +20,7 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const MAX_ITERATIONS = 1;
-const TEST_COUNT = 3; // Test 3 configurations with fixed validation
+const TEST_COUNT = 10; // Test 10 random configurations
 
 interface TestUser {
   id: number;
@@ -477,9 +477,8 @@ async function runSelfHealingTests() {
       planId = result.planId;
       console.log(`   ✅ Plan created: ${planId}`);
 
-      // Longer delay to ensure database writes are fully committed (Supabase eventual consistency)
-      console.log(`   ⏳ Waiting 5 seconds for database consistency...`);
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      // Small delay to ensure database writes are committed
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Validate
       console.log(`   🔍 Validating plan...`);
@@ -509,7 +508,6 @@ async function runSelfHealingTests() {
         }
 
         // Delete plan and retry
-        console.log(`   🗑️  Deleting plan ${planId} before retry...`);
         await supabase.from('plans').delete().eq('id', planId);
       }
     }
@@ -522,9 +520,8 @@ async function runSelfHealingTests() {
       autoFixed
     });
 
-    // Clean up (DISABLED for debugging - keep plan in database)
-    console.log(`   💾 Keeping plan ${planId} for inspection`);
-    // await supabase.from('clients').delete().eq('id', user.id);
+    // Clean up
+    await supabase.from('clients').delete().eq('id', user.id);
   }
 
   // Print summary
