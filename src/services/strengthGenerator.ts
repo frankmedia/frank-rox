@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { addStrengthFinisher, getFinisherRotation } from "./generators/strengthFinisher";
 
 export type StrengthPrescription = {
   name: string;
@@ -17,6 +18,8 @@ export type StrengthPlanOptions = {
   level?: string | null;
   intensity?: string | null;
   exercises: StrengthPrescription[];
+  addFinisher?: boolean; // Optional: add 4min finisher at end
+  dayIndex?: number; // Optional: for finisher rotation
 };
 
 type WarningResult = { warnings: string[] };
@@ -197,6 +200,18 @@ export async function createStrengthPlanDay(
 
   if (order === 0) {
     warnings.push("No strength exercises were added (all missing).");
+  }
+
+  // Add 4-minute finisher if requested
+  if (options.addFinisher) {
+    const finisherNum = options.dayIndex ? getFinisherRotation(options.dayIndex) : 1;
+    try {
+      await addStrengthFinisher(supabase, sessionId, finisherNum);
+      console.log(`✅ Added finisher #${finisherNum} to strength session`);
+    } catch (error: any) {
+      console.error("❌ Failed to add finisher:", error);
+      warnings.push(`Failed to add finisher: ${error.message}`);
+    }
   }
 
   // Cool down block

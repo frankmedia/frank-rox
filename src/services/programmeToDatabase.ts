@@ -7,6 +7,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRunSession, type RunSessionOptions } from "./generators/runGenerator";
+import { addStrengthFinisher, getFinisherRotation } from "./generators/strengthFinisher";
 
 type SessionBlock = {
   day: string;
@@ -1097,6 +1098,25 @@ async function generateStrengthWorkout(
         }
         
         console.log(`✅ Cardio finisher added to ${split} body session`);
+      }
+    }
+
+    // ADD 4-MIN INTENSITY FINISHER (New feature: rotates through 3 options)
+    // Get day index from planDay to determine which finisher to use
+    const { data: planDay } = await supabase
+      .from("plan_days")
+      .select("day_index")
+      .eq("id", planDayId)
+      .single();
+    
+    if (planDay) {
+      const finisherNum = getFinisherRotation(planDay.day_index);
+      try {
+        await addStrengthFinisher(supabase, sessionData.id, finisherNum);
+        console.log(`✅ Added 4min finisher #${finisherNum} to strength session (Day ${planDay.day_index})`);
+      } catch (error: any) {
+        console.error("❌ Failed to add 4min finisher:", error);
+        warnings.push(`Failed to add 4min finisher: ${error.message}`);
       }
     }
 
