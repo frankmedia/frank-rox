@@ -17,6 +17,8 @@ export function Timer({ mode, initialSeconds = 0, autoStart = false, onComplete,
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<number>();
   const audioContextRef = useRef<AudioContext | null>(null);
+  const longPressTimerRef = useRef<number>();
+  const [isLongPressing, setIsLongPressing] = useState(false);
   const mountedRef = useRef(true);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hasStartedRef = useRef(false);

@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RotateCw } from "lucide-react";
+import { RotateCw, Loader2 } from "lucide-react";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -33,6 +33,7 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
   
   const [maxDay, setMaxDay] = useState<number>(99); // Default to 99, will be updated from Supabase
   const [loading, setLoading] = useState(true);
+  const [switching, setSwitching] = useState(false); // New state for day switching
 
   // Fetch the max training day from Supabase plan to determine cycle length
   useEffect(() => {
@@ -93,6 +94,8 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
       newDay = "1";
     }
     
+    // Show loading state
+    setSwitching(true);
     setCurrentDay(newDay);
     
     // Save to user-specific storage
@@ -109,6 +112,11 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
     
     // Notify parent component to reload exercises (no page refresh)
     onDayChange?.(newDay);
+    
+    // Clear loading state after a short delay (data should load within 1.5s)
+    setTimeout(() => {
+      setSwitching(false);
+    }, 1500);
   };
 
   const goToNextDay = () => {
@@ -132,16 +140,20 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
       <Button
         variant="outline"
         onClick={goToPreviousDay}
-        disabled={loading}
+        disabled={loading || switching}
         title="Previous day (wraps around to last day)"
         className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 text-2xl sm:text-3xl md:text-4xl flex items-center justify-center flex-shrink-0"
       >
-        ←
+        {switching ? <Loader2 className="w-5 h-5 animate-spin" /> : "←"}
       </Button>
 
-      <Select value={currentDay} onValueChange={handleDayChange} disabled={loading}>
+      <Select value={currentDay} onValueChange={handleDayChange} disabled={loading || switching}>
         <SelectTrigger className="w-[120px] sm:w-[140px] md:w-[180px] h-10 sm:h-12 md:h-14 text-sm sm:text-base md:text-xl font-bold">
-          <RotateCw className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1 sm:mr-2" />
+          {switching ? (
+            <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1 sm:mr-2 animate-spin" />
+          ) : (
+            <RotateCw className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1 sm:mr-2" />
+          )}
           <SelectValue placeholder="Day" />
         </SelectTrigger>
         <SelectContent className="max-h-[300px]">
@@ -156,11 +168,11 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
       <Button 
         variant="outline" 
         onClick={goToNextDay}
-        disabled={loading}
+        disabled={loading || switching}
         title={`Next day (Day ${parseInt(currentDay) >= maxDay ? '1' : parseInt(currentDay) + 1})`}
         className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 text-2xl sm:text-3xl md:text-4xl flex items-center justify-center flex-shrink-0"
       >
-        →
+        {switching ? <Loader2 className="w-5 h-5 animate-spin" /> : "→"}
       </Button>
     </div>
   );

@@ -1072,36 +1072,28 @@ async function generateStrengthWorkout(
         let order = 0;
         
         // Choose finisher based on split (alternate between erg types)
+        // Use specific IDs to avoid matching "SkiErg 50/10 Intervals" or "RowErg Intervals 40/20"
+        const SKIERG_ID = "917c05c6-5adf-4d3b-887e-ff2a292fa079";
+        const ROWERG_ID = "d8f8bf07-c315-40a4-ae0c-b3fcb4db74e2";
+        
         if (split === "lower") {
-          // SkiErg intervals after lower body - use specific exercise ID
-          // TODO: Replace with correct SkiErg ID when provided
-          const skierg = await findExercise(["SkiErg", "Ski Erg"]);
-          if (skierg) {
-            // Check if we got the wrong exercise (e.g., "SkiErg Intervals")
-            if (skierg.name.toLowerCase().includes("interval")) {
-              console.warn(`⚠️ SkiErg exercise matched wrong exercise: ${skierg.name}. Please provide correct SkiErg ID.`);
-              warnings.push(`SkiErg exercise may be incorrect: ${skierg.name}`);
-            }
-            await supabase.from("session_block_items").insert({
-              block_id: cardioBlock.id,
-              exercise_id: skierg.id,
-              item_order: order++,
-              duration_sec: 900, // 15 minutes
-              notes: "15min steady-state or intervals - maintain consistent output"
-            });
-          }
+          // SkiErg after lower body
+          await supabase.from("session_block_items").insert({
+            block_id: cardioBlock.id,
+            exercise_id: SKIERG_ID,
+            item_order: order++,
+            duration_sec: 900, // 15 minutes
+            notes: "15min steady-state or intervals - maintain consistent output"
+          });
         } else {
-          // RowErg intervals after upper body
-          const rowerg = await findExercise(["RowErg", "Rower", "Row Erg"]);
-          if (rowerg) {
-            await supabase.from("session_block_items").insert({
-              block_id: cardioBlock.id,
-              exercise_id: rowerg.id,
-              item_order: order++,
-              duration_sec: 900, // 15 minutes
-              notes: "15min steady-state or intervals - focus on consistent pace"
-            });
-          }
+          // RowErg after upper body
+          await supabase.from("session_block_items").insert({
+            block_id: cardioBlock.id,
+            exercise_id: ROWERG_ID,
+            item_order: order++,
+            duration_sec: 900, // 15 minutes
+            notes: "15min steady-state or intervals - focus on consistent pace"
+          });
         }
         
         console.log(`✅ Cardio finisher added to ${split} body session`);

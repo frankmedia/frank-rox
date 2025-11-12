@@ -9,6 +9,10 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CardioWorkoutType } from "../cardioWorkoutSelector";
 
+// Exercise IDs - use these instead of findExercise to avoid matching wrong exercises
+const ROWERG_ID = "d8f8bf07-c315-40a4-ae0c-b3fcb4db74e2"; // RowErg (not "RowErg Intervals 40/20")
+const SKIERG_ID = "917c05c6-5adf-4d3b-887e-ff2a292fa079"; // SkiErg (not "SkiErg 50/10 Intervals")
+
 export interface CardioSessionOptions {
   sessionType: CardioWorkoutType;
   duration?: number; // minutes
@@ -206,21 +210,17 @@ async function buildMachineEndurance(
   if (mainBlock) {
     let order = 0;
 
-    const skierg = await findExercise(supabase, ["SkiErg"]);
-    if (skierg) {
-      await addItem(supabase, mainBlock.id, skierg.id, order++, {
-        duration: `${duration}min`,
-        notes: "Zone 2-3, tall catch, lats engaged"
-      });
-    }
+    // Use direct IDs to avoid matching "SkiErg 50/10 Intervals"
+    await addItem(supabase, mainBlock.id, SKIERG_ID, order++, {
+      duration: `${duration}min`,
+      notes: "Zone 2-3, tall catch, lats engaged"
+    });
 
-    const rower = await findExercise(supabase, ["RowErg", "Rower"]);
-    if (rower) {
-      await addItem(supabase, mainBlock.id, rower.id, order++, {
-        duration: `${duration}min`,
-        notes: "Zone 2-3, even splits, 20-24 spm"
-      });
-    }
+    // Use direct ID to avoid matching "RowErg Intervals 40/20"
+    await addItem(supabase, mainBlock.id, ROWERG_ID, order++, {
+      duration: `${duration}min`,
+      notes: "Zone 2-3, even splits, 20-24 spm"
+    });
 
     const bike = await findExercise(supabase, ["Assault Bike", "BikeErg Steady Z2"]);
     if (bike) {
@@ -280,21 +280,15 @@ async function buildSkiRowThreshold(
   if (circuitBlock) {
     let order = 0;
 
-    const skierg = await findExercise(supabase, ["SkiErg"]);
-    if (skierg) {
-      await addItem(supabase, circuitBlock.id, skierg.id, order++, {
-        distance: `${distance}m`,
-        notes: "Consistent splits, tall catch"
-      });
-    }
+    await addItem(supabase, circuitBlock.id, SKIERG_ID, order++, {
+      distance: `${distance}m`,
+      notes: "Consistent splits, tall catch"
+    });
 
-    const rower = await findExercise(supabase, ["RowErg"]);
-    if (rower) {
-      await addItem(supabase, circuitBlock.id, rower.id, order++, {
-        distance: `${distance}m`,
-        notes: "Even pacing, 20-24 spm"
-      });
-    }
+    await addItem(supabase, circuitBlock.id, ROWERG_ID, order++, {
+      distance: `${distance}m`,
+      notes: "Even pacing, 20-24 spm"
+    });
 
     // Add Air Squats for cardio conditioning
     const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
@@ -357,13 +351,10 @@ async function buildFunctionalEngine(
   if (amrapBlock) {
     let order = 0;
 
-    const rower = await findExercise(supabase, ["RowErg"]);
-    if (rower) {
-      await addItem(supabase, amrapBlock.id, rower.id, order++, {
-        distance: "500m",
-        notes: "Steady pace"
-      });
-    }
+    await addItem(supabase, amrapBlock.id, ROWERG_ID, order++, {
+      distance: "500m",
+      notes: "Steady pace"
+    });
 
     const lunges = await findExercise(supabase, ["Walking Lunges", "Lunges"]);
     if (lunges) {
@@ -496,13 +487,10 @@ async function buildSledSkiCombo(
   if (circuitBlock) {
     let order = 0;
 
-    const skierg = await findExercise(supabase, ["SkiErg"]);
-    if (skierg) {
-      await addItem(supabase, circuitBlock.id, skierg.id, order++, {
-        distance: `${skiDistance}m`,
-        notes: "Fast pace"
-      });
-    }
+    await addItem(supabase, circuitBlock.id, SKIERG_ID, order++, {
+      distance: `${skiDistance}m`,
+      notes: "Fast pace"
+    });
 
     const sledPush = await findExercise(supabase, ["Sled Push"]);
     if (sledPush) {
@@ -575,21 +563,15 @@ async function buildDescendingLadder(
     if (roundBlock) {
       let order = 0;
 
-      const skierg = await findExercise(supabase, ["SkiErg"]);
-      if (skierg) {
-        await addItem(supabase, roundBlock.id, skierg.id, order++, {
-          distance: "250m",
-          notes: "Fast pace"
-        });
-      }
+      await addItem(supabase, roundBlock.id, SKIERG_ID, order++, {
+        distance: "250m",
+        notes: "Fast pace"
+      });
 
-      const rower = await findExercise(supabase, ["RowErg"]);
-      if (rower) {
-        await addItem(supabase, roundBlock.id, rower.id, order++, {
-          distance: "250m",
-          notes: "Fast pace"
-        });
-      }
+      await addItem(supabase, roundBlock.id, ROWERG_ID, order++, {
+        distance: "250m",
+        notes: "Fast pace"
+      });
 
       const burpees = await findExercise(supabase, ["Burpees"]);
       if (burpees) {
@@ -755,13 +737,10 @@ async function buildLacticThreshold(
   if (circuitBlock) {
     let order = 0;
 
-    const rower = await findExercise(supabase, ["RowErg"]);
-    if (rower) {
-      await addItem(supabase, circuitBlock.id, rower.id, order++, {
-        distance: "500m",
-        notes: "Z4 pace, hard effort"
-      });
-    }
+    await addItem(supabase, circuitBlock.id, ROWERG_ID, order++, {
+      distance: "500m",
+      notes: "Z4 pace, hard effort"
+    });
 
     const burpeesOver = await findExercise(supabase, ["Burpees Over Rower", "Burpees"]);
     if (burpeesOver) {
@@ -786,13 +765,10 @@ async function buildLacticThreshold(
       });
     }
 
-    const skierg = await findExercise(supabase, ["SkiErg"]);
-    if (skierg) {
-      await addItem(supabase, circuitBlock.id, skierg.id, order++, {
-        distance: "250m",
-        notes: "Z5 pace, max effort"
-      });
-    }
+    await addItem(supabase, circuitBlock.id, SKIERG_ID, order++, {
+      distance: "250m",
+      notes: "Z5 pace, max effort"
+    });
 
     const kbSwing = await findExercise(supabase, ["KB Swings"]);
     if (kbSwing) {
@@ -842,13 +818,10 @@ async function buildHyroxFinisher(
   if (circuitBlock) {
     let order = 0;
 
-    const skierg = await findExercise(supabase, ["SkiErg"]);
-    if (skierg) {
-      await addItem(supabase, circuitBlock.id, skierg.id, order++, {
-        distance: `${skiDistance}m`,
-        notes: "Race pace, consistent splits"
-      });
-    }
+    await addItem(supabase, circuitBlock.id, SKIERG_ID, order++, {
+      distance: `${skiDistance}m`,
+      notes: "Race pace, consistent splits"
+    });
 
     const wallBall = await findExercise(supabase, ["Wall Balls"]);
     if (wallBall) {
