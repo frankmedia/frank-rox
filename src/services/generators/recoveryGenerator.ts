@@ -81,8 +81,12 @@ async function findExercise(
       .limit(1)
       .single();
     
-    if (data) return data;
+    if (data) {
+      console.log(`✅ Found exercise: ${data.name} (searched: ${name})`);
+      return data;
+    }
   }
+  console.warn(`⚠️ Exercise NOT FOUND: tried ${names.join(', ')}`);
   return null;
 }
 
@@ -250,16 +254,22 @@ async function buildActiveRecovery(
   );
 
   // Create yoga/mobility block
-  const { data: yogaBlock } = await supabase
+  const { data: yogaBlock, error: yogaError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "mobility",
       title: "Yoga Flow",
       parameters: { format: "standard" },
+      order_index: 1,
     })
     .select()
     .single();
+
+  if (yogaError) {
+    console.error("❌ Failed to create Yoga Flow block:", yogaError);
+    throw yogaError;
+  }
 
   if (yogaBlock) {
     let order = 0;
@@ -302,16 +312,22 @@ async function buildActiveRecovery(
   }
 
   // Create static stretching block
-  const { data: stretchBlock } = await supabase
+  const { data: stretchBlock, error: stretchError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "mobility",
       title: "Deep Stretching",
       parameters: { format: "standard" },
+      order_index: 2,
     })
     .select()
     .single();
+
+  if (stretchError) {
+    console.error("❌ Failed to create Deep Stretching block:", stretchError);
+    throw stretchError;
+  }
 
   if (stretchBlock) {
     let order = 0;
@@ -354,16 +370,22 @@ async function buildActiveRecovery(
   }
 
   // Create activation/core block
-  const { data: coreBlock } = await supabase
+  const { data: coreBlock, error: coreError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "mobility",
       title: "Light Core Activation",
       parameters: { format: "standard" },
+      order_index: 3,
     })
     .select()
     .single();
+
+  if (coreError) {
+    console.error("❌ Failed to create Light Core Activation block:", coreError);
+    throw coreError;
+  }
 
   if (coreBlock) {
     let order = 0;
