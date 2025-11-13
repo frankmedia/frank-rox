@@ -74,12 +74,24 @@ async function findExercise(
   names: string[]
 ): Promise<any> {
   for (const name of names) {
-    const { data } = await supabase
+    // Try exact match first
+    let { data } = await supabase
       .from("exercises")
       .select("*")
       .ilike("name", name)
       .limit(1)
       .single();
+    
+    // If not found, try partial match
+    if (!data) {
+      const result = await supabase
+        .from("exercises")
+        .select("*")
+        .ilike("name", `%${name}%`)
+        .limit(1)
+        .single();
+      data = result.data;
+    }
     
     if (data) {
       console.log(`✅ Found exercise: ${data.name} (searched: ${name})`);
@@ -250,132 +262,77 @@ async function buildActiveRecovery(
     supabase,
     planDayId,
     "Active Recovery",
-    "Full recovery session to promote blood flow, reduce soreness, and maintain mobility. Move slowly and mindfully. This is not a workout - focus on feeling good, not working hard."
+    "Light movement and core stability to promote blood flow and recovery. Focus on quality movement, not intensity."
   );
 
-  // Create yoga/mobility block
-  const { data: yogaBlock, error: yogaError } = await supabase
+  // Block 1: Light Cardio Warm-up
+  const { data: cardioBlock, error: cardioError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
-      block_type: "mobility",
-      title: "Yoga Flow",
+      block_type: "cardio",
+      title: "Light Cardio",
       parameters: { format: "standard" },
       order_index: 1,
     })
     .select()
     .single();
 
-  if (yogaError) {
-    console.error("❌ Failed to create Yoga Flow block:", yogaError);
-    throw yogaError;
+  if (cardioError) {
+    console.error("❌ Failed to create Light Cardio block:", cardioError);
+    throw cardioError;
   }
 
-  if (yogaBlock) {
-    let order = 0;
-
-    // Inchworms (dynamic stretch) - NOT in post-workout
-    const inchworms = await findExercise(supabase, ["Inchworms"]);
-    if (inchworms) {
-      await addItem(supabase, yogaBlock.id, inchworms.id, order++, {
-        duration: "2min",
-        notes: "6-8 reps, dynamic stretch for hamstrings and shoulders"
-      });
-    }
-
-    // Thoracic Rotation - NOT in post-workout
-    const thoracic = await findExercise(supabase, ["Thoracic Rotation (Open Book)"]);
-    if (thoracic) {
-      await addItem(supabase, yogaBlock.id, thoracic.id, order++, {
-        duration: "2min",
-        notes: "10 reps each side, slow rotations, breathe into stretch"
-      });
-    }
-
-    // Standing Hip CARs - NOT in post-workout
-    const hipCars = await findExercise(supabase, ["Standing Hip CARs"]);
-    if (hipCars) {
-      await addItem(supabase, yogaBlock.id, hipCars.id, order++, {
-        duration: "2min",
-        notes: "5 circles each direction, each leg"
-      });
-    }
-
-    // 90/90 Hip Switches - NOT in post-workout
-    const hipSwitches = await findExercise(supabase, ["90/90 Hip Switches"]);
-    if (hipSwitches) {
-      await addItem(supabase, yogaBlock.id, hipSwitches.id, order++, {
-        duration: "2min",
-        notes: "10-12 switches, control, no pain, breathe"
+  if (cardioBlock) {
+    // RowErg - 10 min @ easy pace
+    const rowerg = await findExercise(supabase, ["RowErg", "Rower", "Rowing Machine"]);
+    if (rowerg) {
+      await addItem(supabase, cardioBlock.id, rowerg.id, 0, {
+        duration: "10min",
+        notes: "Easy pace, focus on smooth rhythm and breathing"
       });
     }
   }
 
-  // Create static stretching block
-  const { data: stretchBlock, error: stretchError } = await supabase
+  // Block 2: Light Movement
+  const { data: movementBlock, error: movementError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
-      block_type: "mobility",
-      title: "Deep Stretching",
+      block_type: "bodyweight",
+      title: "Light Movement",
       parameters: { format: "standard" },
       order_index: 2,
     })
     .select()
     .single();
 
-  if (stretchError) {
-    console.error("❌ Failed to create Deep Stretching block:", stretchError);
-    throw stretchError;
+  if (movementError) {
+    console.error("❌ Failed to create Light Movement block:", movementError);
+    throw movementError;
   }
 
-  if (stretchBlock) {
+  if (movementBlock) {
     let order = 0;
 
-    // Hamstring Stretch - NOT in post-workout
-    const hamstring = await findExercise(supabase, ["Hamstring Stretch"]);
-    if (hamstring) {
-      await addItem(supabase, stretchBlock.id, hamstring.id, order++, {
-        duration: "2min",
-        notes: "Keep back straight, relax into stretch, each side"
-      });
-    }
-
-    // Quad Stretch - NOT in post-workout
-    const quad = await findExercise(supabase, ["Quad Stretch"]);
-    if (quad) {
-      await addItem(supabase, stretchBlock.id, quad.id, order++, {
-        duration: "2min",
-        notes: "Pull heel to glute, keep knees together, each side"
-      });
-    }
-
-    // Cossack Squat - NOT in post-workout
-    const cossack = await findExercise(supabase, ["Cossack Squat"]);
-    if (cossack) {
-      await addItem(supabase, stretchBlock.id, cossack.id, order++, {
-        duration: "2min",
-        notes: "8-10 reps, heel down, upright chest, side to side"
-      });
-    }
-
-    // Figure 4 Glute Stretch - NOT in post-workout
-    const glute = await findExercise(supabase, ["Figure of 4 Stretch"]);
-    if (glute) {
-      await addItem(supabase, stretchBlock.id, glute.id, order++, {
-        duration: "2min",
-        notes: "Seated or lying, deep hold, each side"
+    // Air Squats - 2×15
+    const airSquat = await findExercise(supabase, ["Air Squat", "Bodyweight Squat"]);
+    if (airSquat) {
+      await addItem(supabase, movementBlock.id, airSquat.id, order++, {
+        sets: 2,
+        reps: 15,
+        notes: "Slow and controlled, full depth"
       });
     }
   }
 
-  // Create activation/core block
+  // Block 3: Core Stability
   const { data: coreBlock, error: coreError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
-      block_type: "mobility",
-      title: "Light Core Activation",
+      block_type: "core",
+      title: "Core Stability",
       parameters: { format: "standard" },
       order_index: 3,
     })
@@ -383,51 +340,45 @@ async function buildActiveRecovery(
     .single();
 
   if (coreError) {
-    console.error("❌ Failed to create Light Core Activation block:", coreError);
+    console.error("❌ Failed to create Core Stability block:", coreError);
     throw coreError;
   }
 
   if (coreBlock) {
     let order = 0;
 
-    // Bird Dog - NOT in post-workout
+    // Bird Dog - 2×10 each side
     const birdDog = await findExercise(supabase, ["Bird Dog"]);
     if (birdDog) {
       await addItem(supabase, coreBlock.id, birdDog.id, order++, {
-        duration: "2min",
-        notes: "10 reps each side, reach long, hips level, controlled"
+        sets: 2,
+        reps: 10,
+        notes: "10 reps each side, reach long, hips level"
       });
     }
 
-    // Dead Bug - NOT in post-workout
+    // Dead Bug - 2×10 each side
     const deadBug = await findExercise(supabase, ["Dead Bug"]);
     if (deadBug) {
       await addItem(supabase, coreBlock.id, deadBug.id, order++, {
-        duration: "2min",
-        notes: "10 reps each side, low back gently down, breathe"
+        sets: 2,
+        reps: 10,
+        notes: "10 reps each side, low back down, breathe"
       });
     }
 
-    // Plank - NOT in post-workout (replaces Glute Bridge to avoid duplication)
-    const plank = await findExercise(supabase, ["Plank"]);
-    if (plank) {
-      await addItem(supabase, coreBlock.id, plank.id, order++, {
-        duration: "1min",
-        notes: "Hold strong position, breathe steadily"
+    // Side Plank - 2×30 sec per side
+    const sidePlank = await findExercise(supabase, ["Side Plank"]);
+    if (sidePlank) {
+      await addItem(supabase, coreBlock.id, sidePlank.id, order++, {
+        sets: 2,
+        duration: "30sec",
+        notes: "30 sec per side, stack hips, strong position"
       });
     }
 
-    // Ankle Dorsiflexion Mobilization (ankle mobility and balance)
-    const ankleDorsi = await findExercise(supabase, ["Ankle Dorsiflexion Mobilization", "Ankle Dorsiflexion"]);
-    if (ankleDorsi) {
-      await addItem(supabase, coreBlock.id, ankleDorsi.id, order++, {
-        duration: "2min",
-        notes: "Each ankle, improve range of motion for squats and running"
-      });
-    }
-
-    // Foam Roller on Mid Back (recovery and posture reset)
-    const foamRoller = await findExercise(supabase, ["Foam Roller on Mid Back", "Foam Roller Mid Back"]);
+    // Foam Roller on Mid Back - 2 min
+    const foamRoller = await findExercise(supabase, ["Foam Roller", "Foam Roller on Mid Back", "Foam Roller Mid Back"]);
     if (foamRoller) {
       await addItem(supabase, coreBlock.id, foamRoller.id, order++, {
         duration: "2min",
