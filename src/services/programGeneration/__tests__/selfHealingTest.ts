@@ -19,8 +19,8 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABAS
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const MAX_ITERATIONS = 1;
-const TEST_COUNT = 10; // Test 10 random configurations
+const MAX_ITERATIONS = 2;
+const TEST_COUNT = 20; // Test 20 random configurations to find all bugs
 
 interface TestUser {
   id: number;
