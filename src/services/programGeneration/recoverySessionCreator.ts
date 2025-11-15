@@ -7,6 +7,46 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+const SHORT_RECOVERY_SESSION_TITLE = "Recovery / Mobility (Short)";
+
+const SHORT_RECOVERY_EXERCISES: Array<{
+  name: string;
+  exerciseId: string;
+  durationSec: number;
+  notes: string;
+}> = [
+  {
+    name: "Inchworms",
+    exerciseId: "c61ef2d5-014d-4e92-bd5e-201a2e8f0072",
+    durationSec: 120,
+    notes: "Walk hands out to a strong plank, heels stay heavy on the way back.",
+  },
+  {
+    name: "Hip Flexor Stretch Right",
+    exerciseId: "74f1bab3-ef99-48e0-95f5-4845d09e7e2f",
+    durationSec: 120,
+    notes: "Posterior pelvic tilt, squeeze glute, breathe deep into the front of the hip.",
+  },
+  {
+    name: "Hamstring Stretch",
+    exerciseId: "ff5cef72-08a8-4168-bb47-5ae49234c463",
+    durationSec: 120,
+    notes: "Long spine, hinge at the hips, relax shoulders and keep gentle tension.",
+  },
+  {
+    name: "Foam Roller Mid Back",
+    exerciseId: "4d01a06b-1ce3-48ee-a6cc-9735d4b92e5c",
+    durationSec: 120,
+    notes: "Slow rolls through mid/upper back. Support head, breathe into the floor.",
+  },
+  {
+    name: "Standing Hip CARs",
+    exerciseId: "3d755717-f706-4b08-8b8c-8586083e6371",
+    durationSec: 120,
+    notes: "Controlled articular rotations. Stay tall, limit torso sway, smooth circles.",
+  },
+];
+
 /**
  * Create a recovery session for a rest day
  * Returns the session ID or throws an error
@@ -15,15 +55,15 @@ export async function createRecoverySessionForRestDay(
   supabase: SupabaseClient,
   planDayId: string
 ): Promise<string> {
-  console.log(`🧘 Creating Active Recovery session for plan_day: ${planDayId}`);
+  console.log(`🧘 Creating ${SHORT_RECOVERY_SESSION_TITLE} session for plan_day: ${planDayId}`);
   
   // 1. Create session
   const { data: session, error: sessionError } = await supabase
     .from("sessions")
     .insert({
       plan_day_id: planDayId,
-      name: "Active Recovery",
-      notes: "Full recovery session to promote blood flow, reduce soreness, and maintain mobility. Move slowly and mindfully.",
+      name: SHORT_RECOVERY_SESSION_TITLE,
+      notes: "Short recovery circuit. Spend two full minutes on each drill with relaxed breathing.",
       order_index: 1,
     })
     .select()
@@ -41,8 +81,8 @@ export async function createRecoverySessionForRestDay(
     .insert({
       session_id: session.id,
       block_type: "mobility",
-      title: "Mobility & Stretching",
-      parameters: { format: "standard" },
+      title: "Mobility & Stretching · Short",
+      parameters: { format: "timed", focus: "recovery" },
       order_index: 1,
     })
     .select()
@@ -53,42 +93,22 @@ export async function createRecoverySessionForRestDay(
   }
   
   // 3. Add mobility exercises (HARDCODED - no database lookups that can fail)
-  const mobilityExercises = [
-    { name: "Inchworms", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "Inchworms") },
-    { name: "Thoracic Rotation (Open Book)", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "Thoracic Rotation") },
-    { name: "Standing Hip CARs", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "Standing Hip CARs") },
-    { name: "90/90 Hip Switches", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "90/90 Hip Switches") },
-    { name: "Hamstring Stretch", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "Hamstring Stretch") },
-    { name: "Quad Stretch", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "Quad Stretch") },
-    { name: "Cossack Squat", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "Cossack Squat") },
-    { name: "Figure of 4 Stretch", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "Figure of 4 Stretch") },
-    { name: "Bird Dog", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "Bird Dog") },
-    { name: "Dead Bug", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "Dead Bug") },
-    { name: "Plank", duration: "1min", exerciseId: await findExerciseOrWarn(supabase, "Plank") },
-    { name: "Ankle Dorsiflexion Mobilization", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "Ankle Dorsiflexion") },
-    { name: "Foam Roller On Mid Back", duration: "2min", exerciseId: await findExerciseOrWarn(supabase, "Foam Roller") },
-  ];
-  
   let order = 0;
-  for (const exercise of mobilityExercises) {
+  for (const exercise of SHORT_RECOVERY_EXERCISES) {
     if (!exercise.exerciseId) {
-      console.warn(`⚠️ Skipping ${exercise.name} - not found in database`);
+      console.warn(`⚠️ Missing exercise ID for ${exercise.name}, skipping`);
       continue;
     }
-    
-    const durationSeconds = exercise.duration.includes('min') 
-      ? parseInt(exercise.duration) * 60 
-      : parseInt(exercise.duration);
-    
+
     const { error: itemError } = await supabase
       .from("session_block_items")
       .insert({
         block_id: mobilityBlock.id,
         exercise_id: exercise.exerciseId,
         item_order: order++,
-        duration_sec: durationSeconds,
+        duration_sec: exercise.durationSec,
         status: "draft",
-        notes: `Hold for ${exercise.duration}, breathe deeply`,
+        notes: exercise.notes,
       });
     
     if (itemError) {
@@ -100,28 +120,6 @@ export async function createRecoverySessionForRestDay(
   console.log(`✅ Added ${order} mobility exercises to recovery session`);
   
   return session.id;
-}
-
-/**
- * Find exercise by name, return null if not found (don't throw)
- */
-async function findExerciseOrWarn(
-  supabase: SupabaseClient,
-  searchTerm: string
-): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("exercises")
-    .select("id, name")
-    .ilike("name", `%${searchTerm}%`)
-    .limit(1)
-    .single();
-  
-  if (error || !data) {
-    console.warn(`⚠️ Exercise not found: "${searchTerm}"`);
-    return null;
-  }
-  
-  return data.id;
 }
 
 /**
@@ -152,7 +150,7 @@ export async function createRecoverySessionsForRestDays(
         .from("plan_days")
         .update({ 
           is_rest: true,
-          description: "Rest & Recovery"
+          description: SHORT_RECOVERY_SESSION_TITLE
         })
         .eq("id", planDay.id);
       

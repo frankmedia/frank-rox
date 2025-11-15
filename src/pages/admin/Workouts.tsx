@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabaseClient";
+import { createEmptyPlanWithDays } from "@/services/programmeToDatabase";
 
 interface Plan { id: string; name: string; cycle_days?: number; created_at?: string }
 
@@ -32,14 +33,11 @@ const Workouts = () => {
       if (!name) return;
       setError(null);
       setLoading(true);
-      // 1) Create plan
-      const { data: plan, error: planErr } = await supabase.from("plans").insert({ name, cycle_days: 14 }).select("id").single();
-      if (planErr) throw planErr;
-      const planId = (plan as any).id;
-      // 2) Seed 14 days
-      const days = Array.from({ length: 14 }, (_, i) => ({ plan_id: planId, day_index: i, label: `Day ${i + 1}` }));
-      const { error: daysErr } = await supabase.from("plan_days").insert(days);
-      if (daysErr) throw daysErr;
+      const { planId } = await createEmptyPlanWithDays(supabase, null, {
+        name,
+        cycleDays: 14,
+      });
+      console.log("✅ Created plan shell", planId);
       await loadPlans();
     } catch (e: any) {
       setError(e?.message || "Failed to create plan");

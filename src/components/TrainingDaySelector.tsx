@@ -50,6 +50,8 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
           .select('id')
           .eq('client_id', authUser.clientId)
           .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
           .single();
 
         if (!plan) {
@@ -136,13 +138,18 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
   };
 
   return (
-    <div className="flex items-center gap-1 sm:gap-2">
+    <div className="flex items-center gap-2 sm:gap-3">
       <Button
         variant="outline"
         onClick={goToPreviousDay}
         disabled={loading || switching}
         title="Previous day (wraps around to last day)"
-        className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 text-2xl sm:text-3xl md:text-4xl flex items-center justify-center flex-shrink-0"
+        className="p-0 flex items-center justify-center flex-shrink-0 rounded-full border-2 border-white/40"
+        style={{
+          width: "3.75rem",
+          height: "3.75rem",
+          fontSize: "2.5rem",
+        }}
       >
         {switching ? <Loader2 className="w-5 h-5 animate-spin" /> : "←"}
       </Button>
@@ -170,7 +177,12 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
         onClick={goToNextDay}
         disabled={loading || switching}
         title={`Next day (Day ${parseInt(currentDay) >= maxDay ? '1' : parseInt(currentDay) + 1})`}
-        className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 text-2xl sm:text-3xl md:text-4xl flex items-center justify-center flex-shrink-0"
+        className="p-0 flex items-center justify-center flex-shrink-0 rounded-full border-2 border-white/40"
+        style={{
+          width: "3.75rem",
+          height: "3.75rem",
+          fontSize: "2.5rem",
+        }}
       >
         {switching ? <Loader2 className="w-5 h-5 animate-spin" /> : "→"}
       </Button>

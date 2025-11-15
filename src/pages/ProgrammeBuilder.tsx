@@ -2,6 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "@/utils/supabaseClient";
+import {
+  getRunPlanForIndex,
+  getRunTitleForKind,
+  getRunEffortForKind,
+  type BlockType,
+  type GoalType,
+  type HyroxProfile,
+  type RunPlan,
+} from "@/lib/runPlanConfig";
 import { useAuth } from "@/contexts/AuthContext";
 import { createPlanInDatabase } from "@/services/programmeToDatabase";
 import { toast } from "sonner";
@@ -13,6 +22,14 @@ type RunProfile = {
   hasHills?: boolean;
 };
 
+type HyroxAccessoryKind =
+  | "sled-focus"
+  | "wall-ball-focus"
+  | "lunges-focus"
+  | "farmers-focus"
+  | "burpees-focus"
+  | "general-station-technique";
+
 type SessionBlock = {
   day: string;
   type: "run" | "strength" | "cardio" | "recovery";
@@ -21,6 +38,9 @@ type SessionBlock = {
   pace?: string;
   effort: "easy" | "moderate" | "hard";
   detail?: string;
+  meta?: Record<string, any>;
+  blockType?: BlockType;
+  hyroxAccessoryType?: HyroxAccessoryKind;
 };
 
 type UserPreferences = {
@@ -36,7 +56,86 @@ type UserPreferences = {
   isTaper?: boolean;
   taperWeek?: 1 | 2; // Week -2 or Week -1
   equipment?: string[]; // For cardio workout selection
+  blockType: BlockType;
+  hyroxProfile: HyroxProfile;
 };
+
+export type { UserPreferences, HyroxProfile };
+
+type MachineLadderConfig = {
+  stepsKm: number[];
+};
+
+function getBlockType(weeksToRace?: number | null, hasRacedHyrox?: boolean): BlockType {
+  if (!weeksToRace || weeksToRace >= 20) {
+    return hasRacedHyrox ? "base" : "onboarding";
+  }
+  if (weeksToRace >= 12) return "base";
+  if (weeksToRace >= 4) return "build";
+  return "peak";
+}
+
+function getHyroxAccessoryKind(profile: HyroxProfile): HyroxAccessoryKind {
+  const weak = profile?.weakStations ?? [];
+  if (!weak.length) return "general-station-technique";
+
+  const first = weak[0];
+  switch (first) {
+    case "sled-push":
+    case "sled-pull":
+      return "sled-focus";
+    case "wall-balls":
+      return "wall-ball-focus";
+    case "lunges":
+      return "lunges-focus";
+    case "farmers-carry":
+      return "farmers-focus";
+    case "burpee-broad-jumps":
+      return "burpees-focus";
+    default:
+      return "general-station-technique";
+  }
+}
+
+function getMachineLadderConfig(
+  blockType: BlockType,
+  profile: HyroxProfile
+): MachineLadderConfig {
+  const hasRaced = profile?.hasRacedHyrox ?? false;
+
+  if (blockType === "onboarding") {
+    return { stepsKm: [0.5, 0.5] };
+  }
+
+  if (blockType === "base") {
+    return { stepsKm: hasRaced ? [0.5, 0.75] : [0.5, 0.5] };
+  }
+
+  if (blockType === "build") {
+    return { stepsKm: hasRaced ? [0.5, 0.75, 1.0] : [0.5, 0.75] };
+  }
+
+  // peak
+  return { stepsKm: [0.5, 0.5] };
+}
+
+function addHyroxAccessorySession(
+  sessions: SessionBlock[],
+  day: string,
+  blockType: BlockType,
+  accessoryKind: HyroxAccessoryKind
+) {
+  sessions.push({
+    day,
+    type: "cardio",
+    title: "HYROX Accessory",
+    effort: "easy",
+    detail: `hyrox-accessory:${accessoryKind}`,
+    blockType,
+    hyroxAccessoryType: accessoryKind,
+  });
+}
+
 
 async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[]> {
   const sessions: SessionBlock[] = [];
@@ -44,6 +143,7 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
   let runs = prefs.runSessionsPerWeek ?? 2; // Use ?? to allow 0
   const focus = prefs.focus || "base";
   const focusAreas = new Set(prefs.focusAreas.map(f => f.toLowerCase()));
+  let hyroxAccessoryScheduled = false;
   
   // SMART SESSION DISTRIBUTION
   // Calculate how many sessions we need and adjust if it exceeds training days
@@ -57,6 +157,12 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
   let totalRequested = runs + standaloneCardio + requestedStrength;
   
   console.log("🏗️ BUILDING PROGRAMME:");
+  const hyroxProfile = prefs.hyroxProfile;
+  const shouldProtectRuns =
+    !!hyroxProfile?.hasRacedHyrox ||
+    hyroxProfile?.goalType === "improve-time";
+  const minPriorityRuns = shouldProtectRuns ? Math.min(runs, 2) : 0;
+
   console.log("  Training days:", trainingDays);
   console.log("  Runs per week:", runs);
   console.log("  Cardio per week:", requestedCardio);
@@ -64,33 +170,52 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
   console.log("  Standalone cardio:", standaloneCardio);
   console.log("  Total sessions needed:", totalRequested);
   console.log("  Focus areas:", Array.from(focusAreas));
+  console.log("  Block type:", prefs.blockType);
+  console.log("  HYROX profile:", prefs.hyroxProfile);
   
   // PRIORITY SYSTEM: If total sessions exceed training days, reduce in order:
   // 1. Reduce runs first (lowest priority)
   // 2. Then reduce cardio (medium priority)
   // 3. Keep strength (highest priority - never reduce below 2)
   if (totalRequested > trainingDays) {
-    const excess = totalRequested - trainingDays;
-    
-    // Step 1: Reduce runs first
-    const runsToRemove = Math.min(runs, excess);
-    runs = runs - runsToRemove;
-    let remaining = excess - runsToRemove;
-    
-    // Step 2: If still too many sessions, reduce cardio
-    if (remaining > 0) {
-      const cardioToRemove = Math.min(standaloneCardio, remaining);
-      standaloneCardio = standaloneCardio - cardioToRemove;
-      requestedCardio = standaloneCardio;
-      remaining = remaining - cardioToRemove;
-    }
-    
-    // Recalculate total
+    let excess = totalRequested - trainingDays;
+    const originalRuns = runs;
+    const originalCardio = standaloneCardio;
+    const reduceOrder: Array<"runs" | "cardio"> = shouldProtectRuns
+      ? ["cardio", "runs"]
+      : ["runs", "cardio"];
+
+    const tryReduce = (type: "runs" | "cardio") => {
+      if (excess <= 0) return;
+
+      if (type === "runs") {
+        const maxRemovable = Math.max(0, runs - minPriorityRuns);
+        if (maxRemovable <= 0) return;
+        const remove = Math.min(maxRemovable, excess);
+        if (remove > 0) {
+          runs -= remove;
+          excess -= remove;
+        }
+      } else {
+        const maxRemovable = Math.max(0, standaloneCardio);
+        if (maxRemovable <= 0) return;
+        const remove = Math.min(maxRemovable, excess);
+        if (remove > 0) {
+          standaloneCardio -= remove;
+          requestedCardio = standaloneCardio;
+          excess -= remove;
+        }
+      }
+    };
+
+    reduceOrder.forEach(type => tryReduce(type));
+
+    // If we still have excess (no more cardio/runs to trim) leave as-is (strength stays)
     totalRequested = runs + standaloneCardio + requestedStrength;
-    
+
     console.log(`⚠️ Too many sessions! Adjusted to fit ${trainingDays} training days:`);
-    console.log(`  - Runs: ${prefs.runSessionsPerWeek} → ${runs}`);
-    console.log(`  - Cardio: ${prefs.cardioSessionsPerWeek ?? 2} → ${standaloneCardio}`);
+    console.log(`  - Runs: ${originalRuns} → ${runs} ${shouldProtectRuns ? "(protected minimum)" : ""}`);
+    console.log(`  - Cardio: ${originalCardio} → ${standaloneCardio}`);
     console.log(`  - Strength: ${requestedStrength} (kept)`);
     console.log(`  - Final total: ${totalRequested}`);
   }
@@ -137,58 +262,63 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
     return availableDays.find(d => !usedDays.has(d)) || availableDays[0];
   };
 
+  const addPlannedRunSession = (day: string, plan: RunPlan) => {
+    const distanceLabel = plan.distanceLabel ?? `${plan.distanceKm}km`;
+    sessions.push({
+      day,
+      type: "run",
+      title: getRunTitleForKind(plan.kind),
+      distance: distanceLabel,
+      effort: getRunEffortForKind(plan.kind),
+      detail: `run:${plan.kind}:${plan.distanceKm}`,
+      blockType: prefs.blockType,
+      meta: {
+        runDescription: plan.description,
+        runDistanceLabel: distanceLabel,
+      },
+    });
+    usedDays.add(day);
+  };
+
   // 1. Add Running Sessions
   if (runs > 0) { // Only add runs if user wants them
+    const adjustPlanForVolume = (plan: RunPlan): RunPlan => {
+      if (volumeModifier === 1) return plan;
+      const scaledKm = Math.max(3, Math.round(plan.distanceKm * volumeModifier));
+      return {
+        ...plan,
+        distanceKm: scaledKm,
+      };
+    };
+
     // Long run (always on Saturday if available)
     const longRunDay = getNextDay(["Saturday", "Sunday"]);
-    
-    // Calculate adjusted distance based on volume modifier
-    let baseDistance = focus === "base" ? 7 : focus === "build" ? 9 : 11; // km
-    let adjustedDistance = Math.round(baseDistance * volumeModifier);
-    
-    // For taper, suggest low-impact alternative
-    const runTitle = useLowImpact ? "Long Cardio (Low Impact)" : "Long Run";
-    const runDetail = useLowImpact 
-      ? `${adjustedDistance}km equivalent on bike or rower (low impact for taper)`
-      : "Build aerobic base with steady-state running";
-    
-    sessions.push({
-      day: longRunDay,
-      type: useLowImpact ? "cardio" : "run",
-      title: runTitle,
-      distance: `${adjustedDistance}km`,
-      pace: "Zone 2 (conversational)",
-      effort: "easy",
-      detail: runDetail
-    });
-    usedDays.add(longRunDay);
+    const baseLongRunPlan = getRunPlanForIndex(0, prefs.blockType, prefs.hyroxProfile);
+    const volumeAdjustedRunPlan = adjustPlanForVolume(baseLongRunPlan);
 
-    // Intervals
+    if (useLowImpact) {
+      const lowImpactDistance = Math.max(3, Math.round(volumeAdjustedRunPlan.distanceKm));
+      sessions.push({
+        day: longRunDay,
+        type: "cardio",
+        title: "Long Cardio (Low Impact)",
+        distance: `${lowImpactDistance}km`,
+        pace: "Zone 2 (conversational)",
+        effort: "easy",
+        detail: `${lowImpactDistance}km equivalent on bike or rower (low impact for taper)`
+      });
+      usedDays.add(longRunDay);
+    } else {
+      addPlannedRunSession(longRunDay, volumeAdjustedRunPlan);
+    }
+
+    // Second run (interval / steady)
     if (runs >= 2) {
       const intervalDay = getNextDay(["Tuesday", "Wednesday"]);
-      
-      // Reduce interval volume for deload/taper
-      let baseReps = focus === "race-prep" ? 6 : focus === "build" ? 8 : 6;
-      let adjustedReps = Math.max(2, Math.round(baseReps * volumeModifier)); // Min 2 reps
-      let repDistance = focus === "race-prep" ? "1km" : "500m";
-      
-      // For taper week -1, make it very short
-      if (prefs.isTaper && prefs.taperWeek === 2) {
-        adjustedReps = Math.min(adjustedReps, 3); // Max 3 reps in week -1
-      }
-      
-      sessions.push({
-        day: intervalDay,
-        type: "run",
-        title: "Intervals",
-        distance: `${adjustedReps}×${repDistance}`,
-        pace: "Race pace",
-        effort: prefs.isTaper ? "moderate" : "hard",
-        detail: prefs.isTaper 
-          ? "Short, sharp quality session - keep it controlled"
-          : "90sec rest between reps, focus on maintaining pace"
-      });
-      usedDays.add(intervalDay);
+      const plan = adjustPlanForVolume(
+        getRunPlanForIndex(1, prefs.blockType, prefs.hyroxProfile)
+      );
+      addPlannedRunSession(intervalDay, plan);
     }
 
     // Tempo run
@@ -267,6 +397,11 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
         effort: "hard"
       });
       usedDays.add(upperDay);
+
+      if (!hyroxAccessoryScheduled) {
+        addHyroxAccessorySession(sessions, upperDay, prefs.blockType, getHyroxAccessoryKind(prefs.hyroxProfile));
+        hyroxAccessoryScheduled = true;
+      }
     }
 
     if (strengthDays >= 3) {
@@ -304,21 +439,32 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
     if (cardioDays >= 1) {
       const cardioDay = getNextDay(["Tuesday", "Thursday"]);
       
-      // Select workout based on equipment, block, week, etc.
-      const { type: workout1Type } = selectCardioWorkout(
-        1, // Block 1
-        1, // Week 1
-        1, // First cardio session
+      const selection = selectCardioWorkout(
+        1,
+        1,
+        1,
         equipment,
         trainingDays
       );
+      const workout1Type = selection.type;
+      const meta: Record<string, any> = {
+        cardioType: workout1Type,
+        weekNumber: 1,
+        intensityModifier: selection.intensityModifier,
+      };
+      
+      if (workout1Type === "hybrid-pyramid") {
+        meta.ladderStepsKm = getMachineLadderConfig(prefs.blockType, prefs.hyroxProfile).stepsKm;
+      }
       
       sessions.push({
         day: cardioDay,
         type: "cardio",
         title: getWorkoutName(workout1Type),
-        detail: workout1Type, // Store workout type for generator
-        effort: "hard"
+        detail: workout1Type,
+        effort: "hard",
+        meta,
+        blockType: prefs.blockType,
       });
       usedDays.add(cardioDay);
     }
@@ -326,21 +472,31 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
     if (cardioDays >= 2) {
       const engineDay = getNextDay(["Friday", "Wednesday"]);
       
-      // Select different workout for second session
-      const { type: workout2Type } = selectCardioWorkout(
-        1, // Block 1
-        1, // Week 1
-        2, // Second cardio session
+      const selection = selectCardioWorkout(
+        1,
+        1,
+        2,
         equipment,
         trainingDays
       );
+      const workout2Type = selection.type;
+      const meta: Record<string, any> = {
+        cardioType: workout2Type,
+        weekNumber: 1,
+        intensityModifier: selection.intensityModifier,
+      };
+      if (workout2Type === "hybrid-pyramid") {
+        meta.ladderStepsKm = getMachineLadderConfig(prefs.blockType, prefs.hyroxProfile).stepsKm;
+      }
       
       sessions.push({
         day: engineDay,
         type: "cardio",
         title: getWorkoutName(workout2Type),
-        detail: workout2Type, // Store workout type for generator
-        effort: "moderate"
+        detail: workout2Type,
+        effort: "moderate",
+        meta,
+        blockType: prefs.blockType,
       });
       usedDays.add(engineDay);
     }
@@ -348,20 +504,31 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
     if (cardioDays >= 3) {
       const cardioDay3 = getNextDay(["Wednesday", "Saturday"]);
       
-      const { type: workout3Type } = selectCardioWorkout(
-        1, // Block 1
-        1, // Week 1
-        3, // Third cardio session
+      const selection = selectCardioWorkout(
+        1,
+        1,
+        3,
         equipment,
         trainingDays
       );
+      const workout3Type = selection.type;
+      const meta: Record<string, any> = {
+        cardioType: workout3Type,
+        weekNumber: 1,
+        intensityModifier: selection.intensityModifier,
+      };
+      if (workout3Type === "hybrid-pyramid") {
+        meta.ladderStepsKm = getMachineLadderConfig(prefs.blockType, prefs.hyroxProfile).stepsKm;
+      }
       
       sessions.push({
         day: cardioDay3,
         type: "cardio",
         title: getWorkoutName(workout3Type),
         detail: workout3Type,
-        effort: "moderate"
+        effort: "moderate",
+        meta,
+        blockType: prefs.blockType,
       });
       usedDays.add(cardioDay3);
     }
@@ -369,20 +536,31 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
     if (cardioDays >= 4) {
       const cardioDay4 = getNextDay(["Monday", "Saturday"]);
       
-      const { type: workout4Type } = selectCardioWorkout(
-        1, // Block 1
-        1, // Week 1
-        4, // Fourth cardio session
+      const selection = selectCardioWorkout(
+        1,
+        1,
+        4,
         equipment,
         trainingDays
       );
+      const workout4Type = selection.type;
+      const meta: Record<string, any> = {
+        cardioType: workout4Type,
+        weekNumber: 1,
+        intensityModifier: selection.intensityModifier,
+      };
+      if (workout4Type === "hybrid-pyramid") {
+        meta.ladderStepsKm = getMachineLadderConfig(prefs.blockType, prefs.hyroxProfile).stepsKm;
+      }
       
       sessions.push({
         day: cardioDay4,
         type: "cardio",
         title: getWorkoutName(workout4Type),
         detail: workout4Type,
-        effort: "easy"
+        effort: "easy",
+        meta,
+        blockType: prefs.blockType,
       });
       usedDays.add(cardioDay4);
     }
@@ -406,10 +584,15 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
     });
   }
 
-  return sessions.sort((a, b) => {
+  const sorted = sessions.sort((a, b) => {
     const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     return dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
   });
+  return sorted.map(session => ({ ...session, blockType: prefs.blockType }));
+}
+
+export async function buildFullProgrammeForTesting(prefs: UserPreferences) {
+  return buildFullProgramme(prefs);
 }
 
 export default function ProgrammeBuilder() {
@@ -490,22 +673,46 @@ export default function ProgrammeBuilder() {
         ? Math.floor((new Date(answers.eventDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
         : null;
 
+      const hasRacedHyrox = !!answers.hasRacedHyrox;
+      const hyroxProfile: HyroxProfile = {
+        hasRacedHyrox,
+        hyroxBestTime: answers.hyroxBestTime ?? undefined,
+        weakStations: Array.isArray(answers.weakStations) ? answers.weakStations : [],
+        goalType: answers.goalType ?? (hasRacedHyrox ? "improve-time" : "first-time"),
+        weeksToRace: weeksToEvent,
+      };
+      const blockType = getBlockType(weeksToEvent, hasRacedHyrox);
+      console.log("🧭 HYROX context:", hyroxProfile, "→ blockType:", blockType);
+
       let focus: "base" | "build" | "race-prep" = "base";
       if (weeksToEvent) {
         if (weeksToEvent <= 4) focus = "race-prep";
         else if (weeksToEvent <= 8) focus = "build";
       }
 
-      // Get current block number from localStorage (or default to 1)
-      const lastProgramme = localStorage.getItem("current_programme");
+      // Get current block number from database (not localStorage!)
+      // For brand new users, this ensures we start fresh
       let blockNumber = 1;
-      if (lastProgramme) {
-        try {
-          const parsed = JSON.parse(lastProgramme);
-          blockNumber = (parsed.blockNumber || 0) + 1; // Increment block number
-        } catch (e) {
-          console.warn("Could not parse last programme, defaulting to block 1");
+      try {
+        const { data: existingPlans } = await supabase
+          .from("plans")
+          .select("id, name")
+          .eq("client_id", user.clientId)
+          .order("created_at", { ascending: false });
+        
+        if (existingPlans && existingPlans.length > 0) {
+          // User has existing plans, increment block number
+          blockNumber = existingPlans.length + 1;
+          console.log(`📊 Found ${existingPlans.length} existing plan(s), starting Block ${blockNumber}`);
+        } else {
+          // Brand new user, clear any stale localStorage
+          console.log("🆕 Brand new user, clearing localStorage and starting Block 1");
+          localStorage.removeItem("current_programme");
+          localStorage.removeItem("current_plan_id");
+          localStorage.removeItem(`currentTrainingDay_${user.username}`);
         }
+      } catch (e) {
+        console.warn("Could not fetch existing plans, defaulting to block 1:", e);
       }
 
       // Determine if this is a DELOAD block (Block 6, 12, 18, etc.)
@@ -529,7 +736,9 @@ export default function ProgrammeBuilder() {
         isDeload,
         isTaper,
         taperWeek: taperWeek as 1 | 2 | undefined,
-        equipment: answers.equipment || prefs.equipment || [] // From onboarding answers (not prefs)
+        equipment: answers.equipment || prefs.equipment || [], // From onboarding answers (not prefs)
+        blockType,
+        hyroxProfile,
       };
       
       console.log(`🎒 User equipment:`, userPrefs.equipment);
@@ -541,6 +750,7 @@ export default function ProgrammeBuilder() {
       const programme = {
         sessions: allSessions,
         preferences: userPrefs,
+        hyroxProfile,
         generatedAt: new Date().toISOString(),
         blockNumber,
         focus,

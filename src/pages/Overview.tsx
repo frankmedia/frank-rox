@@ -1411,6 +1411,7 @@ const Overview = () => {
           )}
           
           {daySummaries.map((summary) => {
+            const displayDay = summary.day >= 1 ? summary.day : summary.day + 1;
             const displayExercises = flattenExercisesForDisplay(summary.exercises);
             const completedCount = getCompletedExerciseCount(summary.exerciseLogs, summary.totalExercises);
 
@@ -1418,7 +1419,7 @@ const Overview = () => {
               <Card
                 key={summary.day}
                 className={`group relative cursor-pointer rounded-2xl border border-zinc-800/70 bg-zinc-950/70 p-4 sm:p-5 shadow-[0_20px_45px_-30px_rgba(0,0,0,0.8)] transition-colors hover:border-yellow-500/40`}
-                onClick={() => handleDayClick(summary.day)}
+                onClick={() => handleDayClick(displayDay)}
               >
                 {summary.isCompleted && (
                   <div className="absolute top-3 right-3">
@@ -1438,12 +1439,12 @@ const Overview = () => {
                           color: summary.isRestDay ? "#e4e4e7" : "#000",
                         }}
                       >
-                        {summary.day}
+                        {displayDay}
                       </div>
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-lg font-bold text-foreground">
-                            Day {summary.day}
+                            Day {displayDay}
                           </h3>
                           {summary.isRestDay && (
                             <Badge className="rounded-full bg-blue-500/15 text-blue-200 border border-blue-500/30 text-[10px] uppercase tracking-wide">

@@ -11,6 +11,7 @@ All colors MUST be HSL.
     /* Frank Rox Design System - Dark Gym Tracker */
     --background: 220 15% 8%;
     --foreground: 0 0% 98%;
+    --app-height: 100vh;
 
     --card: 220 15% 12%;
     --card-foreground: 0 0% 98%;
@@ -99,7 +100,7 @@ All colors MUST be HSL.
 
   /* Root element gets safe area insets */
   #root {
-    min-height: 100vh;
+    min-height: var(--app-height, 100vh);
     /* Allow all touch interactions */
     touch-action: auto;
     /* Solid dark background fills entire screen */
@@ -186,6 +187,7 @@ All colors MUST be HSL.
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+    min-height: calc(4rem + env(safe-area-inset-bottom));
   }
 
   /* Swipe-enabled container - allows vertical scroll but enables horizontal swipe detection */

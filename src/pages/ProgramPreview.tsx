@@ -119,7 +119,7 @@ function buildWeek(pref: TrainingPreferences, desiredTrainingDays: number, weekN
     schedule.push({
       title: "Long Run (🏃)",
       subtitle: "Aerobic base development",
-      detail: isWeek2 ? "8km steady @ Z2 pace" : "7km steady @ Z2 pace",
+      detail: isWeek2 ? "6km steady @ Z2 pace" : "5km steady @ Z2 pace",
       blocks: [{ type: "run", icon: RunnerIcon, intensity: "easy" }],
       dayIntensity: "moderate"
     });
@@ -776,7 +776,7 @@ const ProgramPreview = () => {
           </div>
         )}
       </main>
-      <div className="fixed left-0 right-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]">
+      <div className="fixed left-0 right-0 bottom-0 z-40 bottom-nav-safe">
         <div className="container max-w-3xl mx-auto px-4 pb-2">
           <div className="bg-background/95 backdrop-blur border border-border rounded-xl p-2 shadow-lg">
             <div className="flex items-center gap-2">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/utils/supabaseClient";
+import { createEmptyPlanWithDays } from "@/services/programmeToDatabase";
 import { ChevronDown, ChevronRight, Plus, Trash2, Activity, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -127,36 +128,10 @@ const Clients = () => {
       // Default to 2 weeks cycle (14 days) - can be adjusted when generating from template
       const cycleDays = 14;
       
-      // Create new plan as ACTIVE immediately so client can see it
-      const { data, error } = await supabase
-        .from("plans")
-        .insert({
-          name: template ? template.name : "Untitled Plan",
-          client_id: clientId,
-          status: "active",
-          start_date: new Date().toISOString(),
-          cycle_days: cycleDays,
-          current_day: 1
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      const newPlanId = String((data as any).id);
-      
-      // Create plan_days for the new plan
-      const daysResult = await supabase
-        .from("plan_days")
-        .insert(
-          Array.from({ length: cycleDays }, (_, i) => ({
-            plan_id: newPlanId,
-            day_index: i,
-            label: `Day ${i + 1}`,
-            is_rest: false
-          }))
-        )
-        .select('id, day_index');
-      
-      if (daysResult.error) throw daysResult.error;
+      const { planId } = await createEmptyPlanWithDays(supabase, clientId, {
+        name: template ? template.name : "Untitled Plan",
+        cycleDays,
+      });
       
       // Template selected - just set the cycle days based on template
       // PT will add exercises manually using the normal drag-and-drop interface
@@ -169,7 +144,7 @@ const Clients = () => {
           ? `Plan created from "${template.name}" template with ${template.days_per_week}x/week workout structure` 
           : `New draft plan created with ${cycleDays} days` 
       });
-      navigate(`/admin/plans/${newPlanId}`);
+      navigate(`/admin/plans/${planId}`);
     } catch (e: any) {
       toast({ description: e?.message || "Failed to create plan", variant: "destructive" as any });
     } finally {

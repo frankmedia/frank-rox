@@ -47,7 +47,7 @@ async function testFullFlow() {
         { day: 'Monday', type: 'strength', title: 'Lower Body', effort: 'hard', detail: 'Squat' },
         { day: 'Wednesday', type: 'strength', title: 'Upper Body', effort: 'hard', detail: 'Push/Pull' },
         { day: 'Friday', type: 'cardio', title: 'Cardio', effort: 'moderate', detail: 'hybrid-pyramid' },
-        { day: 'Saturday', type: 'run', title: 'Long Run', distance: '7km', pace: 'Zone 2', effort: 'easy', detail: 'Aerobic' }
+        { day: 'Saturday', type: 'run', title: 'Long Run', distance: '5km', pace: 'Zone 2', effort: 'easy', detail: 'Aerobic' }
       ],
       preferences: {
         trainingDaysPerWeek: 4,

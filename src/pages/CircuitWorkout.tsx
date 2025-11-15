@@ -80,6 +80,8 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
           .select("id")
           .eq("client_id", authUser.clientId)
           .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1)
           .single();
         
         // Convert interval times to completed rounds format
@@ -292,6 +294,8 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
         .select("id")
         .eq("client_id", authUser.clientId)
         .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
         .single();
         
       const result = await syncCircuitToSupabase(
@@ -437,7 +441,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="absolute left-0 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full h-8 w-8"
+                          className="absolute left-0 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full h-12 w-12 border border-white/40"
                           onClick={() => {
                             const newIndex = Math.max(0, currentVideoIndex - 1);
                             setCurrentVideoIndex(newIndex);
@@ -447,14 +451,14 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                             });
                           }}
                         >
-                          <ChevronLeft className="w-4 h-4" />
+                          <ChevronLeft className="w-6 h-6" />
                         </Button>
                       )}
                       {currentVideoIndex < videosWithExercises.length - 1 && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="absolute right-0 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full h-8 w-8"
+                          className="absolute right-0 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full h-12 w-12 border border-white/40"
                           onClick={() => {
                             const newIndex = Math.min(videosWithExercises.length - 1, currentVideoIndex + 1);
                             setCurrentVideoIndex(newIndex);
@@ -464,7 +468,7 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
                             });
                           }}
                         >
-                          <ChevronRight className="w-4 h-4" />
+                          <ChevronRight className="w-6 h-6" />
                         </Button>
                       )}
                     </>

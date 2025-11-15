@@ -27,6 +27,8 @@ import {
 } from "@/services/workoutCache";
 import { supabase } from "@/utils/supabaseClient";
 
+const LARGE_ACTION_BUTTON = "h-20 px-8 text-xl font-bold leading-tight tracking-tight text-center w-full sm:h-24 sm:px-16 sm:text-3xl";
+
 const ExerciseDetail = () => {
   const { id } = useParams();
   console.log("🏋️ ExerciseDetail component mounted/re-rendered, id:", id);
@@ -538,6 +540,8 @@ const ExerciseDetail = () => {
           .select("id")
           .eq("client_id", authUser.clientId)
           .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1)
           .single();
           
         const syncResult = await syncWorkoutLogToSupabase(
@@ -824,10 +828,10 @@ const ExerciseDetail = () => {
                     variant="outline"
                     size="sm"
                     onClick={handlePrevious}
-                    className="h-12 w-12 sm:h-14 sm:w-14 p-0 flex-shrink-0"
+                    className="h-16 w-16 sm:h-18 sm:w-18 p-0 flex-shrink-0 rounded-full border-2 border-white/40"
                     title="Previous exercise"
                   >
-                    <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={3} />
+                    <ChevronLeft className="w-9 h-9 sm:w-12 sm:h-12" strokeWidth={3} />
                   </Button>
                 );
               })()}
@@ -840,10 +844,10 @@ const ExerciseDetail = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleNext}
-                    className="h-12 w-12 sm:h-14 sm:w-14 p-0 flex-shrink-0"
+                    className="h-16 w-16 sm:h-18 sm:w-18 p-0 flex-shrink-0 rounded-full border-2 border-white/40"
                     title="Next exercise"
                   >
-                    <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={3} />
+                    <ChevronRight className="w-9 h-9 sm:w-12 sm:h-12" strokeWidth={3} />
                   </Button>
                 );
               })()}
@@ -1319,7 +1323,7 @@ const ExerciseDetail = () => {
               <Button
                 size="lg"
                 onClick={handleStartWorkout}
-                className="h-24 px-16 text-3xl font-bold w-full"
+                className={LARGE_ACTION_BUTTON}
                 style={{ backgroundColor: '#FFCC00', color: '#000' }}
               >
                 START COUNTDOWN
@@ -1418,7 +1422,7 @@ const ExerciseDetail = () => {
                   <Button
                     size="lg"
                     onClick={() => setShowWorkoutTimer(true)} // Start/restart the stopwatch
-                    className={`h-24 px-16 text-3xl font-bold w-full ${runStats || todaysDuration ? 'bg-yellow-500/80 hover:bg-yellow-500 text-black' : ''}`}
+                    className={`${LARGE_ACTION_BUTTON} ${runStats || todaysDuration ? 'bg-yellow-500/80 hover:bg-yellow-500 text-black' : ''}`}
                     style={!(runStats || todaysDuration) ? { backgroundColor: '#FFCC00', color: '#000' } : undefined}
                   >
                     {runStats || todaysDuration ? (
@@ -1488,7 +1492,7 @@ const ExerciseDetail = () => {
                   <Button
                     size="lg"
                     onClick={handleStartWorkout}
-                    className={`h-24 px-16 text-3xl font-bold w-full ${distanceInputUnlocked ? 'bg-yellow-500/80 hover:bg-yellow-500 text-black' : ''}`}
+                    className={`${LARGE_ACTION_BUTTON} ${distanceInputUnlocked ? 'bg-yellow-500/80 hover:bg-yellow-500 text-black' : ''}`}
                     style={!distanceInputUnlocked ? { backgroundColor: '#FFCC00', color: '#000' } : undefined}
                   >
                     {distanceInputUnlocked ? (
@@ -1572,7 +1576,7 @@ const ExerciseDetail = () => {
               <Button
                 size="lg"
                 onClick={handleStartRehabTimer}
-                className="h-24 px-16 text-3xl font-bold w-full bg-blue-500 hover:bg-blue-600"
+                className={`${LARGE_ACTION_BUTTON} bg-blue-500 hover:bg-blue-600`}
               >
                 START
               </Button>
@@ -1634,7 +1638,7 @@ const ExerciseDetail = () => {
                 onClick={() => {
                   setRehabTimerActive(true);
                 }}
-                className="h-24 px-16 text-3xl font-bold w-full bg-blue-500 hover:bg-blue-600"
+                className={`${LARGE_ACTION_BUTTON} bg-blue-500 hover:bg-blue-600`}
               >
                 {currentSet === 1 ? 'START SET 1' : `START SET ${currentSet}`}
               </Button>

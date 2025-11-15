@@ -39,7 +39,7 @@ For EACH permutation, the test validates:
 ✅ **Run Progression**
 - Week 2 runs have increased distance
 - Duration matches distance at 6 min/km pace
-- Example: 7km (42min) → 8km (48min) ✅
+- Example: 5km (30min) → 6km (36min) ✅
 
 ✅ **Data Integrity**
 - No negative values (distance, duration, sets, reps)
@@ -180,7 +180,7 @@ Expected:
   - Week 1: 5 sessions (2 runs + 1 cardio + 2 strength)
   - Rest days: 2 (all with recovery)
   - Week 2: 5 sessions (duplicated with progression)
-  - Run progression: 7km → 8km, 42min → 48min
+  - Run progression: 5km → 6km, 30min → 36min
 ```
 
 ### Scenario 3: Advanced Training (6 days/week)
@@ -232,7 +232,7 @@ ALL Rest Days MUST have recovery session
 
 ```
 Strength: Reps + 2 (e.g., 10 → 12)
-Runs: Distance + 1km (e.g., 7km → 8km)
+Runs: Distance + 1km (e.g., 5km → 6km)
 Duration: Recalculated at 6 min/km (e.g., 42min → 48min)
 Timed Holds: Duration + 15s (e.g., 45s → 60s, max 120s)
 ```

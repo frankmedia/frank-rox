@@ -134,6 +134,8 @@ export function HIITWorkout({ exercise, onComplete }: HIITWorkoutProps) {
             .select("id")
             .eq("client_id", authUser.clientId)
             .eq("status", "active")
+            .order("created_at", { ascending: false })
+            .limit(1)
             .single();
             
           await syncWorkoutLogToSupabase(

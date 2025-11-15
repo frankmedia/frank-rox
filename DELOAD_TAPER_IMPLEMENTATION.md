@@ -27,12 +27,12 @@ if (blockNumber === 6 || blockNumber === 12 || blockNumber === 18) {
 ### Example Output
 ```
 NORMAL BLOCK:
-- Long Run: 7km
+- Long Run: 5km
 - Intervals: 6×500m
 - Tempo Run: 5km
 
 DELOAD BLOCK 6:
-- Long Run: 5km (-30%)
+- Long Run: 4km (-30%)
 - Intervals: 4×500m (-30%)
 - Tempo Run: 4km (-30%)
 ```
@@ -79,17 +79,17 @@ if (weeksToEvent === 2) {
 ### Example Output
 ```
 NORMAL BLOCK:
-- Long Run: 7km (running)
+- Long Run: 5km (running)
 - Intervals: 6×500m @ hard
 - Tempo Run: 5km
 
 TAPER WEEK -2:
-- Long Cardio: 6km (bike/rower) ← Low impact
+- Long Cardio: 4km (bike/rower) ← Low impact
 - Intervals: 5×500m @ moderate ← Reduced volume & intensity
 - Tempo Run: 4km
 
 TAPER WEEK -1:
-- Long Cardio: 4km (bike/rower) ← Low impact
+- Long Cardio: 3km (bike/rower) ← Low impact
 - Intervals: 3×500m @ moderate ← Max 3 reps
 - (No tempo run) ← Skipped
 ```

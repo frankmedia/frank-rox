@@ -6,12 +6,14 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { CardioWorkoutType } from "@/services/cardioWorkoutSelector";
 import { createRunSession, type RunSessionOptions } from "./generators/runGenerator";
 import { addStrengthFinisher, getFinisherRotation } from "./generators/strengthFinisher";
 import { createRecoverySessionsForRestDays } from "./programGeneration/recoverySessionCreator";
 import { applyProgressionToItem, applyProgressionToBlock } from "./programGeneration/progression";
+import { EXERCISE_IDS } from "@/constants/exerciseIds";
 
-type SessionBlock = {
+export type SessionBlock = {
   day: string;
   type: "run" | "strength" | "cardio" | "recovery";
   title: string;
@@ -19,6 +21,9 @@ type SessionBlock = {
   pace?: string;
   effort: "easy" | "moderate" | "hard";
   detail?: string;
+  meta?: Record<string, any>;
+  blockType?: BlockType;
+  hyroxAccessoryType?: string;
 };
 
 type Programme = {
@@ -27,7 +32,76 @@ type Programme = {
   generatedAt: string;
   blockNumber: number;
   focus: "base" | "build" | "race-prep";
+  hyroxProfile?: HyroxProfile;
 };
+
+type BlockType = "onboarding" | "base" | "build" | "peak";
+type RunDetailKind =
+  | "easy-z2"
+  | "steady-aerobic"
+  | "hyrox-intervals-500m"
+  | "hyrox-intervals-1k"
+  | "peak-sharpen";
+type HyroxProfile = {
+  hasRacedHyrox: boolean;
+  hyroxBestTime?: string;
+  weakStations?: string[];
+  goalType?: "first-time" | "improve-time" | "return-from-break";
+  weeksToRace?: number | null;
+};
+
+/**
+ * Create an empty plan with empty days (no sessions yet)
+ */
+export async function createEmptyPlanWithDays(
+  supabase: SupabaseClient,
+  clientId: string,
+  options: {
+    name: string;
+    cycleDays: number;
+  }
+): Promise<{ planId: string }> {
+  console.log("🆕 Creating empty plan:", options);
+
+  // 1. Create the plan
+  const { data: plan, error: planError } = await supabase
+    .from("plans")
+    .insert({
+      client_id: clientId,
+      name: options.name,
+      status: "active",
+    })
+    .select()
+    .single();
+
+  if (planError || !plan) {
+    throw new Error(`Failed to create plan: ${planError?.message}`);
+  }
+
+  console.log(`✅ Plan created with ID: ${plan.id}`);
+
+  // 2. Create empty plan_days
+  const planDays = [];
+  for (let i = 0; i < options.cycleDays; i++) {
+    planDays.push({
+      plan_id: plan.id,
+      day_index: i,
+      day_name: `Day ${i + 1}`,
+    });
+  }
+
+  const { error: daysError } = await supabase
+    .from("plan_days")
+    .insert(planDays);
+
+  if (daysError) {
+    throw new Error(`Failed to create plan days: ${daysError.message}`);
+  }
+
+  console.log(`✅ Created ${options.cycleDays} empty plan days`);
+
+  return { planId: plan.id };
+}
 
 /**
  * Create a plan in the database and generate all workouts
@@ -303,6 +377,77 @@ function parseWeight(value: string): number {
   return 0;
 }
 
+function getRunSessionOptionsFromDetail(session: SessionBlock): RunSessionOptions | null {
+  const detail = session.detail ?? "";
+  if (!detail.startsWith("run:")) return null;
+
+  const [, rawKind, kmStr] = detail.split(":");
+  const kind = rawKind as RunDetailKind;
+  const distanceKm = Number(kmStr) || 5;
+  const distanceLabel =
+    (session.meta?.runDistanceLabel as string | undefined) ||
+    session.distance ||
+    `${distanceKm}km`;
+  const notes =
+    typeof session.meta?.runDescription === "string"
+      ? session.meta.runDescription
+      : session.detail;
+
+  switch (kind) {
+    case "easy-z2":
+      return {
+        sessionType: "long_run",
+        distance: distanceLabel,
+        pace: session.pace || "Zone 2 (conversational)",
+        effort: "easy",
+        notes,
+      };
+    case "steady-aerobic":
+      return {
+        sessionType: "long_run",
+        distance: distanceLabel,
+        pace: "Steady aerobic (upper Z2/Z3)",
+        effort: "moderate",
+        notes,
+      };
+    case "hyrox-intervals-500m":
+      return {
+        sessionType: "intervals",
+        distance: distanceLabel,
+        reps: 5,
+        repDistance: "500m",
+        restDuration: "90s",
+        pace: "Controlled hard",
+        effort: "hard",
+        notes,
+      };
+    case "hyrox-intervals-1k":
+      return {
+        sessionType: "intervals",
+        distance: distanceLabel,
+        reps: 3,
+        repDistance: "1km",
+        restDuration: "2min",
+        pace: "HYROX race pace",
+        effort: "hard",
+        notes,
+      };
+    case "peak-sharpen":
+      return {
+        sessionType: "intervals",
+        distance: distanceLabel,
+        reps: 6,
+        repDistance: "200m",
+        restDuration: "90s",
+        pace: "Fast but relaxed",
+        effort: "moderate",
+        notes,
+      };
+    default:
+      return null;
+  }
+}
+
 /**
  * Generate a running workout
  */
@@ -312,6 +457,13 @@ async function generateRunWorkout(
   session: SessionBlock,
   warnings: string[]
 ) {
+  const runDetailOptions = getRunSessionOptionsFromDetail(session);
+  if (runDetailOptions) {
+    const result = await createRunSession(supabase, planDayId, runDetailOptions);
+    warnings.push(...result.warnings);
+    return;
+  }
+
   let options: RunSessionOptions;
 
   if (session.title.includes("Long Run")) {
@@ -574,49 +726,16 @@ async function generateStrengthWorkout(
     console.log(`🔧 Starting ${split} body workout generation`);
     
     if (split === "lower") {
-      // LOWER BODY WORKOUT
-      console.log(`📋 Creating warm-up block for session ${sessionData.id}`);
+      // DAY 1 — LOWER STRENGTH + LIGHT HYROX CONDITIONING
+      console.log(`📋 Creating Day 1: Lower Strength + Light HYROX Conditioning`);
       
-      // Warm-up Block: Air Squats for movement prep
-      const { data: warmupBlock } = await supabase
-        .from("session_blocks")
-        .insert({
-          session_id: sessionData.id,
-          block_type: "mobility",
-          title: "Warm-up",
-          rounds: 1,
-        })
-        .select()
-        .single();
-
-      if (warmupBlock) {
-        const AIR_SQUAT_ID = "d035abfc-002c-438d-933f-4c304accb805";
-        const { data: airSquat } = await supabase
-          .from("exercises")
-          .select("id, name")
-          .eq("id", AIR_SQUAT_ID)
-          .single();
-        
-        if (airSquat) {
-          await supabase.from("session_block_items").insert({
-            block_id: warmupBlock.id,
-            exercise_id: airSquat.id,
-            item_order: 0,
-            sets: 2,
-            reps: 10,
-            notes: "Movement prep - no weight, focus on form and depth"
-          });
-          console.log(`✅ Added Air Squat warm-up (2×10)`);
-        }
-      }
-      
-      // Main Work Block
+      // Block A — Strength (Lower) - 5 exercises
       const { data: mainBlock } = await supabase
         .from("session_blocks")
         .insert({
           session_id: sessionData.id,
           block_type: "strength",
-          title: "Lower Body Strength",
+          title: "Block A — Lower Body Strength",
           rounds: 1,
         })
         .select()
@@ -624,153 +743,178 @@ async function generateStrengthWorkout(
 
       if (mainBlock) {
         let order = 0;
+        const oneRM = calculate1RM(strengthData.squat5rm);
         
-        // 1. Back Squat - STRENGTH (4×6 @ 80%)
-        // Use specific exercise ID to avoid matching wrong exercise (e.g., Goblet Squat)
-        const SQUAT_ID = "a4902a64-b188-4ea8-a567-df330a5f0f96";
-        const { data: squat } = await supabase
-          .from("exercises")
-          .select("id, name")
-          .eq("id", SQUAT_ID)
-          .single();
-        
-        if (squat) {
-          const squatWeight = calculateWeight(strengthData.squat5rm, 0.80, squat.name); // 80% of 1RM
-          console.log(`✅ Using squat: ${squat.name} (ID: ${squat.id}), weight: ${squatWeight}kg`);
-          
-          await supabase.from("session_block_items").insert({
-            block_id: mainBlock.id,
-            exercise_id: squat.id,
-            item_order: order++,
-            sets: 4,
-            reps: 6,
-            notes: "Strength (4-6 reps) - 80% 1RM, focus on depth and explosive drive",
-            extra: { weight_kg: squatWeight },
-          });
-        } else {
-          console.warn(`⚠️ Squat exercise not found (ID: ${SQUAT_ID})`);
-          warnings.push(`Squat exercise not found`);
-        }
+        // 1. Squat — 4×6 (using specific ID)
+        const squatId = "a4902a64-b188-4ea8-a567-df330a5f0f96";
+        const squatWeight = calculateWeight(strengthData.squat5rm, 0.80, "Squat");
+        await supabase.from("session_block_items").insert({
+          block_id: mainBlock.id,
+          exercise_id: squatId,
+          item_order: order++,
+          sets: 4,
+          reps: 6,
+          notes: "Strength - 80% 1RM, focus on depth and explosive drive",
+          extra: { weight_kg: squatWeight },
+        });
 
-        // 2. Bulgarian Split Squat (Rear-Foot Elevated) - HYPERTROPHY (3×10 @ 70%)
-        const BULGARIAN_SPLIT_SQUAT_ID = "959709d8-99db-4dfa-ad8b-353c7e09c28e";
-        const { data: bulgarian } = await supabase
-          .from("exercises")
-          .select("id, name")
-          .eq("id", BULGARIAN_SPLIT_SQUAT_ID)
-          .single();
-        
-        if (bulgarian) {
-          // Bulgarian Split Squat uses dumbbells - calculate per-hand weight
-          // Single-leg exercise: use 25-30% of squat 1RM per hand (much lighter than barbell)
-          const oneRM = calculate1RM(strengthData.squat5rm);
-          const rawWeight = oneRM * 0.25; // 25% of squat 1RM per hand
-          const finalWeight = roundToDumbbellWeight(rawWeight);
-          await supabase.from("session_block_items").insert({
-            block_id: mainBlock.id,
-            exercise_id: bulgarian.id,
-            item_order: order++,
-            sets: 3,
-            reps: 10,
-            notes: "Hypertrophy (8-12 reps) - Each leg, controlled 3-0-1 tempo, maintain upright torso",
-            extra: { weight_kg: finalWeight },
-          });
-        }
+        // 2. DB Romanian Deadlift — 3×8 (using specific ID)
+        const dbRdlId = "5600782c-c22e-49e2-852e-073facaaff1c";
+        const deadliftOneRM = calculate1RM(strengthData.deadlift5rm);
+        const rdlWeight = roundToDumbbellWeight(deadliftOneRM * 0.35); // 35% per hand
+        await supabase.from("session_block_items").insert({
+          block_id: mainBlock.id,
+          exercise_id: dbRdlId,
+          item_order: order++,
+          sets: 3,
+          reps: 8,
+          notes: "Feel the hamstring stretch, keep bar close to legs",
+          extra: { weight_kg: rdlWeight },
+        });
 
-        // 3. Romanian Deadlift - HYPERTROPHY (3×10 @ 70%)
-        // Prioritize DB version (dumbbell) over barbell version
-        const rdl = await findExercise(["DB Romanian Deadlift", "Romanian Deadlift", "RDL"]);
-        if (rdl) {
-          const oneRM = calculate1RM(strengthData.deadlift5rm);
-          // Check if it's a DB exercise
-          const isDB = rdl.name.toLowerCase().includes("db ") || rdl.name.toLowerCase().includes("dumbbell");
-          
-          if (isDB) {
-            // DB Romanian Deadlift: use 30-35% of deadlift 1RM per hand (much lighter than barbell)
-            const rawWeight = oneRM * 0.35; // 35% of deadlift 1RM per hand
-            const rdlWeight = roundToDumbbellWeight(rawWeight);
-            await supabase.from("session_block_items").insert({
-              block_id: mainBlock.id,
-              exercise_id: rdl.id,
-              item_order: order++,
-              sets: 3,
-              reps: 10,
-              notes: "Hypertrophy (8-12 reps) - Feel the hamstring stretch, keep bar close to legs",
-              extra: { weight_kg: rdlWeight },
-            });
-          } else {
-            // Barbell Romanian Deadlift: use 70% of deadlift 1RM
-            const rawWeight = oneRM * 0.70;
-            const rdlWeight = roundToPlateWeight(rawWeight);
-            await supabase.from("session_block_items").insert({
-              block_id: mainBlock.id,
-              exercise_id: rdl.id,
-              item_order: order++,
-              sets: 3,
-              reps: 10,
-              notes: "Hypertrophy (8-12 reps) - Feel the hamstring stretch, keep bar close to legs",
-              extra: { weight_kg: rdlWeight },
-            });
-          }
-        }
+        // 3. Rear-Foot Elevated Split Squat — 3×8/leg (using specific ID)
+        const bulgarianId = "959709d8-99db-4dfa-ad8b-353c7e09c28e";
+        const bulgarianWeight = roundToDumbbellWeight(oneRM * 0.25); // 25% per hand
+        await supabase.from("session_block_items").insert({
+          block_id: mainBlock.id,
+          exercise_id: bulgarianId,
+          item_order: order++,
+          sets: 3,
+          reps: 8,
+          notes: "Each leg, controlled tempo, maintain upright torso",
+          extra: { weight_kg: bulgarianWeight },
+        });
 
-        // 4. Leg Press - ENDURANCE (3×12 @ 65%)
-        const legPress = await findExercise(["Leg Press"]);
-        if (legPress) {
-          // Calculate raw weight first, then multiply, then round
-          const oneRM = calculate1RM(strengthData.squat5rm);
-          const rawWeight = oneRM * 0.65 * 1.5; // 65% of squat 1RM × 1.5 (leg press typically heavier)
-          // Leg press uses plates, so use plate rounding
-          const finalWeight = roundToPlateWeight(rawWeight);
-          await supabase.from("session_block_items").insert({
-            block_id: mainBlock.id,
-            exercise_id: legPress.id,
-            item_order: order++,
-            sets: 3,
-            reps: 12,
-            notes: "Endurance (12-15 reps) - Full ROM, don't lock knees at top",
-            extra: { weight_kg: finalWeight },
-          });
-        }
+        // 4. Walking Lunge DB — 2×20 steps (using specific ID)
+        const walkingLungeId = "fd72922a-ca60-4c66-9a0a-2605ea55053a";
+        const lungeWeight = roundToDumbbellWeight(oneRM * 0.20); // 20% per hand
+        await supabase.from("session_block_items").insert({
+          block_id: mainBlock.id,
+          exercise_id: walkingLungeId,
+          item_order: order++,
+          sets: 2,
+          reps: 20,
+          notes: "20 steps total (10 per leg), controlled movement",
+          extra: { weight_kg: lungeWeight },
+        });
+
+        // 5. Wall Balls (technique) — 3×8 easy (using specific ID)
+        const wallBallId = "8833980d-fc4f-42e8-83ce-7e3c22d8c28e";
+        await supabase.from("session_block_items").insert({
+          block_id: mainBlock.id,
+          exercise_id: wallBallId,
+          item_order: order++,
+          sets: 3,
+          reps: 8,
+          notes: "Technique focus - easy weight, full depth squat, explosive throw",
+        });
       }
 
-      // Core Finisher Block
+      // Block B — Core (ALL TIMED EXERCISES WITH COUNTDOWN TIMER)
       const { data: coreBlock } = await supabase
         .from("session_blocks")
         .insert({
           session_id: sessionData.id,
           block_type: "strength",
-          title: "Core Finisher",
-          rounds: 3,
+          title: "Block B — Core",
+          rounds: 1,
         })
         .select()
         .single();
 
       if (coreBlock) {
-        // Plank
-        const plank = await findExercise(["Plank"]);
-        if (plank) {
-          await supabase.from("session_block_items").insert({
-            block_id: coreBlock.id,
-            exercise_id: plank.id,
-            item_order: 0,
-            duration_sec: 45,
-            notes: "Hold strong position",
-          });
-        }
+        let order = 0;
+        
+        // Plank — 2×45 sec (✅ TIMER WILL SHOW)
+        const plankId = "d60a5793-6399-4cec-855f-44eb47c439f9";
+        await supabase.from("session_block_items").insert({
+          block_id: coreBlock.id,
+          exercise_id: plankId,
+          item_order: order++,
+          sets: 2,
+          duration_sec: 45,
+          notes: "45 sec hold - Strong core, neutral spine. ⏱️ TIMER",
+        });
+
+        // Dead Bug — 2×10 (convert to timed: 10 reps × 3 sec = 30 sec)
+        const deadBugId = "c656a23c-687d-4ccd-8dc5-2edcea151c27";
+        await supabase.from("session_block_items").insert({
+          block_id: coreBlock.id,
+          exercise_id: deadBugId,
+          item_order: order++,
+          sets: 2,
+          duration_sec: 30,
+          notes: "30 sec (~10 reps) - Slow and controlled, opposite arm/leg. ⏱️ TIMER",
+        });
+
+        // Bird Dog — 2×30 sec (✅ TIMER WILL SHOW)
+        const birdDogId = "9c7a2d40-74a2-4721-9107-5a0289c1f474";
+        await supabase.from("session_block_items").insert({
+          block_id: coreBlock.id,
+          exercise_id: birdDogId,
+          item_order: order++,
+          sets: 2,
+          duration_sec: 30,
+          notes: "30 sec per side - Maintain neutral spine. ⏱️ TIMER",
+        });
+      }
+
+      // Block C — Light HYROX Conditioning (2 rounds circuit)
+      const { data: hyroxBlock } = await supabase
+        .from("session_blocks")
+        .insert({
+          session_id: sessionData.id,
+          block_type: "circuit",
+          title: "Block C — Light HYROX Conditioning",
+          rounds: 2, // 2 rounds
+          rest_between_rounds_s: 60, // 1 min rest between rounds
+        })
+        .select()
+        .single();
+
+      if (hyroxBlock) {
+        let order = 0;
+        
+        // SkiErg — 200m easy
+        const skiergId = "917c05c6-5adf-4d3b-887e-ff2a292fa079";
+        await supabase.from("session_block_items").insert({
+          block_id: hyroxBlock.id,
+          exercise_id: skiergId,
+          item_order: order++,
+          distance_m: 200,
+          notes: "Easy pace, tall catch",
+        });
+
+        // Farmer Carry — 20m
+        const farmerCarryId = "45fa718b-0f3a-41ed-a7cd-baa4bfd0f821";
+        await supabase.from("session_block_items").insert({
+          block_id: hyroxBlock.id,
+          exercise_id: farmerCarryId,
+          item_order: order++,
+          distance_m: 20,
+          notes: "Steady pace, strong core",
+        });
+
+        // Bodyweight Lunges — 10/leg
+        const bodyweightLungeId = "d7dd4a88-c878-4bb3-abe8-4bb6bf7e8275";
+        await supabase.from("session_block_items").insert({
+          block_id: hyroxBlock.id,
+          exercise_id: bodyweightLungeId,
+          item_order: order++,
+          reps: 10,
+          notes: "10 per leg, controlled movement",
+        });
       }
 
     } else if (split === "upper") {
-      // UPPER BODY WORKOUT
       console.log(`📋 Creating upper body session ${sessionData.id}`);
-      
-      // Main Work Block (warm-up is handled by the 5min cardio block above)
+
       const { data: mainBlock } = await supabase
         .from("session_blocks")
         .insert({
           session_id: sessionData.id,
           block_type: "strength",
-          title: "Upper Body Strength",
+          title: "Upper Strength",
           rounds: 1,
         })
         .select()
@@ -778,186 +922,122 @@ async function generateStrengthWorkout(
 
       if (mainBlock) {
         let order = 0;
-        
-        // 1. Bench Press - STRENGTH (4×6 @ 80%)
-        const bench = await findExercise(["Bench Press", "DB Chest Press", "Chest Press"]);
-        if (bench) {
-          const oneRM = calculate1RM(strengthData.bench5rm);
-          // Check if it's a DB exercise
-          const isDB = bench.name.toLowerCase().includes("db ") || bench.name.toLowerCase().includes("dumbbell");
-          
-          if (isDB) {
-            // DB Chest Press: use 35-40% of bench 1RM per hand (much lighter than barbell)
-            const rawWeight = oneRM * 0.38; // 38% of bench 1RM per hand
-            const benchWeight = roundToDumbbellWeight(rawWeight);
-            await supabase.from("session_block_items").insert({
-              block_id: mainBlock.id,
-              exercise_id: bench.id,
-              item_order: order++,
-              sets: 4,
-              reps: 6,
-              notes: "Strength - 80% 1RM equivalent, control the descent (3s), explosive press",
-              extra: { weight_kg: benchWeight },
-            });
-          } else {
-            // Barbell Bench Press: use 80% of 1RM
-            const rawWeight = oneRM * 0.80;
-            const benchWeight = roundToPlateWeight(rawWeight);
-            await supabase.from("session_block_items").insert({
-              block_id: mainBlock.id,
-              exercise_id: bench.id,
-              item_order: order++,
-              sets: 4,
-              reps: 6,
-              notes: "Strength - 80% 1RM, control the descent (3s), explosive press",
-              extra: { weight_kg: benchWeight },
-            });
-          }
-        }
+        const benchFiveRM = strengthData.bench5rm ?? 60;
+        const ohpFiveRM = strengthData.ohp5rm ?? benchFiveRM;
+        const benchOneRM = calculate1RM(benchFiveRM);
+        const ohpOneRM = calculate1RM(ohpFiveRM);
 
-        // 2. Bent Over Row - HYPERTROPHY (4×10 @ 75%)
-        // Prioritize DB version (dumbbell) over barbell version
-        const row = await findExercise(["DB Bent-Over Row", "Single Arm DB Row", "Bent Over Row"]);
-        if (row) {
-          const oneRM = calculate1RM(strengthData.bench5rm);
-          // Check if it's a DB exercise
-          const isDB = row.name.toLowerCase().includes("db ") || row.name.toLowerCase().includes("dumbbell") || row.name.toLowerCase().includes("single arm");
-          
-          if (isDB) {
-            // DB Bent-Over Row: use 35-38% of bench 1RM per hand (pulling exercises are typically heavier than pushing)
-            const rawWeight = oneRM * 0.36; // 36% of bench 1RM per hand
-            const finalWeight = roundToDumbbellWeight(rawWeight);
-            await supabase.from("session_block_items").insert({
-              block_id: mainBlock.id,
-              exercise_id: row.id,
-              item_order: order++,
-              sets: 4,
-              reps: 10,
-              notes: "Hypertrophy (8-12 reps) - Pull to ribs, squeeze scapulae at top, 2s hold",
-              extra: { weight_kg: finalWeight },
-            });
-          } else {
-            // Barbell Bent-Over Row: use 75% of bench 1RM × 0.9 (rows typically lighter)
-            const rawWeight = oneRM * 0.75 * 0.9;
-            const finalWeight = roundToPlateWeight(rawWeight);
-            await supabase.from("session_block_items").insert({
-              block_id: mainBlock.id,
-              exercise_id: row.id,
-              item_order: order++,
-              sets: 4,
-              reps: 10,
-              notes: "Hypertrophy (8-12 reps) - Pull to ribs, squeeze scapulae at top, 2s hold",
-              extra: { weight_kg: finalWeight },
-            });
-          }
-        }
-
-        // 3. DB Shoulder Press - HYPERTROPHY (3×10 @ 70%)
-        const shoulderPress = await findExercise(["DB Shoulder Press", "Shoulder Press", "DB Overhead Press"]);
-        if (shoulderPress) {
-          const oneRM = calculate1RM(strengthData.ohp5rm);
-          // Check if it's a DB exercise
-          const isDB = shoulderPress.name.toLowerCase().includes("db ") || shoulderPress.name.toLowerCase().includes("dumbbell");
-          
-          if (isDB) {
-            // DB Shoulder Press: use 30-35% of OHP 1RM per hand (much lighter than barbell)
-            const rawWeight = oneRM * 0.32; // 32% of OHP 1RM per hand
-            const shoulderWeight = roundToDumbbellWeight(rawWeight);
-            await supabase.from("session_block_items").insert({
-              block_id: mainBlock.id,
-              exercise_id: shoulderPress.id,
-              item_order: order++,
-              sets: 3,
-              reps: 10,
-              notes: "Hypertrophy (8-12 reps) - Full ROM, controlled tempo, avoid arching back",
-              extra: { weight_kg: shoulderWeight },
-            });
-          } else {
-            // Barbell Shoulder Press: use 70% of OHP 1RM
-            const rawWeight = oneRM * 0.70;
-            const shoulderWeight = roundToPlateWeight(rawWeight);
-            await supabase.from("session_block_items").insert({
-              block_id: mainBlock.id,
-              exercise_id: shoulderPress.id,
-              item_order: order++,
-              sets: 3,
-              reps: 10,
-              notes: "Hypertrophy (8-12 reps) - Full ROM, controlled tempo, avoid arching back",
-              extra: { weight_kg: shoulderWeight },
-            });
-          }
-        }
-
-        // 4. Lat Pulldown - HYPERTROPHY (3×10 @ 70%)
-        const lat = await findExercise(["Lat Pulldown", "Wide Grip Pull Up", "Pull Up"]);
-        if (lat) {
-          // Calculate raw weight first, then multiply, then round
-          const oneRM = calculate1RM(strengthData.bench5rm);
-          const rawWeight = oneRM * 0.70 * 0.85; // 70% of bench 1RM × 0.85 (lats typically lighter)
-          // Lat pulldown uses plates (machine), so use plate rounding
-          const finalWeight = roundToPlateWeight(rawWeight);
+        const inclineBench = await supabase
+          .from("exercises")
+          .select("id, name")
+          .eq("id", EXERCISE_IDS.INCLINE_BENCH)
+          .single();
+        if (inclineBench.data) {
+          const weight = calculateWeight(benchFiveRM, 0.75, inclineBench.data.name);
           await supabase.from("session_block_items").insert({
             block_id: mainBlock.id,
-            exercise_id: lat.id,
+            exercise_id: inclineBench.data.id,
             item_order: order++,
             sets: 3,
-            reps: 10,
-            notes: "Hypertrophy (8-12 reps) - Pull to upper chest, squeeze lats, slow eccentric",
-            extra: { weight_kg: finalWeight },
+            reps: 6,
+            notes: "3×6 · Slight incline, control 3s down, drive hard up.",
+            extra: { weight_kg: weight },
           });
         }
+
+        const dbRowWeight = roundToDumbbellWeight(benchOneRM * 0.34);
+        await supabase.from("session_block_items").insert({
+          block_id: mainBlock.id,
+          exercise_id: EXERCISE_IDS.DB_BENT_OVER_ROW,
+          item_order: order++,
+          sets: 3,
+          reps: 8,
+          notes: "DB row · chest supported or hinge, pause at ribs.",
+          extra: { weight_kg: dbRowWeight },
+        });
+
+        const dbShoulderWeight = roundToDumbbellWeight(ohpOneRM * 0.3);
+        await supabase.from("session_block_items").insert({
+          block_id: mainBlock.id,
+          exercise_id: EXERCISE_IDS.DB_SHOULDER_PRESS,
+          item_order: order++,
+          sets: 3,
+          reps: 8,
+          notes: "Neutral grip, seated, brace glutes, no lean.",
+          extra: { weight_kg: dbShoulderWeight },
+        });
+
+        const latPulldownWeight = roundToPlateWeight(benchOneRM * 0.6);
+        await supabase.from("session_block_items").insert({
+          block_id: mainBlock.id,
+          exercise_id: EXERCISE_IDS.LAT_PULLDOWN,
+          item_order: order++,
+          sets: 3,
+          reps: 10,
+          notes: "3×10 · Pull to collarbone, elbows under bar.",
+          extra: { weight_kg: latPulldownWeight },
+        });
       }
 
-      // Accessory Block
-      const { data: accessoryBlock } = await supabase
+      const { data: techniqueBlock } = await supabase
         .from("session_blocks")
         .insert({
           session_id: sessionData.id,
-          block_type: "strength",
-          title: "Accessory Work",
-          rounds: 1,
+          block_type: "cardio",
+          title: "Technique Conditioning",
+          parameters: { format: "standard" },
+          order_index: 2,
         })
         .select()
         .single();
 
-      if (accessoryBlock) {
-        let order = 0;
-        
-        // DB Bicep Curl - ENDURANCE (3×12 @ 60%)
-        const curl = await findExercise(["DB Bicep Curl", "Bicep Curl"]);
-        if (curl) {
-          // DB Bicep Curl: use 15-18% of bench 1RM per hand (accessory exercise, but still challenging)
-          const oneRM = calculate1RM(strengthData.bench5rm);
-          const rawWeight = oneRM * 0.16; // 16% of bench 1RM per hand
-          const finalWeight = roundToDumbbellWeight(rawWeight);
-          await supabase.from("session_block_items").insert({
-            block_id: accessoryBlock.id,
-            exercise_id: curl.id,
-            item_order: order++,
-            sets: 3,
-            reps: 12,
-            notes: "Endurance (12-15 reps) - Controlled tempo, no swinging, squeeze at top",
-            extra: { weight_kg: finalWeight },
-          });
-        }
+      if (techniqueBlock) {
+        await supabase.from("session_block_items").insert({
+          block_id: techniqueBlock.id,
+          exercise_id: EXERCISE_IDS.ROW_ERG,
+          item_order: 0,
+          distance_m: 400,
+          notes: "400m easy · focus on smooth catch/finish.",
+        });
 
-        // Tricep Extension - ENDURANCE (3×12 @ 60%)
-        const tricep = await findExercise(["Overhead DB Tricep Extension", "DB Skull Crusher", "Tricep Dips"]);
-        if (tricep) {
-          // DB Tricep Extension: use 15-18% of bench 1RM per hand (accessory exercise, lighter than bench)
-          const oneRM = calculate1RM(strengthData.bench5rm);
-          const rawWeight = oneRM * 0.16; // 16% of bench 1RM per hand
-          const finalWeight = roundToDumbbellWeight(rawWeight);
-          await supabase.from("session_block_items").insert({
-            block_id: accessoryBlock.id,
-            exercise_id: tricep.id,
-            item_order: order++,
-            sets: 3,
-            reps: 12,
-            notes: "Endurance (12-15 reps) - Elbows stay in position, full extension, control the weight",
-            extra: { weight_kg: finalWeight },
-          });
-        }
+        await supabase.from("session_block_items").insert({
+          block_id: techniqueBlock.id,
+          exercise_id: EXERCISE_IDS.ASSAULT_BIKE,
+          item_order: 1,
+          duration_sec: 120,
+          notes: "2‑min Z2 · nasal breathing, steady cadence.",
+        });
+      }
+
+      const { data: upperCoreBlock } = await supabase
+        .from("session_blocks")
+        .insert({
+          session_id: sessionData.id,
+          block_type: "strength",
+          title: "Core Finisher",
+          rounds: 1,
+          order_index: 3,
+        })
+        .select()
+        .single();
+
+      if (upperCoreBlock) {
+        await supabase.from("session_block_items").insert({
+          block_id: upperCoreBlock.id,
+          exercise_id: EXERCISE_IDS.SIDE_PLANK,
+          item_order: 0,
+          sets: 2,
+          duration_sec: 30,
+          notes: "30s per side · stack hips, reach long.",
+        });
+
+        await supabase.from("session_block_items").insert({
+          block_id: upperCoreBlock.id,
+          exercise_id: EXERCISE_IDS.BIRD_DOG,
+          item_order: 1,
+          duration_sec: 40,
+          notes: "40s alt · slow reach, pause at extension.",
+        });
       }
 
     } else {
@@ -1128,10 +1208,30 @@ async function generateCardioWorkout(
   // Import and use cardio generator
   try {
     const { createCardioSession } = await import("./generators/cardioGenerator");
-    const { CardioWorkoutType } = await import("../services/cardioWorkoutSelector");
     
     // Get workout type from session.detail (set by programme builder)
-    const sessionType = session.detail as CardioWorkoutType || "machine-endurance";
+    const detail = session.detail ?? "";
+    const meta = session.meta ?? {};
+    const isHyroxAccessory = session.title === "HYROX Accessory";
+
+    if (isHyroxAccessory) {
+      await supabase.from("sessions").delete().eq("id", sessionData.id);
+      await createHyroxAccessoryWorkout(
+        supabase,
+        planDayId,
+        session,
+        detail.startsWith("hyrox-accessory:")
+          ? detail.split(":")[1] || "general-station-technique"
+          : session.hyroxAccessoryType || "general-station-technique",
+        warnings
+      );
+      return;
+    }
+
+    const sessionType =
+      (meta.cardioType as CardioWorkoutType) ||
+      (detail as CardioWorkoutType) ||
+      "machine-endurance";
     
     console.log(`🏃 Creating cardio workout: ${sessionType}, allowRunning = ${allowRunning}`);
     
@@ -1144,7 +1244,9 @@ async function generateCardioWorkout(
       intensity: session.effort as "easy" | "moderate" | "hard",
       duration: 50, // 50 minutes for full cardio sessions
       allowRunning, // Pass the allowRunning flag
-      intensityModifier: 1.0 // Base intensity for Week 1
+      intensityModifier: typeof meta.intensityModifier === "number" ? meta.intensityModifier : 1.0,
+      weekNumber: meta.weekNumber ?? 1,
+      ladderStepsKm: Array.isArray(meta.ladderStepsKm) ? meta.ladderStepsKm : undefined,
     });
     
     console.log(`✅ Generated ${sessionType} cardio workout`);
@@ -1211,6 +1313,301 @@ async function generateRecoveryWorkout(
   } catch (error: any) {
     console.error("❌ Error generating recovery workout:", error);
     warnings.push(`Failed to create recovery session: ${error.message}`);
+  }
+}
+
+type HyroxAccessoryExerciseTemplate = {
+  names: string[];
+  sets?: number;
+  reps?: number;
+  durationSec?: number;
+  distanceM?: number;
+  notes?: string;
+  extra?: Record<string, any>;
+};
+
+type HyroxAccessoryTemplate = {
+  title: string;
+  description: string;
+  blockType: "strength" | "circuit";
+  rounds?: number;
+  restBetweenRoundsSec?: number;
+  parameters?: Record<string, any>;
+  items: HyroxAccessoryExerciseTemplate[];
+};
+
+const DEFAULT_ACCESSORY_KIND = "general-station-technique";
+
+const HYROX_ACCESSORY_TEMPLATES: Record<string, HyroxAccessoryTemplate> = {
+  "sled-focus": {
+    title: "Sled Power Primer",
+    description: "Low-handle push + backward drag + lunge endurance to clean up sled stations.",
+    blockType: "circuit",
+    rounds: 3,
+    restBetweenRoundsSec: 60,
+    parameters: { format: "circuit", intensity: "moderate" },
+    items: [
+      {
+        names: ["Sled Push", "Hyrox Sled Push"],
+        distanceM: 25,
+        notes: "Heavy drive · stay low, fast feet.",
+      },
+      {
+        names: ["Sled Pull", "Hyrox Sled Pull"],
+        distanceM: 25,
+        notes: "Backward drag · upright torso, strong arms.",
+      },
+      {
+        names: ["Walking Lunge DB", "Walking Lunge"],
+        reps: 16,
+        notes: "8/leg · moderate load, no wobble.",
+      },
+    ],
+  },
+  "wall-ball-focus": {
+    title: "Wall Ball Efficiency",
+    description: "Squat pattern plus overhead power to groove smoother wall balls.",
+    blockType: "circuit",
+    rounds: 3,
+    restBetweenRoundsSec: 45,
+    parameters: { format: "circuit", intensity: "moderate" },
+    items: [
+      {
+        names: ["Wall Balls", "Wall Ball"],
+        reps: 15,
+        notes: "Race tempo · breathe at the top.",
+      },
+      {
+        names: ["Goblet Squat", "Front Squat"],
+        reps: 12,
+        notes: "3s down, 1s pause, explosive up.",
+      },
+      {
+        names: ["DB Shoulder Press", "Push Press", "Thruster"],
+        reps: 10,
+        notes: "Powerful drive overhead, no arch.",
+      },
+    ],
+  },
+  "lunges-focus": {
+    title: "Lunge & Lateral Capacity",
+    description: "Combine HYROX sandbag lunges prep with hip stability work.",
+    blockType: "circuit",
+    rounds: 3,
+    restBetweenRoundsSec: 45,
+    parameters: { format: "circuit", intensity: "moderate" },
+    items: [
+      {
+        names: ["Walking Lunge DB", "Sandbag Lunge", "Walking Lunge"],
+        distanceM: 20,
+        notes: "10m out & back, upright torso.",
+      },
+      {
+        names: ["Step-Ups", "Step Ups", "Box Step Up"],
+        reps: 12,
+        notes: "Per leg · knee to 90°, drive through heel.",
+      },
+      {
+        names: ["Cossack Squat", "Lateral Lunge"],
+        reps: 8,
+        notes: "Per side · sit into hip, heel down.",
+      },
+    ],
+  },
+  "farmers-focus": {
+    title: "Farmer Carry Grip Builder",
+    description: "Grip, posture, and unilateral bracing work for carries.",
+    blockType: "strength",
+    parameters: { format: "standard", intensity: "moderate" },
+    items: [
+      {
+        names: ["Farmer Carry", "Farmers Carry", "DB Farmers Carry"],
+        sets: 3,
+        distanceM: 30,
+        notes: "Heavy · tall posture, small steps.",
+      },
+      {
+        names: ["Suitcase Carry", "Single Arm Farmer Carry", "Farmers Carry"],
+        sets: 2,
+        distanceM: 20,
+        notes: "Alternate arms each length.",
+      },
+      {
+        names: ["Side Plank", "Side-Plank"],
+        sets: 2,
+        durationSec: 30,
+        notes: "Oblique brace to finish · 30s/side.",
+      },
+    ],
+  },
+  "burpees-focus": {
+    title: "Burpee Broad Jump Flow",
+    description: "Explosive burpees, shuttle conditioning, and core control.",
+    blockType: "circuit",
+    rounds: 4,
+    restBetweenRoundsSec: 30,
+    parameters: { format: "circuit", intensity: "hard" },
+    items: [
+      {
+        names: ["Burpee Broad Jump", "Burpees"],
+        distanceM: 20,
+        notes: "Broad jump out, walk back reset.",
+      },
+      {
+        names: ["Mountain Climbers", "Mountain Climber"],
+        durationSec: 40,
+        notes: "Fast tempo, hips low.",
+      },
+      {
+        names: ["Plank", "Plank Hold"],
+        durationSec: 30,
+        notes: "Squeeze glutes, breathe through nose.",
+      },
+    ],
+  },
+  "general-station-technique": {
+    title: "Station Technique Mix",
+    description: "Light machine + wall ball + carry combo to stay sharp.",
+    blockType: "circuit",
+    rounds: 2,
+    restBetweenRoundsSec: 60,
+    parameters: { format: "circuit", intensity: "easy" },
+    items: [
+      {
+        names: ["SkiErg", "Ski Erg"],
+        distanceM: 200,
+        notes: "Technique pace, tall posture.",
+      },
+      {
+        names: ["Wall Balls", "Wall Ball"],
+        reps: 12,
+        notes: "Light load, perfect mechanics.",
+      },
+      {
+        names: ["Farmer Carry", "Farmers Carry", "DB Farmers Carry"],
+        distanceM: 20,
+        notes: "Moderate weight, nasal breathing.",
+      },
+    ],
+  },
+};
+
+async function findHyroxAccessoryExercise(
+  supabase: SupabaseClient,
+  names: string[],
+  warnings: string[]
+) {
+  for (const name of names) {
+    const { data } = await supabase
+      .from("exercises")
+      .select("id, name")
+      .ilike("name", `%${name}%`)
+      .limit(1)
+      .single();
+
+    if (data) {
+      console.log(`✅ [HYROX Accessory] Found exercise: ${data.name} (searched: ${name})`);
+      return data;
+    }
+  }
+
+  const label = names.join(", ");
+  console.warn(`⚠️ [HYROX Accessory] Exercise NOT FOUND: ${label}`);
+  warnings.push(`HYROX accessory exercise missing: ${label}`);
+  return null;
+}
+
+async function createHyroxAccessoryWorkout(
+  supabase: SupabaseClient,
+  planDayId: string,
+  session: SessionBlock,
+  accessoryKind: string,
+  warnings: string[]
+) {
+  const templateKey = HYROX_ACCESSORY_TEMPLATES[accessoryKind]
+    ? accessoryKind
+    : DEFAULT_ACCESSORY_KIND;
+  const template = HYROX_ACCESSORY_TEMPLATES[templateKey];
+
+  const { data: sessionData, error } = await supabase
+    .from("sessions")
+    .insert({
+      plan_day_id: planDayId,
+      name: session.title,
+      notes: `HYROX accessory focus: ${template.title} — ${template.description}`,
+      order_index: 99,
+    })
+    .select()
+    .single();
+
+  if (error || !sessionData) {
+    warnings.push(`Failed to create HYROX accessory session: ${error?.message}`);
+    return;
+  }
+
+  const blockPayload: Record<string, any> = {
+    session_id: sessionData.id,
+    block_type: template.blockType,
+    title: template.title,
+    parameters: {
+      hyrox_focus: templateKey,
+      ...(template.parameters ?? {}),
+    },
+    order_index: 1,
+  };
+
+  if (typeof template.rounds === "number") {
+    blockPayload.rounds = template.rounds;
+  }
+  if (typeof template.restBetweenRoundsSec === "number") {
+    blockPayload.rest_between_rounds_s = template.restBetweenRoundsSec;
+  }
+
+  const { data: block, error: blockError } = await supabase
+    .from("session_blocks")
+    .insert(blockPayload)
+    .select()
+    .single();
+
+  if (blockError || !block) {
+    warnings.push(`Failed to create HYROX accessory block: ${blockError?.message}`);
+    return;
+  }
+
+  let order = 0;
+  let insertedCount = 0;
+
+  for (const item of template.items) {
+    const exercise = await findHyroxAccessoryExercise(supabase, item.names, warnings);
+    if (!exercise) continue;
+
+    const payload: Record<string, any> = {
+      block_id: block.id,
+      exercise_id: exercise.id,
+      item_order: order++,
+    };
+
+    if (item.sets) payload.sets = item.sets;
+    if (item.reps) payload.reps = item.reps;
+    if (item.durationSec) payload.duration_sec = item.durationSec;
+    if (item.distanceM) payload.distance_m = item.distanceM;
+    if (item.notes) payload.notes = item.notes;
+    if (item.extra) payload.extra = item.extra;
+
+    const { error: itemError } = await supabase.from("session_block_items").insert(payload);
+    if (itemError) {
+      console.error("❌ Failed to add HYROX accessory exercise:", itemError);
+      warnings.push(`Failed to add HYROX accessory item: ${itemError.message}`);
+      continue;
+    }
+
+    insertedCount++;
+  }
+
+  if (insertedCount === 0) {
+    warnings.push("HYROX accessory block created without exercises (none found).");
+  } else {
+    console.log(`✅ HYROX accessory session created (${template.title}) — ${insertedCount} items`);
   }
 }
 

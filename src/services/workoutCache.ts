@@ -448,7 +448,23 @@ export async function syncCircuitToSupabase(
             is_pb: false,
           });
         } else {
-          // Regular circuit workout
+          // Regular circuit workout - check for PB
+          let isPB = false;
+          
+          // Check for PB if weight-based exercise
+          if (exercise.suggestedKg && exercise.suggestedKg > 0) {
+            const pbResult = await checkPersonalBest(
+              clientId,
+              `${circuitName} - ${exercise.name}`,
+              {
+                weight: exercise.suggestedKg,
+                duration: exercise.durationMin,
+                distance: exercise.targetDistanceKm,
+              }
+            );
+            isPB = pbResult.isPB;
+          }
+          
           logsToInsert.push({
             client_id: clientId,
             plan_id: planId,
@@ -462,7 +478,7 @@ export async function syncCircuitToSupabase(
             distance_km: exercise.targetDistanceKm || null,
             notes: `Completed rounds: ${rounds.join(", ")}`,
             rating: null,
-            is_pb: false,
+            is_pb: isPB,
           });
         }
       }

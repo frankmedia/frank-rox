@@ -12,6 +12,8 @@ import { CardioWorkoutType } from "../cardioWorkoutSelector";
 // Exercise IDs - use these instead of findExercise to avoid matching wrong exercises
 const ROWERG_ID = "d8f8bf07-c315-40a4-ae0c-b3fcb4db74e2"; // RowErg (not "RowErg Intervals 40/20")
 const SKIERG_ID = "917c05c6-5adf-4d3b-887e-ff2a292fa079"; // SkiErg (not "SkiErg 50/10 Intervals")
+const ASSAULT_BIKE_ID = "ebd2356a-1244-4cb2-9449-423a481e377c"; // Assault Bike
+const exerciseIdCache: Record<string, string | null> = {};
 
 export interface CardioSessionOptions {
   sessionType: CardioWorkoutType;
@@ -20,6 +22,8 @@ export interface CardioSessionOptions {
   equipment?: string[]; // Available equipment
   allowRunning?: boolean; // If false, replace runs with erg alternatives
   intensityModifier?: number; // Progressive overload multiplier (1.0 = base, 1.1 = +10%)
+  weekNumber?: number; // Week number for progressive programming (1-4)
+  ladderStepsKm?: number[]; // Optional custom ladder steps (in km)
 }
 
 /**
@@ -85,12 +89,50 @@ async function findExercise(
     const { data } = await supabase
       .from("exercises")
       .select("*")
-      .ilike("name", name)
+      .ilike("name", `%${name}%`)
       .limit(1)
-      .single();
+      .maybeSingle();
     
     if (data) return data;
   }
+  return null;
+}
+
+/**
+ * Helper: Resolve preferred exercise ID, falling back to name search if the ID is missing.
+ */
+async function resolveExerciseId(
+  supabase: SupabaseClient,
+  preferredId: string,
+  fallbackNames: string[],
+  label: string
+): Promise<string | null> {
+  if (preferredId in exerciseIdCache) {
+    return exerciseIdCache[preferredId];
+  }
+
+  const { data: preferredData } = await supabase
+    .from("exercises")
+    .select("id")
+    .eq("id", preferredId)
+    .maybeSingle();
+
+  if (preferredData?.id) {
+    exerciseIdCache[preferredId] = preferredData.id;
+    return preferredData.id;
+  }
+
+  const fallback = await findExercise(supabase, fallbackNames);
+  if (fallback?.id) {
+    exerciseIdCache[preferredId] = fallback.id;
+    console.warn(
+      `⚠️ [CardioGenerator] Preferred exercise "${label}" (${preferredId}) missing; using "${fallback.name}" (${fallback.id}).`
+    );
+    return fallback.id;
+  }
+
+  console.error(`❌ [CardioGenerator] Could not find exercise for "${label}".`);
+  exerciseIdCache[preferredId] = null;
   return null;
 }
 
@@ -173,7 +215,10 @@ async function addItem(
   if (Object.keys(extra).length) payload.extra = extra;
 
   const res = await supabase.from("session_block_items").insert(payload);
-  if (res.error) throw res.error;
+  if (res.error) {
+    console.error("❌ session_block_items insert failed:", res.error, payload);
+    throw res.error;
+  }
 }
 
 /**
@@ -257,6 +302,15 @@ async function buildSkiRowThreshold(
   options: CardioSessionOptions,
   modifier: number
 ) {
+  const skiErgId = await resolveExerciseId(supabase, SKIERG_ID, ["SkiErg", "Ski Erg"], "SkiErg");
+  const rowErgId = await resolveExerciseId(supabase, ROWERG_ID, ["RowErg", "Row Erg"], "RowErg");
+  const assaultBikeId = await resolveExerciseId(supabase, ASSAULT_BIKE_ID, ["Assault Bike", "Air Bike"], "Assault Bike");
+
+  if (!skiErgId || !rowErgId) {
+    console.error("❌ [CardioGenerator] Ski-Row Threshold aborted: missing SkiErg or RowErg exercises.");
+    return;
+  }
+
   const totalDuration = options.duration || 50; // Total session duration
   
   const sessionData = await createSession(
@@ -269,26 +323,30 @@ async function buildSkiRowThreshold(
   const roundsPerCircuit = 3; // 3 rounds per circuit
 
   // CIRCUIT 1: Leg drive + posterior chain endurance
-  const { data: circuit1 } = await supabase
+  const { data: circuit1, error: circuit1Error } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
       title: "Circuit 1/3",
-      notes: "Focus: Leg drive + posterior chain endurance",
       rounds: roundsPerCircuit,
       rest_between_rounds_s: 90,
-      parameters: { format: "circuit", intensity: "hard" },
+      parameters: { format: "circuit", intensity: "hard", focus: "Leg drive + posterior chain endurance" },
       order_index: 1,
     })
     .select()
     .single();
 
+  if (circuit1Error || !circuit1) {
+    console.error("❌ Failed to create Ski-Row Threshold circuit 1 block:", circuit1Error);
+    throw circuit1Error || new Error("Failed to create circuit 1 block");
+  }
+
   if (circuit1) {
     let order = 0;
     
     // SkiErg - 500m (ID: 917c05c6-5adf-4d3b-887e-ff2a292fa079)
-    await addItem(supabase, circuit1.id, SKIERG_ID, order++, {
+    await addItem(supabase, circuit1.id, skiErgId, order++, {
       distance: `${Math.round(500 * modifier)}m`,
       notes: "Consistent splits, tall catch"
     });
@@ -311,26 +369,30 @@ async function buildSkiRowThreshold(
   }
 
   // CIRCUIT 2: Power endurance + trunk control
-  const { data: circuit2 } = await supabase
+  const { data: circuit2, error: circuit2Error } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
       title: "Circuit 2/3",
-      notes: "Focus: Power endurance + trunk control",
       rounds: roundsPerCircuit,
       rest_between_rounds_s: 90,
-      parameters: { format: "circuit", intensity: "hard" },
+      parameters: { format: "circuit", intensity: "hard", focus: "Power endurance + trunk control" },
       order_index: 2,
     })
     .select()
     .single();
 
+  if (circuit2Error || !circuit2) {
+    console.error("❌ Failed to create Ski-Row Threshold circuit 2 block:", circuit2Error);
+    throw circuit2Error || new Error("Failed to create circuit 2 block");
+  }
+
   if (circuit2) {
     let order = 0;
     
     // RowErg - 500m (ID: d8f8bf07-c315-40a4-ae0c-b3fcb4db74e2)
-    await addItem(supabase, circuit2.id, ROWERG_ID, order++, {
+    await addItem(supabase, circuit2.id, rowErgId, order++, {
       distance: `${Math.round(500 * modifier)}m`,
       notes: "Even pacing, 20-24 spm"
     });
@@ -355,28 +417,31 @@ async function buildSkiRowThreshold(
   }
 
   // CIRCUIT 3: Aerobic power + grip & stability
-  const { data: circuit3 } = await supabase
+  const { data: circuit3, error: circuit3Error } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
       title: "Circuit 3/3",
-      notes: "Focus: Aerobic power + grip & stability",
       rounds: roundsPerCircuit,
       rest_between_rounds_s: 90,
-      parameters: { format: "circuit", intensity: "hard" },
+      parameters: { format: "circuit", intensity: "hard", focus: "Aerobic power + grip & stability" },
       order_index: 3,
     })
     .select()
     .single();
 
+  if (circuit3Error || !circuit3) {
+    console.error("❌ Failed to create Ski-Row Threshold circuit 3 block:", circuit3Error);
+    throw circuit3Error || new Error("Failed to create circuit 3 block");
+  }
+
   if (circuit3) {
     let order = 0;
     
     // Assault Bike - 300m (ID: ebd2356a-1244-4cb2-9449-423a481e377c)
-    const assaultBike = await findExercise(supabase, ["Assault Bike", "Air Bike"]);
-    if (assaultBike) {
-      await addItem(supabase, circuit3.id, assaultBike.id, order++, {
+    if (assaultBikeId) {
+      await addItem(supabase, circuit3.id, assaultBikeId, order++, {
         distance: `${Math.round(300 * modifier)}m`,
         notes: "Powerful arms + legs"
       });
@@ -402,20 +467,27 @@ async function buildSkiRowThreshold(
   }
 
   // OPTIONAL FINISHER: Hyrox race specificity (2-3 rounds)
-  const { data: finisher } = await supabase
+  const { data: finisher, error: finisherError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "cardio",
       title: "Optional Finisher",
-      notes: "For Hyrox race specificity",
       rounds: 2,
       rest_between_rounds_s: 180, // 3 min rest
-      parameters: { format: "circuit", intensity: "race_pace" },
+      parameters: {
+        format: "circuit",
+        intensity: "race_pace",
+        focus: "Hyrox race specificity",
+      },
       order_index: 4,
     })
     .select()
     .single();
+
+  if (finisherError || !finisher) {
+    console.error("❌ Failed to create Ski-Row Threshold finisher block:", finisherError);
+  }
 
   if (finisher) {
     let order = 0;
@@ -432,7 +504,7 @@ async function buildSkiRowThreshold(
     // Sled Push - 20m (ID: a10d0c72-2a2d-4fe8-8e6d-c2e0f42e52c1)
     const sledPush = await findExercise(supabase, ["Sled Push"]);
     if (sledPush) {
-      await addItem(supabase, sledPush.id, sledPush.id, order++, {
+      await addItem(supabase, finisher.id, sledPush.id, order++, {
         distance: `${Math.round(20 * modifier)}m`,
         notes: "Fast short steps, drive through legs"
       });
@@ -441,7 +513,7 @@ async function buildSkiRowThreshold(
     // Sled Pull - 20m (ID: 4cf7c483-2455-4354-bea9-395f19f5c312)
     const sledPull = await findExercise(supabase, ["Sled Pull"]);
     if (sledPull) {
-      await addItem(supabase, sledPull.id, sledPull.id, order++, {
+      await addItem(supabase, finisher.id, sledPull.id, order++, {
         distance: `${Math.round(20 * modifier)}m`,
         notes: "Upright posture, heels down"
       });
@@ -450,7 +522,7 @@ async function buildSkiRowThreshold(
     // Lunges - 20 reps (ID: b076d033-62f7-416f-9738-5e8141fca7e2 or 6ca8cc8f-dca0-4545-80f2-53a8170fa567)
     const lunges = await findExercise(supabase, ["Lunges", "Walking Lunges", "Lunge"]);
     if (lunges) {
-      await addItem(supabase, lunges.id, lunges.id, order++, {
+      await addItem(supabase, finisher.id, lunges.id, order++, {
         reps: Math.round(20 * modifier),
         notes: "Controlled tempo, knee tracks toes"
       });
@@ -797,8 +869,9 @@ async function buildAssaultGauntlet(
 }
 
 /**
- * 8. HYBRID PYRAMID
- * Pyramid: 250-500-750-1000-750-500-250 (Ski/Row/Bike)
+ * 8. LADDER
+ * Ascending ladder: 500m, 750m, 1000m (all 3 machines at each distance)
+ * Total: 9 exercises (3 distances × 3 machines)
  */
 async function buildHybridPyramid(
   supabase: SupabaseClient,
@@ -806,47 +879,78 @@ async function buildHybridPyramid(
   options: CardioSessionOptions,
   modifier: number
 ) {
+  const weekNumber = options.weekNumber || 1;
+  
+  // Progressive distances based on week number
+  let distances: number[];
+  let description: string;
+  
+  const customSteps = Array.isArray(options.ladderStepsKm)
+    ? options.ladderStepsKm.filter(step => typeof step === "number" && step > 0)
+    : undefined;
+
+  if (customSteps && customSteps.length > 0) {
+    distances = customSteps.map(step => Math.round(step * 1000));
+    const kmLabel = customSteps.map(step => `${step.toFixed(step >= 1 ? 1 : 2)}km`).join(" → ");
+    description = `Phase-aware Ladder: ${kmLabel} on each machine. Controlled effort, race-specific pacing.`;
+  } else if (weekNumber === 1) {
+    distances = [300, 500];
+    description = "Week 1 Ladder: 300m + 500m for each machine. Steady controlled pace throughout.";
+  } else if (weekNumber === 2) {
+    distances = [300, 500, 750];
+    description = "Week 2 Ladder: Progressive build 300m → 500m → 750m. Maintain steady effort.";
+  } else {
+    distances = [500, 750, 1000];
+    description = "Full Ladder: 500m → 750m → 1000m. Build to peak distance with controlled pacing.";
+  }
+
   const sessionData = await createSession(
     supabase,
     planDayId,
-    "Hybrid Pyramid",
-    "Pyramid format for aerobic development. Controlled pacing - steady effort throughout. Build up, then back down."
+    "Ladder",
+    description
   );
 
-  const distances = [250, 500, 750, 1000, 750, 500, 250];
-  const machines = ["SkiErg", "RowErg", "Assault Bike"];
+  const machineIds = [SKIERG_ID, ROWERG_ID, ASSAULT_BIKE_ID];
 
   // Create ONE circuit block with all exercises as children
-  const { data: pyramidBlock } = await supabase
+  const { data: ladderBlock, error: ladderBlockError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
       block_type: "circuit",
-      title: "Hybrid Pyramid",
+      title: "Ladder",
       parameters: { format: "circuit", intensity: "easy" },
-      rounds: 1, // One round through the pyramid
+      rounds: 1, // One round through the ladder
     })
     .select()
     .single();
 
-  if (pyramidBlock) {
+  if (ladderBlockError || !ladderBlock) {
+    console.error("❌ Failed to create ladder block:", ladderBlockError);
+    throw ladderBlockError || new Error("Failed to create ladder block");
+  }
+
+  if (ladderBlock) {
     let order = 0;
     
-    for (let i = 0; i < distances.length; i++) {
-      const distance = Math.round(distances[i] * modifier);
-      const machine = machines[i % machines.length];
+    // For each distance, add all 3 machines
+    for (const distance of distances) {
+      const adjustedDistance = Math.round(distance * modifier);
       
-      const exercise = await findExercise(supabase, [machine]);
-      if (exercise) {
-        await addItem(supabase, pyramidBlock.id, exercise.id, order++, {
-          distance: `${distance}m`,
+      // Add all 3 machines at this distance
+      for (const machineId of machineIds) {
+        await addItem(supabase, ladderBlock.id, machineId, order++, {
+          distance: `${adjustedDistance}m`,
           notes: "Steady pace, controlled breathing"
         });
       }
     }
   }
 
-  console.log("✅ Hybrid Pyramid created");
+  const totalExercises = distances.length * machineIds.length;
+  const totalDistance = distances.reduce((sum, d) => sum + d, 0) * machineIds.length;
+  console.log(`✅ Ladder created for Week ${weekNumber}: ${totalExercises} exercises (${distances.join('m/')}m × 3 machines = ${totalDistance}m total)`);
 }
 
 /**

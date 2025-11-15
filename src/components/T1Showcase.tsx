@@ -276,24 +276,40 @@ const HorizontalRow = ({
   const [loadingPrimary, setLoadingPrimary] = useState(false);
 
   const loadFreeDays = async () => {
-    if (!authUser?.clientId) return;
+    console.log("🟡 DAY0BUG: loadFreeDays called, authUser:", authUser?.clientId);
+    if (!authUser?.clientId) {
+      console.log("🟡 DAY0BUG: No authUser.clientId, aborting");
+      return;
+    }
     setLoadingDays(true);
     try {
-      const { data: plan } = await supabase
+      console.log("🟡 DAY0BUG: Fetching active plan for client:", authUser.clientId);
+      const { data: plans, error: planError } = await supabase
         .from("plans")
-        .select("id")
+        .select("id, status")
         .eq("client_id", authUser.clientId)
-        .eq("status", "active")
-        .single();
+        .eq("status", "active");
+      
+      console.log("🟡 DAY0BUG: Plan query result:", { plansCount: plans?.length, plans, planError });
+      
+      const plan = plans && plans.length > 0 ? plans[0] : null;
+      
       if (!plan?.id) {
+        console.log("🟡 DAY0BUG: No active plan found, setting planDays to []");
         setPlanDays([]);
         return;
       }
-      const { data: days } = await supabase
+      
+      console.log("🟡 DAY0BUG: Found active plan:", plan.id);
+      
+      const { data: days, error: daysError } = await supabase
         .from("plan_days")
         .select("id, day_index, is_rest, description")
         .eq("plan_id", plan.id)
         .order("day_index", { ascending: true });
+      
+      console.log("🟡 DAY0BUG: Plan days query result:", { daysCount: days?.length, daysError });
+      
       const ids = (days || []).map((d: any) => d.id);
       let sessionsByDay: Record<string, number> = {};
       if (ids.length > 0) {
@@ -301,6 +317,7 @@ const HorizontalRow = ({
           .from("sessions")
           .select("id, plan_day_id")
           .in("plan_day_id", ids);
+        console.log("🟡 DAY0BUG: Found", sessions?.length || 0, "sessions across all days");
         (sessions || []).forEach((s: any) => {
           const k = String(s.plan_day_id);
           sessionsByDay[k] = (sessionsByDay[k] || 0) + 1;
@@ -308,9 +325,13 @@ const HorizontalRow = ({
       }
       const mapped = (days || []).map((d: any) => {
         const hasSessions = (sessionsByDay[String(d.id)] || 0) > 0;
-        const free = !hasSessions && (!d.description || d.description === "");
+        const free = !hasSessions; // A day is free if it has no sessions (description doesn't matter)
+        console.log(`🟡 DAY0BUG: Day ${d.day_index}: id=${d.id}, hasSessions=${hasSessions}, free=${free}, sessionCount=${sessionsByDay[String(d.id)] || 0}`);
         return { id: String(d.id), day_index: Number(d.day_index), free };
       });
+      console.log("🟡 DAY0BUG: Mapped plan days:", mapped.length, "days,", mapped.filter(d => d.free).length, "free");
+      console.log("🟡 DAY0BUG: First 5 days:", mapped.slice(0, 5));
+      console.log("🟡 DAY0BUG: Sessions by day:", sessionsByDay);
       setPlanDays(mapped);
     } finally {
       setLoadingDays(false);
@@ -327,7 +348,8 @@ const HorizontalRow = ({
     if (!selectedPlanDayState && planDays.length > 0) {
       const firstFree = planDays.find((d) => d.free);
       if (firstFree) {
-        setSelectedPlanDayState({ id: firstFree.id, label: `Day ${firstFree.day_index + 1}` });
+        // Display day_index as-is (handles both 0-based old plans and 1-based new plans)
+        setSelectedPlanDayState({ id: firstFree.id, label: `Day ${firstFree.day_index}` });
       }
     }
   }, [planDays, selectedPlanDayState]);
@@ -476,6 +498,7 @@ const HorizontalRow = ({
                         className="w-full h-14 text-lg font-bold"
                         style={{ backgroundColor: "#FFCC00", color: "#000" }}
                         onClick={() => {
+                          console.log("🟡 DAY0BUG: Add to Plan button clicked for:", label);
                           setConfigTarget(label);
                           setConfigStep(5);
                           setSelectedPlanDayState(null);
@@ -987,7 +1010,7 @@ const HorizontalRow = ({
                 const daysToShow = hasPlan
                   ? planDays.map((d) => ({
                       id: d.id,
-                      label: `Day ${d.day_index + 1}`,
+                      label: `Day ${d.day_index}`, // Display day_index as-is (handles both 0-based old plans and 1-based new plans)
                       free: d.free,
                     }))
                   : manualDays;
@@ -1203,7 +1226,14 @@ export const T1Showcase = ({
         })}
       </div>
 
-      {activeCat === "Hyrox" && <HorizontalRow title="Hyrox" itemPrefix="Hyrox Plan" hyroxDownloads />}
+      {activeCat === "Hyrox" && (
+        <HorizontalRow
+          title="Hyrox"
+          itemPrefix="Hyrox Plan"
+          hyroxDownloads
+          onPlanGenerated={onPlanGenerated}
+        />
+      )}
 
       {activeCat === "Strength" && (
         <HorizontalRow

@@ -67,6 +67,8 @@ export const DataProvider = ({ children }: DataProviderProps) => {
           .select('id')
           .eq('client_id', clientId)
           .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
           .single();
         
         if (plan && user?.username) {

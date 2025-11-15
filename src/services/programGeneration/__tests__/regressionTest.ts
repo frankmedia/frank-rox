@@ -451,7 +451,7 @@ function buildProgramme(perm: TestPermutation) {
       day: days[dayIndex++],
       type: 'run',
       title: i === 0 ? 'Long Run' : 'Intervals',
-      distance: i === 0 ? '7km' : '6×500m',
+      distance: i === 0 ? '5km' : '6×500m',
       pace: 'Zone 2',
       effort: 'easy',
       detail: 'Aerobic'

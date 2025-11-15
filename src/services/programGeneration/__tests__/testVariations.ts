@@ -217,7 +217,7 @@ function buildProgramme(config: TestConfig) {
       day: days[dayIndex++],
       type: 'run',
       title: i === 0 ? 'Long Run' : 'Intervals',
-      distance: i === 0 ? '7km' : '6×500m',
+      distance: i === 0 ? '5km' : '6×500m',
       pace: i === 0 ? 'Zone 2' : 'Race pace',
       effort: i === 0 ? 'easy' : 'hard',
       detail: i === 0 ? 'Aerobic base' : 'Speed work'

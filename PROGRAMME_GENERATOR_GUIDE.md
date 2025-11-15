@@ -549,12 +549,12 @@ Total: 2 cardio sessions (both standalone)
 
 **Week 1:**
 - Tuesday: Intervals (6×500m @ race pace)
-- Saturday: Long Run (6-8km @ Z2)
+- Saturday: Long Run (5km @ Z2)
 - Sunday: Active Recovery (yoga/stretching)
 
 **Week 2:**
 - Tuesday: Intervals (6×500m @ race pace) ← SAME rounds, but faster at RPE 8/10
-- Saturday: Long Run (7km @ Z2) ← +1km
+- Saturday: Long Run (6km @ Z2) ← +1km
 - Sunday: Active Recovery ← NO CHANGE
 
 ---
@@ -615,7 +615,7 @@ Total: 2 cardio sessions (both standalone)
 - Monday: Hill Repeats (6×200m)
 - Tuesday: Intervals (6×1km @ race pace)
 - Wednesday: Recovery Run (3-4km @ Z1)
-- Thursday: Tempo Run (6km @ Z3) + Strength Upper
+- Thursday: Tempo Run (5km @ Z3) + Strength Upper
 - Friday: Race Simulation (4 rounds hybrid)
 - Saturday: Long Run (10-12km @ Z2)
 
@@ -623,7 +623,7 @@ Total: 2 cardio sessions (both standalone)
 - Monday: Hill Repeats (8×200m) ← +2 reps
 - Tuesday: Intervals (6×1km @ race pace) ← SAME rounds, RPE 8/10
 - Wednesday: Recovery Run (3-4km @ Z1) ← NO CHANGE
-- Thursday: Tempo Run (7km @ Z3) + Strength Upper ← +1km, +2 reps on strength
+- Thursday: Tempo Run (6km @ Z3) + Strength Upper ← +1km, +2 reps on strength
 - Friday: Race Simulation (4 rounds hybrid) ← +1 round
 - Saturday: Long Run (11km @ Z2) ← +1km
 

@@ -120,10 +120,10 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
     const exercises: Exercise[] = [];
     
     if (sessions) {
-      console.log(`🔧 Processing ${sessions.length} sessions`);
+      // console.log(`🔧 Processing ${sessions.length} sessions`);
       for (const session of sessions) {
         const blocks = (session as any).session_blocks || [];
-        console.log(`📦 Session "${session.name}": ${blocks.length} blocks`);
+        // console.log(`📦 Session "${session.name}": ${blocks.length} blocks`);
         
         // Add session notes as an intro card if they exist
         const sessionNotes = (session as any).notes;
@@ -150,7 +150,7 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
           const isFormatGroup = blockParams.format_group === true || !!blockParams.format || (blockType === 'circuit' || blockType === 'amrap' || blockType === 'simulation');
           const format = blockParams.format?.toLowerCase() || blockType;
           
-          console.log(`🔍 Block check:`, { blockType, format, isFormatGroup, title: block.title, items: items.length });
+          // console.log(`🔍 Block check:`, { blockType, format, isFormatGroup, title: block.title, items: items.length });
           
           if (isFormatGroup && (format === 'circuit' || format === 'amrap' || format === 'simulation')) {
             // Create a grouped exercise (header + children)
@@ -271,15 +271,15 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
               notes: blockParams.notes || block.title || undefined,
             };
             
-            console.log(`📦 Created ${format} block:`, {
-              name: parentExercise.name,
-              exercises: childExercises.length,
-              work_sec: workSec,
-              rest_sec: restSec,
-              rounds: parentExercise.totalRounds,
-              rest_between_rounds: restBetweenRounds,
-              children: childExercises.map(c => ({ name: c.name, distance: c.targetDistanceKm }))
-            });
+            // console.log(`📦 Created ${format} block:`, {
+            //   name: parentExercise.name,
+            //   exercises: childExercises.length,
+            //   work_sec: workSec,
+            //   rest_sec: restSec,
+            //   rounds: parentExercise.totalRounds,
+            //   rest_between_rounds: restBetweenRounds,
+            //   children: childExercises.map(c => ({ name: c.name, distance: c.targetDistanceKm }))
+            // });
             
             exercises.push(parentExercise);
             
@@ -361,11 +361,11 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
               // Prioritize programmatic notes from session_block_items over default exercise notes
               const finalNotes = item.notes || ex.notes || undefined;
               if (item.notes && ex.notes && item.notes !== ex.notes) {
-                console.log(`📝 Using programmatic notes for ${ex.name}:`, {
-                  programmatic: item.notes.substring(0, 50) + '...',
-                  default: ex.notes.substring(0, 50) + '...',
-                  source: 'session_block_items (OVERRIDE)'
-                });
+                // console.log(`📝 Using programmatic notes for ${ex.name}:`, {
+                //   programmatic: item.notes.substring(0, 50) + '...',
+                //   default: ex.notes.substring(0, 50) + '...',
+                //   source: 'session_block_items (OVERRIDE)'
+                // });
               }
 
               const exerciseObj = {
@@ -388,19 +388,19 @@ export async function getDayExercises(dayId: string): Promise<Exercise[]> {
                 timeCap: blockParams.time_cap || undefined,
               };
               
-              console.log('📦 Loading exercise from DB:', {
-                name: ex.name,
-                exercise_id: ex.id,
-                session_block_item_id: item.id,
-                extra,
-                mapped: {
-                  sets: exerciseObj.sets,
-                  reps: exerciseObj.reps,
-                  suggestedKg: exerciseObj.suggestedKg,
-                  durationMin: exerciseObj.durationMin,
-                  targetDistanceKm: exerciseObj.targetDistanceKm
-                }
-              });
+              // console.log('📦 Loading exercise from DB:', {
+              //   name: ex.name,
+              //   exercise_id: ex.id,
+              //   session_block_item_id: item.id,
+              //   extra,
+              //   mapped: {
+              //     sets: exerciseObj.sets,
+              //     reps: exerciseObj.reps,
+              //     suggestedKg: exerciseObj.suggestedKg,
+              //     durationMin: exerciseObj.durationMin,
+              //     targetDistanceKm: exerciseObj.targetDistanceKm
+              //   }
+              // });
               
               exercises.push(exerciseObj);
             }
@@ -433,20 +433,20 @@ export async function getTodayExercises(clientId: string): Promise<Exercise[]> {
     // Get active plan
     const plan = await getActivePlan(clientId);
     if (!plan) {
-      console.log("❌ No active plan found for clientId:", clientId);
+      // console.log("❌ No active plan found for clientId:", clientId);
       return [];
     }
 
-    console.log("📋 Found active plan:", plan.name, "- ID:", plan.id);
+    // console.log("📋 Found active plan:", plan.name, "- ID:", plan.id);
 
     // Get plan days
     const days = await getPlanDays(plan.id);
     if (days.length === 0) {
-      console.log("❌ No days found in plan");
+      // console.log("❌ No days found in plan");
       return [];
     }
 
-    console.log("📅 Found", days.length, "days in plan");
+    // console.log("📅 Found", days.length, "days in plan");
 
     // Get current training day from localStorage (same as Sheets logic)
     let currentDayNumber = plan.current_day || 1;
@@ -459,27 +459,27 @@ export async function getTodayExercises(clientId: string): Promise<Exercise[]> {
         const storedDay = localStorage.getItem(userKey);
         if (storedDay) {
           currentDayNumber = parseInt(storedDay);
-          console.log("📍 Using training day from localStorage:", currentDayNumber);
+          // console.log("📍 Using training day from localStorage:", currentDayNumber);
         }
       }
     } catch (e) {
-      console.log("⚠️ Could not read localStorage, using plan.current_day:", currentDayNumber);
+      // console.log("⚠️ Could not read localStorage, using plan.current_day:", currentDayNumber);
     }
 
     // Find today's day based on day_index (day_index is 1-based: 1, 2, 3...)
     const todayDay = days.find(d => d.day_index === currentDayNumber);
     
     if (!todayDay) {
-      console.log("❌ Day not found for day_index:", currentDayNumber, "- Available days:", days.map(d => d.day_index));
+      // console.log("❌ Day not found for day_index:", currentDayNumber, "- Available days:", days.map(d => d.day_index));
       return [];
     }
 
-    console.log("✅ Found today's day:", todayDay.label || `Day ${currentDayNumber}`, "- ID:", todayDay.id);
+    // console.log("✅ Found today's day:", todayDay.label || `Day ${currentDayNumber}`, "- ID:", todayDay.id);
 
     // Fetch exercises for today
     const exercises = await getDayExercises(todayDay.id);
-    console.log("📦 Fetched", exercises.length, "exercises for today");
-    console.log("📋 Exercise types:", exercises.map(ex => ({ name: ex.name, type: ex.type })));
+    // console.log("📦 Fetched", exercises.length, "exercises for today");
+    // console.log("📋 Exercise types:", exercises.map(ex => ({ name: ex.name, type: ex.type })));
     
     // DON'T add day description card - user doesn't want day-of-week cards
     // Session intro cards (with workout purpose) are added in getDayExercises()

@@ -7,8 +7,30 @@
 
 import { SupabaseClient } from "@supabase/supabase-js";
 
+const TIMED_RECOVERY_SEQUENCE: Array<{
+  names: string[];
+  duration: string;
+  notes: string;
+}> = [
+  { names: ["Inchworms"], duration: "2min", notes: "Walk hands out, pause in plank, heels down on return." },
+  { names: ["Hamstring Stretch"], duration: "2min", notes: "Sit tall, fold from hips, breathe into hamstrings." },
+  { names: ["Hip Flexor Stretch"], duration: "4min", notes: "2 min per side · posterior pelvic tilt, reach overhead." },
+  { names: ["Hip CARs", "Standing Hip CAR"], duration: "2min", notes: "Slow controlled circles, brace core, trace biggest circle." },
+  { names: ["Foam Roller on Mid Back"], duration: "2min", notes: "Support head, roll mid-back, pause on tight spots." },
+  { names: ["Cossack Squat"], duration: "2min", notes: "Optional finisher · alternate sides, heel down, chest tall." },
+];
+
+const LIGHT_MOBILITY_FLOW: Array<{ id: string; durationSec: number; notes: string }> = [
+  { id: "c61ef2d5-014d-4e92-bd5e-201a2e8f0072", durationSec: 60, notes: "Inchworms · smooth walkouts, heels down on return." },
+  { id: "ff5cef72-08a8-4168-bb47-5ae49234c463", durationSec: 60, notes: "Hamstring stretch · hinge at hips, long spine." },
+  { id: "74f1bab3-ef99-48e0-95f5-4845d09e7e2", durationSec: 60, notes: "Hip flexor (R) · posterior pelvic tilt, reach tall." },
+  { id: "50dfec13-2d7d-49c7-b66c-1a5149462030", durationSec: 60, notes: "Hip flexor (L) · same cues, breathe deep." },
+  { id: "3d755717-f706-4b08-8b8c-8586083e6371", durationSec: 60, notes: "Standing hip CARs · slow circles, brace core." },
+  { id: "4d01a06b-1ce3-48ee-a6cc-9735d4b92e5c", durationSec: 60, notes: "Foam roller mid-back · small segments, relax neck." },
+];
+
 export interface RecoverySessionOptions {
-  sessionType: "post-workout" | "active-recovery";
+  sessionType: "post-workout" | "active-recovery" | "light-mobility";
   duration?: number; // minutes
   strengthData?: {
     bench5rm?: number;
@@ -34,6 +56,9 @@ export async function createRecoverySession(
       break;
     case "active-recovery":
       await buildActiveRecovery(supabase, planDayId, options);
+      break;
+    case "light-mobility":
+      await buildLightMobilityFlow(supabase, planDayId);
       break;
   }
 }
@@ -74,24 +99,12 @@ async function findExercise(
   names: string[]
 ): Promise<any> {
   for (const name of names) {
-    // Try exact match first
-    let { data } = await supabase
+    const { data } = await supabase
       .from("exercises")
       .select("*")
-      .ilike("name", name)
+      .ilike("name", `%${name}%`)
       .limit(1)
-      .single();
-    
-    // If not found, try partial match
-    if (!data) {
-      const result = await supabase
-        .from("exercises")
-        .select("*")
-        .ilike("name", `%${name}%`)
-        .limit(1)
-        .single();
-      data = result.data;
-    }
+      .maybeSingle();
     
     if (data) {
       console.log(`✅ Found exercise: ${data.name} (searched: ${name})`);
@@ -256,137 +269,91 @@ async function buildPostWorkoutMobility(
 async function buildActiveRecovery(
   supabase: SupabaseClient,
   planDayId: string,
-  options: RecoverySessionOptions
+  _options: RecoverySessionOptions
 ) {
   const sessionData = await createSession(
     supabase,
     planDayId,
     "Active Recovery",
-    "Light movement and core stability to promote blood flow and recovery. Focus on quality movement, not intensity."
+    "Timed circuit: flow through each drill while the timer advances automatically. Focus on relaxed breathing and quality positions."
   );
 
-  // Block 1: Light Cardio Warm-up
-  const { data: cardioBlock, error: cardioError } = await supabase
+  const { data: circuitBlock, error } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
-      block_type: "cardio",
-      title: "Light Cardio",
-      parameters: { format: "standard" },
+      block_type: "circuit",
+      title: "Mobility Flow Circuit",
+      parameters: { format: "circuit", intensity: "easy" },
+      rounds: 2,
+      work_sec: 45,
+      rest_sec: 15,
+      rest_between_rounds_s: 60,
       order_index: 1,
     })
     .select()
     .single();
 
-  if (cardioError) {
-    console.error("❌ Failed to create Light Cardio block:", cardioError);
-    throw cardioError;
+  if (error || !circuitBlock) {
+    console.error("❌ Failed to create mobility circuit:", error);
+    return;
   }
 
-  if (cardioBlock) {
-    // RowErg - 10 min @ easy pace
-    const rowerg = await findExercise(supabase, ["RowErg", "Rower", "Rowing Machine"]);
-    if (rowerg) {
-      await addItem(supabase, cardioBlock.id, rowerg.id, 0, {
-        duration: "10min",
-        notes: "Easy pace, focus on smooth rhythm and breathing"
-      });
-    }
+  let order = 0;
+  for (const movement of TIMED_RECOVERY_SEQUENCE) {
+    const exercise = await findExercise(supabase, movement.names);
+    if (!exercise) continue;
+    await addItem(supabase, circuitBlock.id, exercise.id, order++, {
+      duration: movement.duration,
+      notes: movement.notes,
+    });
   }
 
-  // Block 2: Light Movement
-  const { data: movementBlock, error: movementError } = await supabase
+  console.log("✅ Active Recovery session created with timed circuit");
+}
+
+async function buildLightMobilityFlow(
+  supabase: SupabaseClient,
+  planDayId: string
+) {
+  const sessionData = await createSession(
+    supabase,
+    planDayId,
+    "Light Mobility Flow",
+    "5-minute decompression flow. Move gently, breathe steadily, focus on range not intensity."
+  );
+
+  const { data: block, error } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionData.id,
-      block_type: "bodyweight",
-      title: "Light Movement",
-      parameters: { format: "standard" },
-      order_index: 2,
+      block_type: "circuit",
+      title: "5-Min Mobility",
+      parameters: { format: "circuit", intensity: "easy" },
+      rounds: 1,
+      work_sec: 60,
+      rest_sec: 0,
+      order_index: 1,
     })
     .select()
     .single();
 
-  if (movementError) {
-    console.error("❌ Failed to create Light Movement block:", movementError);
-    throw movementError;
+  if (error || !block) {
+    console.error("❌ Failed to create light mobility block:", error);
+    return;
   }
 
-  if (movementBlock) {
-    let order = 0;
-
-    // Air Squats - 2×15
-    const airSquat = await findExercise(supabase, ["Air Squat", "Bodyweight Squat"]);
-    if (airSquat) {
-      await addItem(supabase, movementBlock.id, airSquat.id, order++, {
-        sets: 2,
-        reps: 15,
-        notes: "Slow and controlled, full depth"
-      });
-    }
+  let order = 0;
+  for (const flow of LIGHT_MOBILITY_FLOW) {
+    await supabase.from("session_block_items").insert({
+      block_id: block.id,
+      exercise_id: flow.id,
+      item_order: order++,
+      duration_sec: flow.durationSec,
+      notes: flow.notes,
+    });
   }
 
-  // Block 3: Core Stability
-  const { data: coreBlock, error: coreError } = await supabase
-    .from("session_blocks")
-    .insert({
-      session_id: sessionData.id,
-      block_type: "core",
-      title: "Core Stability",
-      parameters: { format: "standard" },
-      order_index: 3,
-    })
-    .select()
-    .single();
-
-  if (coreError) {
-    console.error("❌ Failed to create Core Stability block:", coreError);
-    throw coreError;
-  }
-
-  if (coreBlock) {
-    let order = 0;
-
-    // Bird Dog - 2×10 each side
-    const birdDog = await findExercise(supabase, ["Bird Dog"]);
-    if (birdDog) {
-      await addItem(supabase, coreBlock.id, birdDog.id, order++, {
-        sets: 2,
-        reps: 10,
-        notes: "10 reps each side, reach long, hips level"
-      });
-    }
-
-    // Dead Bug - 2×10 each side
-    const deadBug = await findExercise(supabase, ["Dead Bug"]);
-    if (deadBug) {
-      await addItem(supabase, coreBlock.id, deadBug.id, order++, {
-        sets: 2,
-        reps: 10,
-        notes: "10 reps each side, low back down, breathe"
-      });
-    }
-
-    // Side Plank - 2×30 sec per side
-    const sidePlank = await findExercise(supabase, ["Side Plank"]);
-    if (sidePlank) {
-      await addItem(supabase, coreBlock.id, sidePlank.id, order++, {
-        sets: 2,
-        duration: "30sec",
-        notes: "30 sec per side, stack hips, strong position"
-      });
-    }
-
-    // Foam Roller on Mid Back - 2 min
-    const foamRoller = await findExercise(supabase, ["Foam Roller", "Foam Roller on Mid Back", "Foam Roller Mid Back"]);
-    if (foamRoller) {
-      await addItem(supabase, coreBlock.id, foamRoller.id, order++, {
-        duration: "2min",
-        notes: "Gentle rolling, release tension, improve posture"
-      });
-    }
-  }
-
-  console.log("✅ Active Recovery created");
+  console.log("✅ Light Mobility Flow created");
 }
 

@@ -107,6 +107,21 @@ async function addItem(
     }
   }
 
+  // Handle rest - convert to seconds
+  if (params.rest) {
+    if (typeof params.rest === 'string') {
+      const restMatch = params.rest.match(/(\d+)\s*(s|sec|min)/i);
+      if (restMatch) {
+        const value = parseInt(restMatch[1]);
+        const unit = restMatch[2].toLowerCase();
+        payload.rest_sec = unit.startsWith('min') ? value * 60 : value;
+      }
+    } else {
+      // Assume it's in seconds
+      payload.rest_sec = params.rest;
+    }
+  }
+
   // Store all params in extra as well for compatibility
   if (Object.keys(params).length) {
     payload.extra = params;
@@ -120,6 +135,17 @@ async function addItem(
   }
 }
 
+async function getNextBlockOrderIndex(supabase: SupabaseClient, sessionId: string): Promise<number> {
+  const { data } = await supabase
+    .from("session_blocks")
+    .select("order_index")
+    .eq("session_id", sessionId)
+    .order("order_index", { ascending: false })
+    .limit(1);
+  const maxOrder = data?.[0]?.order_index ?? 0;
+  return (typeof maxOrder === "number" ? maxOrder : 0) + 1;
+}
+
 /**
  * FINISHER OPTION 1: 4 Min AMRAP
  * - 10 burpee box jumps
@@ -131,7 +157,8 @@ async function buildFinisher1_BurpeeBoxSkiAMRAP(
 ) {
   console.log("🔥 Adding Finisher 1: 4min AMRAP (Burpee Box Jumps + Ski)");
 
-  const { data: amrapBlock } = await supabase
+  const orderIndex = await getNextBlockOrderIndex(supabase, sessionId);
+  const { data: amrapBlock, error: amrapBlockError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionId,
@@ -140,13 +167,19 @@ async function buildFinisher1_BurpeeBoxSkiAMRAP(
       parameters: { 
         format: "amrap",
         intensity: "hard",
-        time_cap: 4 // UI looks for this
+        time_cap: 4, // UI looks for this
+        block_duration_sec: 240,
       },
       rounds: 1,
-      duration_sec: 240, // 4 minutes
+      order_index: orderIndex,
     })
     .select()
     .single();
+
+  if (amrapBlockError || !amrapBlock) {
+    console.error("❌ Failed to create Finisher 1 block:", amrapBlockError);
+    throw amrapBlockError || new Error("Failed to create Finisher 1 block");
+  }
 
   if (amrapBlock) {
     let order = 0;
@@ -154,8 +187,10 @@ async function buildFinisher1_BurpeeBoxSkiAMRAP(
     // Burpee Box Jumps
     const burpeeBoxExercise = await findExercise(supabase, [
       "Burpee Box Jump",
+      "Burpee Box Jumps",
       "Box Jump Burpee",
-      "Burpee Box",
+      "Burpee Broad Jump",
+      "Burpees",
     ]);
     if (burpeeBoxExercise) {
       await addItem(supabase, amrapBlock.id, burpeeBoxExercise.id, order++, {
@@ -188,7 +223,8 @@ async function buildFinisher2_MaxEffort1Min(
 ) {
   console.log(`🔥 Adding Finisher 2: Max Effort 1 Min (${variant})`);
 
-  const { data: maxBlock } = await supabase
+  const orderIndex = await getNextBlockOrderIndex(supabase, sessionId);
+  const { data: maxBlock, error: maxBlockError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionId,
@@ -197,14 +233,20 @@ async function buildFinisher2_MaxEffort1Min(
       parameters: { 
         format: "amrap",
         intensity: "max",
-        time_cap: 1 // 1 minute per round
+        time_cap: 1, // 1 minute per round
+        block_duration_sec: 60,
       },
       rounds: 4, // 4 rounds with 1min rest
-      duration_sec: 60, // 1 minute work
       rest_between_rounds_s: 60, // 1 minute rest
+      order_index: orderIndex,
     })
     .select()
     .single();
+
+  if (maxBlockError || !maxBlock) {
+    console.error(`❌ Failed to create Finisher 2 (${variant}) block:`, maxBlockError);
+    throw maxBlockError || new Error("Failed to create Finisher 2 block");
+  }
 
   if (maxBlock) {
     if (variant === "erg") {
@@ -239,20 +281,21 @@ async function buildFinisher2_MaxEffort1Min(
 }
 
 /**
- * FINISHER OPTION 3: 4 Min Circuit
- * 2 rounds of:
- * - 30sec burpees
- * - 30sec star jumps
- * - 30sec lunge jumps
- * - 30sec press ups
+ * FINISHER OPTION 3: Circuit Finisher
+ * 3 rounds of:
+ * - 45sec burpees (15s rest)
+ * - 45sec star jumps (15s rest)
+ * - 45sec lunge jumps (15s rest)
+ * - 45sec press ups (15s rest)
  */
 async function buildFinisher3_4MinCircuit(
   supabase: SupabaseClient,
   sessionId: string
 ) {
-  console.log("🔥 Adding Finisher 3: 4min Circuit (2 rounds × 4 exercises)");
+  console.log("🔥 Adding Finisher 3: Circuit Finisher (3 rounds × 4 exercises, 45s work / 15s rest)");
 
-  const { data: circuitBlock } = await supabase
+  const orderIndex = await getNextBlockOrderIndex(supabase, sessionId);
+  const { data: circuitBlock, error: circuitBlockError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: sessionId,
@@ -262,25 +305,32 @@ async function buildFinisher3_4MinCircuit(
         format: "circuit",
         intensity: "hard"
       },
-      rounds: 2, // 2 rounds
+      rounds: 3, // 3 rounds
       rest_between_rounds_s: 0, // No rest between rounds
+      work_sec: 45, // 45 seconds work per exercise
+      rest_sec: 15, // 15 seconds rest between exercises
+      order_index: orderIndex,
     })
     .select()
     .single();
 
+  if (circuitBlockError || !circuitBlock) {
+    console.error("❌ Failed to create Finisher 3 block:", circuitBlockError);
+    throw circuitBlockError || new Error("Failed to create Finisher 3 block");
+  }
+
   if (circuitBlock) {
     let order = 0;
 
-    // 1. Burpees - 30sec
+    // 1. Burpees
     const burpeeExercise = await findExercise(supabase, ["Burpee", "Burpees"]);
     if (burpeeExercise) {
       await addItem(supabase, circuitBlock.id, burpeeExercise.id, order++, {
-        duration: "30s", // 30 seconds
-        notes: "30 seconds max effort",
+        notes: "Max effort",
       });
     }
 
-    // 2. Star Jumps - 30sec
+    // 2. Star Jumps
     const starJumpExercise = await findExercise(supabase, [
       "Star Jump",
       "Jumping Jack",
@@ -288,12 +338,11 @@ async function buildFinisher3_4MinCircuit(
     ]);
     if (starJumpExercise) {
       await addItem(supabase, circuitBlock.id, starJumpExercise.id, order++, {
-        duration: "30s", // 30 seconds
-        notes: "30 seconds explosive",
+        notes: "Explosive",
       });
     }
 
-    // 3. Lunge Jumps - 30sec
+    // 3. Lunge Jumps
     const lungeJumpExercise = await findExercise(supabase, [
       "Lunge Jump",
       "Jumping Lunge",
@@ -301,12 +350,11 @@ async function buildFinisher3_4MinCircuit(
     ]);
     if (lungeJumpExercise) {
       await addItem(supabase, circuitBlock.id, lungeJumpExercise.id, order++, {
-        duration: "30s", // 30 seconds
-        notes: "30 seconds alternating legs",
+        notes: "Alternating legs",
       });
     }
 
-    // 4. Press Ups - 30sec
+    // 4. Press Ups
     const pressUpExercise = await findExercise(supabase, [
       "Press Up",
       "Push Up",
@@ -315,8 +363,7 @@ async function buildFinisher3_4MinCircuit(
     ]);
     if (pressUpExercise) {
       await addItem(supabase, circuitBlock.id, pressUpExercise.id, order++, {
-        duration: "30s", // 30 seconds
-        notes: "30 seconds chest to floor",
+        notes: "Chest to floor",
       });
     }
 

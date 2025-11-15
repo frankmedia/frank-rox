@@ -88,6 +88,8 @@ const ClientFeedback = () => {
         .select("id, name, start_date, cycle_days")
         .eq("client_id", clientId)
         .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
         .single();
       
       if (!planError && planData) {

@@ -40,7 +40,10 @@ const T2 = () => {
         </div>
       </header>
       {/* Centered content area; page is frozen (no scrolling) */}
-      <main className="container max-w-2xl mx-auto px-6 pt-10 pb-40 h-[calc(100vh-4rem)] flex flex-col items-center justify-center text-center">
+      <main
+        className="container max-w-2xl mx-auto px-6 pt-10 pb-40 flex flex-col items-center justify-center text-center"
+        style={{ height: 'calc(var(--app-height, 100vh) - 4rem)' }}
+      >
         <div className="space-y-3">
           <h2 className="text-3xl font-extrabold tracking-tight">Frozen Page</h2>
           <p className="text-lg text-muted-foreground">

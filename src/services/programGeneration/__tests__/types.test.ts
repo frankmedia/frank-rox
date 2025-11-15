@@ -90,7 +90,7 @@ describe('secondsToDisplayString', () => {
 describe('calculateRunDuration', () => {
   test('calculates duration at 6 min/km pace', () => {
     expect(calculateRunDuration(5000)).toBe(1800); // 5km * 6 min = 30 min = 1800s
-    expect(calculateRunDuration(7000)).toBe(2520); // 7km * 6 min = 42 min = 2520s
+    expect(calculateRunDuration(6000)).toBe(2160); // 6km * 6 min = 36 min = 2160s
     expect(calculateRunDuration(8000)).toBe(2880); // 8km * 6 min = 48 min = 2880s
     expect(calculateRunDuration(10000)).toBe(3600); // 10km * 6 min = 60 min = 3600s
   });

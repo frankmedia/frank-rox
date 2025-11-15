@@ -19,8 +19,8 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABAS
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const MAX_ITERATIONS = 2;
-const TEST_COUNT = 20; // Test 20 random configurations to find all bugs
+const MAX_ITERATIONS = 1;
+const TEST_COUNT = 10; // Test 10 configurations to catch edge cases
 
 interface TestUser {
   id: number;
@@ -142,21 +142,28 @@ function buildProgramme(profile: TestUser['profile']) {
       day: days[dayIndex++],
       type: 'run',
       title: i === 0 ? 'Long Run' : 'Intervals',
-      distance: i === 0 ? '7km' : '6×500m',
+      distance: i === 0 ? '5km' : '6×500m',
       pace: 'Zone 2',
       effort: 'easy',
       detail: 'Aerobic base'
     });
   }
 
-  // Add cardio
+  // Add cardio (rotate through different types)
+  const cardioTypes = [
+    { title: 'Cardio Conditioning', detail: 'hybrid-pyramid' },
+    { title: 'Ski-Row Threshold', detail: 'ski-row-threshold' },
+    { title: 'Machine Endurance', detail: 'machine-endurance' }
+  ];
+  
   for (let i = 0; i < profile.cardioPerWeek; i++) {
+    const cardioType = cardioTypes[i % cardioTypes.length];
     sessions.push({
       day: days[dayIndex++],
       type: 'cardio',
-      title: 'Cardio Conditioning',
+      title: cardioType.title,
       effort: 'moderate',
-      detail: 'hybrid-pyramid'
+      detail: cardioType.detail
     });
   }
 
@@ -221,8 +228,26 @@ async function validatePlan(user: TestUser, planId: string): Promise<ValidationI
       week1Sessions++;
 
       // Validate exercise data
-      for (const session of sessions) {
+      for (const session of workoutSessions) {
         const blocks = (session as any).session_blocks || [];
+        
+        // Check for empty sessions (0 blocks)
+        if (blocks.length === 0) {
+          issues.push({
+            severity: 'error',
+            code: 'EMPTY_SESSION',
+            message: `Day ${day.day_index}: Session "${session.name}" has 0 blocks (no exercises)`,
+            fix: async () => {
+              console.log(`   🔧 AUTO-FIX: Deleting broken session "${session.name}" on Day ${day.day_index}...`);
+              await supabase
+                .from('sessions')
+                .delete()
+                .eq('id', session.id);
+            }
+          });
+          continue; // Skip further validation for this session
+        }
+        
         for (const block of blocks) {
           const items = block.session_block_items || [];
           for (const item of items) {

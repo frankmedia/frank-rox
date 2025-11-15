@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { computeAthleteProfile } from "@/utils/athleteScoring";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Dumbbell, Activity as ActivityIcon, User as UserIcon } from "lucide-react";
 
 // Runner icon (silhouette) - same as in ProgramPreview
@@ -20,6 +20,8 @@ const RunnerIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <path d="M13 22l2-4" />
   </svg>
 );
+
+type GoalType = "first-time" | "improve-time" | "return-from-break";
 
 type Answers = {
   gender?: string;
@@ -54,7 +56,47 @@ type Answers = {
   trainingForEvent?: "Yes" | "No";
   eventName?: string;
   eventDate?: string;
+  hasRacedHyrox?: boolean;
+  hyroxRacesCompleted?: number;
+  hyroxBestTime?: string;
+  weakStations?: string[];
+  goalType?: GoalType;
 };
+
+const hyroxStations = [
+  { id: "ski-erg", label: "SkiErg" },
+  { id: "sled-push", label: "Sled Push" },
+  { id: "sled-pull", label: "Sled Pull" },
+  { id: "burpee-broad-jumps", label: "Burpee Broad Jumps" },
+  { id: "row-erg", label: "RowErg" },
+  { id: "farmers-carry", label: "Farmers Carry" },
+  { id: "lunges", label: "Lunges" },
+  { id: "wall-balls", label: "Wall Balls" },
+];
+
+const hyroxGoalOptions: { value: GoalType; label: string }[] = [
+  { value: "first-time", label: "First HYROX – finish feeling strong" },
+  { value: "improve-time", label: "Improve my last HYROX time" },
+  { value: "return-from-break", label: "Get back into shape after a break" },
+];
+
+const hyroxRaceCountOptions = [
+  { label: "1", value: 1 },
+  { label: "2–3", value: 2 },
+  { label: "4+", value: 4 },
+];
+
+const hyroxTimeRegex = /^(\d{1,2}):(\d{2})$/;
+const isValidHyroxTime = (value?: string) => {
+  if (!value) return false;
+  const trimmed = value.trim();
+  const match = hyroxTimeRegex.exec(trimmed);
+  if (!match) return false;
+  const minutes = parseInt(match[2], 10);
+  return minutes >= 0 && minutes < 60;
+};
+
+const sanitizeHyroxTimeInput = (raw: string) => raw.replace(/[^0-9:]/g, "").slice(0, 5);
 
 const steps = [
   {
@@ -385,51 +427,137 @@ const steps = [
     }
   },
   {
-    key: "experience",
-    title: "Experience & Competition",
-    render: (a: Answers, set: (k: keyof Answers, v: any) => void) => (
-      <div className="space-y-5">
-        <div>
-          <Label className="text-white text-xl font-bold">Have you competed before?</Label>
-          <div className="grid grid-cols-1 gap-2">
-            {[{ label: "Never", value: "No" }, { label: "Once", value: "Once" }, { label: "2–3 times", value: "2–3 times" }, { label: "4+ times", value: "4+ times" }].map(({ label, value }) => (
-              <Button
-                key={`comp-${value}`}
-                variant="ghost"
-                className={`w-full h-12 text-lg border ${a.competitionExperience===value?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
-                onClick={()=>set("competitionExperience", value as any)}
-              >
-                {label}
-              </Button>
-            ))}
+    key: "hyrox",
+    title: "HYROX Focus",
+    render: (a: Answers, set: (k: keyof Answers, v: any) => void) => {
+      const hasRaced = !!a.hasRacedHyrox;
+      const selectedStations = a.weakStations ?? [];
+      const timeInput = a.hyroxBestTime ?? "";
+      const timeInvalid = timeInput.length > 0 && !isValidHyroxTime(timeInput);
+
+      const handleHasRaced = (value: boolean) => {
+        set("hasRacedHyrox", value);
+        if (!value) {
+          set("hyroxRacesCompleted", undefined);
+          set("hyroxBestTime", undefined);
+          set("weakStations", []);
+          set("goalType", "first-time");
+        } else if (!a.goalType || a.goalType === "first-time") {
+          set("goalType", "improve-time");
+        }
+      };
+
+      const toggleStation = (id: string) => {
+        const current = selectedStations;
+        if (current.includes(id)) {
+          set("weakStations", current.filter((s) => s !== id));
+          return;
+        }
+        if (current.length >= 2) return;
+        set("weakStations", [...current, id]);
+      };
+
+      return (
+        <div className="space-y-5">
+          <div>
+            <Label className="text-white text-xl font-bold">Have you completed a HYROX race before?</Label>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              {[{ label: "Yes", value: true }, { label: "No", value: false }].map(({ label, value }) => (
+                <Button
+                  key={`hyrox-raced-${label}`}
+                  variant="ghost"
+                  className={`w-full h-12 text-lg border ${hasRaced === value ? "bg-yellow-500 text-black border-yellow-500" : "border-white/30"}`}
+                  onClick={() => handleHasRaced(value)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {hasRaced && (
+            <>
+              <div>
+                <Label className="text-white text-xl font-bold">How many HYROX races have you completed?</Label>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {hyroxRaceCountOptions.map(({ label, value }) => (
+                    <Button
+                      key={`hyrox-count-${label}`}
+                      variant="ghost"
+                      className={`w-full h-12 text-lg border ${a.hyroxRacesCompleted === value ? "bg-yellow-500 text-black border-yellow-500" : "border-white/30"}`}
+                      onClick={() => set("hyroxRacesCompleted", value)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-white text-xl font-bold">Best HYROX time (hh:mm) <span className="text-sm font-normal text-white/60 block">Optional – skip if unsure.</span></Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={5}
+                  placeholder="1:25"
+                  value={timeInput}
+                  onChange={(e) => set("hyroxBestTime", sanitizeHyroxTimeInput(e.target.value))}
+                  className="mt-1"
+                />
+                {timeInvalid && <p className="text-sm text-red-400 mt-1">Use hh:mm (minutes under 60), e.g. 1:25.</p>}
+              </div>
+
+              <div>
+                <Label className="text-white text-xl font-bold">
+                  Which station felt hardest?
+                  <span className="block text-sm font-normal text-white/60 mt-1">Pick up to two.</span>
+                </Label>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {hyroxStations.map(({ id, label }) => {
+                    const active = selectedStations.includes(id);
+                    const disabled = !active && selectedStations.length >= 2;
+                    return (
+                      <Button
+                        key={`station-${id}`}
+                        variant="ghost"
+                        className={`w-full h-12 text-lg border ${active ? "bg-yellow-500 text-black border-yellow-500" : "border-white/30"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                        onClick={() => (!disabled ? toggleStation(id) : null)}
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          <div>
+            <Label className="text-white text-xl font-bold">What’s your main goal for this HYROX block?</Label>
+            <div className="grid grid-cols-1 gap-2 mt-2">
+              {hyroxGoalOptions.map(({ value, label }) => (
+                <Button
+                  key={`goal-${value}`}
+                  variant="ghost"
+                  className={`w-full h-12 text-lg border ${a.goalType === value ? "bg-yellow-500 text-black border-yellow-500" : "border-white/30"}`}
+                  onClick={() => set("goalType", value)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
-        <div>
-          <Label className="text-white text-xl font-bold">Best result</Label>
-          <div className="grid grid-cols-1 gap-2">
-            {[{label:"Did Not Finish", value:"DNF"},{label:"Finished", value:"Finished"},{label:"Podium", value:"Podium"}].map(({label,value})=>(
-              <Button
-                key={`res-${value}`}
-                variant="ghost"
-                className={`w-full h-12 text-lg border ${a.competitionResult===value?"bg-yellow-500 text-black border-yellow-500":"border-white/30"}`}
-                onClick={()=>set("competitionResult", value as any)}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  },
-  { key: "done", title: "Summary", render: () => <p className="text-sm text-muted-foreground">Tap Finish to see your athlete profile.</p> }
+      );
+    },
+  }
 ];
 
 const Onboarding = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<Answers>({});
+  const [answers, setAnswers] = useState<Answers>({ hasRacedHyrox: false, goalType: "first-time" });
   const set = (k: keyof Answers, v: any) => setAnswers(prev => ({ ...prev, [k]: v }));
   const [resultsOpen, setResultsOpen] = useState(false);
   const [results, setResults] = useState<{ running: number; strength: number; cardio: number } | null>(null);
@@ -438,6 +566,10 @@ const Onboarding = () => {
   const prev = () => setIdx(i => Math.max(i-1, 0));
 
   const finish = async () => {
+    if (answers.hyroxBestTime && !isValidHyroxTime(answers.hyroxBestTime)) {
+      toast.error("Use hh:mm for HYROX time (e.g. 1:25)");
+      return;
+    }
     // Simple heuristic to shape an athlete profile (0-100)
     const pad2 = (s?: string) => String(s ?? "").padStart(2, "0");
     const best5kStr =
@@ -487,6 +619,11 @@ const Onboarding = () => {
           onboarding_completed_at: new Date().toISOString(),
           athlete_profile: profile, // Changed from onboarding_profile to athlete_profile
           onboarding_answers: answers, // Store raw answers separately
+          has_raced_hyrox: answers.hasRacedHyrox ?? false,
+          hyrox_races_completed: answers.hyroxRacesCompleted ?? null,
+          hyrox_best_time: answers.hyroxBestTime?.trim() || null,
+          weak_stations: answers.weakStations && answers.weakStations.length ? JSON.stringify(answers.weakStations) : null,
+          goal_type: answers.goalType ?? (answers.hasRacedHyrox ? "improve-time" : "first-time"),
         };
         console.log("💾 Saving to clients table:", update);
         const { error } = await supabase.from("clients").update(update).eq("id", user.clientId);
@@ -555,7 +692,13 @@ const Onboarding = () => {
       </header>
 
       {/* Centered content area; page is frozen (no global scrolling) */}
-      <main className="container max-w-2xl mx-auto px-4 pb-40 h-[calc(100vh-4rem)] overflow-y-auto" style={{ paddingTop: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>
+      <main
+        className="container max-w-2xl mx-auto px-4 pb-40 overflow-y-auto"
+        style={{
+          paddingTop: 'calc(4rem + env(safe-area-inset-top, 0px))',
+          height: 'calc(var(--app-height, 100vh) - 4rem)',
+        }}
+      >
         <Card className="mt-10 p-5 bg-zinc-900 border-zinc-800">
           <div className="text-white space-y-4">
             {typeof step.render === "function" ? step.render(answers, set) : step.render}
@@ -564,7 +707,7 @@ const Onboarding = () => {
       </main>
 
       {/* Fixed action bar at the bottom of the screen */}
-      <div className="fixed left-0 right-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]">
+      <div className="fixed left-0 right-0 bottom-0 z-40 bottom-nav-safe">
         <div className="container max-w-2xl mx-auto px-4 pb-2">
           <div className="bg-background/95 backdrop-blur border border-border rounded-xl p-2 shadow-lg">
             <div className="flex items-center gap-2">
@@ -604,12 +747,14 @@ const Onboarding = () => {
       </div>
       {/* Results dialog */}
       <Dialog open={resultsOpen} onOpenChange={setResultsOpen}>
-        <DialogContent className="pt-10" aria-describedby="ap-desc">
+        <DialogContent className="pt-10">
           <DialogHeader>
             <DialogTitle>Athlete Profile</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p id="ap-desc" className="sr-only">Your athlete profile scores and summary.</p>
+            <DialogDescription id="ap-desc" className="sr-only">
+              Your athlete profile scores and summary.
+            </DialogDescription>
             {/* Name badge */}
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-white/20 text-white/90 text-sm">

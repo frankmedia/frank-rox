@@ -44,8 +44,8 @@ The script will:
    - Rest days (e.g., Day 2, 4, 9, 11): Should have recovery sessions
 
 2. **Week 2 run progression is correct**
-   - Example: 7km → 8km
-   - Duration: 42min → 48min (8km × 6 min/km = 48min) ✅
+   - Example: 5km → 6km
+   - Duration: 30min → 36min (6km × 6 min/km = 36min) ✅
 
 3. **No missing recovery sessions**
    - Every rest day in Week 1 should have "Active Recovery" session
@@ -117,8 +117,8 @@ DELETE FROM plans WHERE client_id = 'your-client-id';
 Go to `/overview` and check:
 
 - **Day 2, 4, 9, 11**: Should show "Recovery Focus" with 13 mobility exercises
-- **Day 6**: Should show run (e.g., "7.0km • 42min")
-- **Day 13**: Should show run (e.g., "8.0km • 48min") ← **CRITICAL TEST**
+- **Day 6**: Should show run (e.g., "5.0km • 30min")
+- **Day 13**: Should show run (e.g., "6.0km • 36min") ← **CRITICAL TEST**
 
 ## Common Issues
 
@@ -157,7 +157,7 @@ Go to `/overview` and check:
 ✅ Day 4 (Thursday): 1 session(s), 13 exercise(s)
 ✅ Day 5 (Friday): 1 session(s), 7 exercise(s)
 ✅ Day 6 (Saturday): 1 session(s), 1 exercise(s)
-      Run: 7.0km • 42min
+      Run: 5.0km • 30min
 ✅ Day 7 (Sunday): 1 session(s), 13 exercise(s)
 ✅ Day 8 (Monday): 1 session(s), 6 exercise(s)
 ✅ Day 9 (Tuesday): 1 session(s), 13 exercise(s)
@@ -165,13 +165,13 @@ Go to `/overview` and check:
 ✅ Day 11 (Thursday): 1 session(s), 13 exercise(s)
 ✅ Day 12 (Friday): 1 session(s), 7 exercise(s)
 ✅ Day 13 (Saturday): 1 session(s), 1 exercise(s)
-      Run: 8.0km • 48min
+      Run: 6.0km • 36min
 ✅ Day 14 (Sunday): 1 session(s), 13 exercise(s)
 
 4️⃣  Checking Week 2 run progression...
-   Week 1 (Day 6):  7.0km • 42min
-   Week 2 (Day 13): 8.0km • 48min
-   ✅ Duration correct (48min = 8.0km × 6 min/km)
+   Week 1 (Day 6):  5.0km • 30min
+   Week 2 (Day 13): 6.0km • 36min
+   ✅ Duration correct (36min = 6.0km × 6 min/km)
 
 5️⃣  Checking rest day recovery sessions...
    Found 2 rest day(s) in Week 1

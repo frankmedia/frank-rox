@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Pause, RotateCcw, CheckCircle2, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -283,6 +283,22 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
       // Mark circuit as complete
       markExerciseComplete(username, trainingDay, exercise.id, authUser?.clientId);
       
+      // Convert completedExercises to the format expected by syncCircuitToSupabase
+      // completedExercises[exerciseIndex][roundIndex] = true/false
+      // Need to convert to: { exerciseId: [1, 2, 3] } (array of completed round numbers)
+      const completedRoundsData: Record<string, number[]> = {};
+      exercises.forEach((ex, exIndex) => {
+        const completedRoundNumbers: number[] = [];
+        completedExercises[exIndex]?.forEach((isComplete, roundIndex) => {
+          if (isComplete) {
+            completedRoundNumbers.push(roundIndex + 1); // Round numbers are 1-based
+          }
+        });
+        if (completedRoundNumbers.length > 0) {
+          completedRoundsData[ex.id] = completedRoundNumbers;
+        }
+      });
+      
       // Sync to Supabase with rating
       if (authUser?.clientId) {
         const { data: plan } = await supabase
@@ -290,6 +306,8 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
           .select("id")
           .eq("client_id", authUser.clientId)
           .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1)
           .single();
           
         await syncCircuitToSupabase(
@@ -298,7 +316,8 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
           trainingDay,
           exercise.name,
           exercises,
-          { rating: ratingToSave > 0 ? ratingToSave : undefined } // Include rating if provided
+          completedRoundsData, // Pass completed rounds data
+          ratingToSave > 0 ? ratingToSave : undefined // Pass rating as 7th parameter
         );
         
         toast.success("✅ Circuit Complete!", {

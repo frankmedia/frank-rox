@@ -403,6 +403,8 @@ const Today = () => {
         .select('id')
         .eq('client_id', authUser.clientId)
         .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single();
 
       const planId = plan?.id || null;

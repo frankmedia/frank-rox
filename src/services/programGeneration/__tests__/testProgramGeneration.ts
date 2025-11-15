@@ -51,7 +51,7 @@ const testProgramme = {
       day: 'Saturday',
       type: 'run' as const,
       title: 'Long Run',
-      distance: '7km',
+      distance: '5km',
       pace: 'Zone 2',
       effort: 'easy' as const,
       detail: 'Build aerobic base'
