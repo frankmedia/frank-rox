@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { fetchWelcomeVideoSetting, saveWelcomeVideoSetting } from "@/services/appSettings";
 
 const Stat = ({ label, value }: { label: string; value: string }) => (
   <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
@@ -19,6 +23,14 @@ interface PTWithClients {
   client_count: number;
 }
 
+const extractYouTubeId = (url?: string | null): string | null => {
+  if (!url) return null;
+  const regex =
+    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,15})/;
+  const match = url.match(regex);
+  return match?.[1] ?? null;
+};
+
 const AdminDashboard = () => {
   const { user } = useAuth();
   const [activeClients, setActiveClients] = useState<string>("—");
@@ -29,6 +41,10 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [profileData, setProfileData] = useState<{ name: string; email: string; role: string; specializations?: string[] } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [welcomeVideoUrl, setWelcomeVideoUrl] = useState("");
+  const [welcomeVideoTitle, setWelcomeVideoTitle] = useState("");
+  const [welcomeVideoUpdatedAt, setWelcomeVideoUpdatedAt] = useState<string | null>(null);
+  const [welcomeVideoStatus, setWelcomeVideoStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   useEffect(() => {
     const load = async () => {
@@ -138,6 +154,49 @@ const AdminDashboard = () => {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const loadWelcomeVideo = async () => {
+      try {
+        const setting = await fetchWelcomeVideoSetting();
+        if (setting) {
+          setWelcomeVideoUrl(setting.url || "");
+          setWelcomeVideoTitle(setting.title || "");
+          setWelcomeVideoUpdatedAt(setting.updatedAt || null);
+        }
+      } catch (error) {
+        console.warn("No welcome video configured yet.");
+      }
+    };
+    loadWelcomeVideo();
+  }, [isAdmin]);
+
+  const handleSaveWelcomeVideo = async () => {
+    const cleanUrl = welcomeVideoUrl.trim();
+    const videoId = extractYouTubeId(cleanUrl);
+    if (!cleanUrl || !videoId) {
+      setWelcomeVideoStatus("error");
+      return;
+    }
+    try {
+      setWelcomeVideoStatus("saving");
+      await saveWelcomeVideoSetting({
+        url: cleanUrl,
+        title: welcomeVideoTitle.trim() || null,
+        updatedBy: profileData?.name || user?.name || "Admin",
+      });
+      setWelcomeVideoUpdatedAt(new Date().toISOString());
+      setWelcomeVideoStatus("saved");
+      setTimeout(() => setWelcomeVideoStatus("idle"), 2000);
+    } catch (error) {
+      setWelcomeVideoStatus("error");
+    }
+  };
+
+  const previewEmbed = extractYouTubeId(welcomeVideoUrl)
+    ? `https://www.youtube.com/embed/${extractYouTubeId(welcomeVideoUrl)}?rel=0&playsinline=1`
+    : null;
 
   return (
     <>
@@ -287,6 +346,75 @@ const AdminDashboard = () => {
           )}
         </div>
       </div>
+
+      {isAdmin && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="font-medium">Welcome Video</h2>
+              <p className="text-xs text-zinc-400">
+                Played automatically the first time an athlete logs in.
+              </p>
+            </div>
+            {welcomeVideoUpdatedAt && (
+              <span className="text-xs text-zinc-500">
+                Updated {new Date(welcomeVideoUpdatedAt).toLocaleString()}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs uppercase text-zinc-400">Video title</Label>
+              <Input
+                value={welcomeVideoTitle}
+                onChange={(e) => setWelcomeVideoTitle(e.target.value)}
+                placeholder="Welcome to RoxPT"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs uppercase text-zinc-400">YouTube URL</Label>
+              <Input
+                value={welcomeVideoUrl}
+                onChange={(e) => setWelcomeVideoUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="mt-1"
+              />
+            </div>
+
+            {previewEmbed && (
+              <div className="aspect-video rounded-xl overflow-hidden bg-black shadow-inner">
+                <iframe
+                  className="w-full h-full"
+                  src={previewEmbed}
+                  title="Welcome video preview"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <div className="text-xs">
+                {welcomeVideoStatus === "saved" && (
+                  <span className="text-green-400">Saved!</span>
+                )}
+                {welcomeVideoStatus === "error" && (
+                  <span className="text-red-400">Enter a valid YouTube link.</span>
+                )}
+              </div>
+              <Button
+                onClick={handleSaveWelcomeVideo}
+                disabled={!welcomeVideoUrl || welcomeVideoStatus === "saving"}
+              >
+                {welcomeVideoStatus === "saving" ? "Saving…" : "Save Default Video"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

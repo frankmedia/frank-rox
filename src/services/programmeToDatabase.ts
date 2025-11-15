@@ -735,7 +735,7 @@ async function generateStrengthWorkout(
         .insert({
           session_id: sessionData.id,
           block_type: "strength",
-          title: "Block A — Lower Body Strength",
+          title: "Lower Body Strength",
           rounds: 1,
         })
         .select()
@@ -816,7 +816,7 @@ async function generateStrengthWorkout(
         .insert({
           session_id: sessionData.id,
           block_type: "strength",
-          title: "Block B — Core",
+          title: "Core Circuit",
           rounds: 1,
         })
         .select()
@@ -865,7 +865,7 @@ async function generateStrengthWorkout(
         .insert({
           session_id: sessionData.id,
           block_type: "circuit",
-          title: "Block C — Light HYROX Conditioning",
+          title: "Light HYROX Conditioning",
           rounds: 2, // 2 rounds
           rest_between_rounds_s: 60, // 1 min rest between rounds
         })

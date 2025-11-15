@@ -828,10 +828,10 @@ const ExerciseDetail = () => {
                     variant="outline"
                     size="sm"
                     onClick={handlePrevious}
-                    className="h-16 w-16 sm:h-18 sm:w-18 p-0 flex-shrink-0 rounded-full border-2 border-white/40"
+                    className="h-14 w-20 sm:h-16 sm:w-24 p-0 flex-shrink-0 rounded-2xl border-2 border-white/40"
                     title="Previous exercise"
                   >
-                    <ChevronLeft className="w-9 h-9 sm:w-12 sm:h-12" strokeWidth={3} />
+                    <ChevronLeft className="w-10 h-10 sm:w-12 sm:h-12" strokeWidth={3} />
                   </Button>
                 );
               })()}
@@ -844,10 +844,10 @@ const ExerciseDetail = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleNext}
-                    className="h-16 w-16 sm:h-18 sm:w-18 p-0 flex-shrink-0 rounded-full border-2 border-white/40"
+                    className="h-14 w-20 sm:h-16 sm:w-24 p-0 flex-shrink-0 rounded-2xl border-2 border-white/40"
                     title="Next exercise"
                   >
-                    <ChevronRight className="w-9 h-9 sm:w-12 sm:h-12" strokeWidth={3} />
+                    <ChevronRight className="w-10 h-10 sm:w-12 sm:h-12" strokeWidth={3} />
                   </Button>
                 );
               })()}

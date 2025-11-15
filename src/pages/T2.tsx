@@ -28,7 +28,7 @@ const T2 = () => {
     };
   }, []);
   return (
-    <div className="fixed inset-0 bg-background overflow-hidden" style={{ touchAction: 'none' }}>
+    <div className="fixed inset-0 bg-background overflow-hidden" style={{ touchAction: 'pan-y pinch-zoom' }}>
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="container max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -42,7 +42,10 @@ const T2 = () => {
       {/* Centered content area; page is frozen (no scrolling) */}
       <main
         className="container max-w-2xl mx-auto px-6 pt-10 pb-40 flex flex-col items-center justify-center text-center"
-        style={{ height: 'calc(var(--app-height, 100vh) - 4rem)' }}
+        style={{
+          minHeight: 'calc(var(--app-height, 100vh) - 4rem)',
+          maxHeight: 'calc(var(--app-height, 100vh) - 4rem)',
+        }}
       >
         <div className="space-y-3">
           <h2 className="text-3xl font-extrabold tracking-tight">Frozen Page</h2>

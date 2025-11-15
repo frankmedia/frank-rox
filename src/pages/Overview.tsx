@@ -18,6 +18,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { T1Showcase } from "@/components/T1Showcase";
+import { WelcomeVideoModal } from "@/components/WelcomeVideoModal";
 
 interface ExerciseLog {
   exerciseName: string;
@@ -197,6 +198,8 @@ const Overview = () => {
       outOfBedMinutes: number;
     };
   } | null>(null);
+  const [welcomeVideoSetting, setWelcomeVideoSetting] = useState<{ url: string; title?: string | null } | null>(null);
+  const [showWelcomeVideo, setShowWelcomeVideo] = useState(false);
 
   const formatMetric = useCallback((value: number | null | undefined, formatter?: (value: number) => string) => {
     if (!value || Number.isNaN(value) || value <= 0) return "--";
@@ -239,6 +242,60 @@ const Overview = () => {
       gradient,
     };
   }, [healthData?.sleepScore]);
+
+  useEffect(() => {
+    if (!authUser || authUser.role !== "client") {
+      return;
+    }
+
+    const seenKey = `welcome_video_seen_${authUser.username}`;
+    if (localStorage.getItem(seenKey)) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadWelcomeVideo = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("app_settings")
+          .select("value")
+          .eq("key", "welcome_video")
+          .maybeSingle();
+
+        if (error) {
+          console.warn("Unable to load welcome video:", error.message);
+          return;
+        }
+
+        if (cancelled || localStorage.getItem(seenKey)) {
+          return;
+        }
+
+        const value = data?.value;
+        if (value?.url) {
+          setWelcomeVideoSetting({ url: value.url, title: value.title });
+          setShowWelcomeVideo(true);
+        }
+      } catch (loadError) {
+        console.warn("Welcome video fetch failed", loadError);
+      }
+    };
+
+    loadWelcomeVideo();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser]);
+
+  const handleDismissWelcomeVideo = useCallback(() => {
+    if (authUser?.username) {
+      const key = `welcome_video_seen_${authUser.username}`;
+      localStorage.setItem(key, new Date().toISOString());
+    }
+    setShowWelcomeVideo(false);
+  }, [authUser]);
 
   const quickStats = useMemo(() => {
     if (!healthData) return [] as Array<{ key: string; icon: JSX.Element; value: string }>;
@@ -1566,6 +1623,13 @@ const Overview = () => {
         >
           Take HYROX Fitness Assessment
         </Button>
+
+        <WelcomeVideoModal
+          open={showWelcomeVideo}
+          onClose={handleDismissWelcomeVideo}
+          url={welcomeVideoSetting?.url}
+          title={welcomeVideoSetting?.title || undefined}
+        />
       </main>
     </div>
   );

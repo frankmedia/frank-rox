@@ -144,12 +144,7 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
         onClick={goToPreviousDay}
         disabled={loading || switching}
         title="Previous day (wraps around to last day)"
-        className="p-0 flex items-center justify-center flex-shrink-0 rounded-full border-2 border-white/40"
-        style={{
-          width: "3.75rem",
-          height: "3.75rem",
-          fontSize: "2.5rem",
-        }}
+        className="flex items-center justify-center flex-shrink-0 border-2 border-white/40 rounded-xl h-12 w-16 sm:h-14 sm:w-20 text-3xl sm:text-4xl font-semibold"
       >
         {switching ? <Loader2 className="w-5 h-5 animate-spin" /> : "←"}
       </Button>
@@ -177,12 +172,7 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
         onClick={goToNextDay}
         disabled={loading || switching}
         title={`Next day (Day ${parseInt(currentDay) >= maxDay ? '1' : parseInt(currentDay) + 1})`}
-        className="p-0 flex items-center justify-center flex-shrink-0 rounded-full border-2 border-white/40"
-        style={{
-          width: "3.75rem",
-          height: "3.75rem",
-          fontSize: "2.5rem",
-        }}
+        className="flex items-center justify-center flex-shrink-0 border-2 border-white/40 rounded-xl h-12 w-16 sm:h-14 sm:w-20 text-3xl sm:text-4xl font-semibold"
       >
         {switching ? <Loader2 className="w-5 h-5 animate-spin" /> : "→"}
       </Button>

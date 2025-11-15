@@ -127,7 +127,7 @@ const ProgramCustomize = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-background overflow-hidden" style={{ touchAction: "none" }}>
+    <div className="fixed inset-0 bg-background overflow-hidden" style={{ touchAction: "pan-y pinch-zoom" }}>
       <header
         className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border"
         style={{ paddingTop: "calc(20px + env(safe-area-inset-top, 0px))" }}
@@ -143,7 +143,8 @@ const ProgramCustomize = () => {
         className="container max-w-2xl mx-auto px-4 pb-40 overflow-y-auto"
         style={{
           paddingTop: 'calc(4rem + env(safe-area-inset-top, 0px))',
-          height: 'calc(var(--app-height, 100vh) - 4rem)',
+          minHeight: 'calc(var(--app-height, 100vh) - 4rem)',
+          maxHeight: 'calc(var(--app-height, 100vh) - 4rem)',
         }}
       >
         {/* Athlete Score Display */}
