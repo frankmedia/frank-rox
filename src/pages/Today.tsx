@@ -27,7 +27,7 @@ const AUTO_NAV_FLAG = "rox_auto_open_first_incomplete";
 const Today = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
-  const { exercises, loading, error, refresh } = useData();
+  const { exercises, loading, error, refresh, setTrainingDay: setGlobalTrainingDay } = useData();
   const [syncing, setSyncing] = useState(false);
   const [healthData, setHealthData] = useState<{
     steps: number;
@@ -349,9 +349,7 @@ const Today = () => {
             const nextDay = findNextIncompleteDay();
             if (nextDay !== currentTrainingDay) {
               setCurrentTrainingDay(nextDay);
-              // Update localStorage
-              const userKey = `currentTrainingDay_${user.username}`;
-              localStorage.setItem(userKey, nextDay);
+              setGlobalTrainingDay(nextDay);
             }
           }
         }
@@ -361,6 +359,17 @@ const Today = () => {
     };
 
     checkAndUpdateToNextDay();
+  }, [currentTrainingDay, setGlobalTrainingDay]);
+
+  // Always reset scroll position when training day changes
+  useEffect(() => {
+    const node = containerRef.current;
+    if (node) {
+      node.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }
   }, [currentTrainingDay]);
   
   // Header is now fixed - no scroll hiding needed
@@ -567,13 +576,8 @@ const Today = () => {
       
       // Advance to next day
       const nextDay = (parseInt(currentTrainingDay) + 1).toString();
-      const userStr = localStorage.getItem("frank_rock_user");
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        const userKey = `currentTrainingDay_${user.username}`;
-        localStorage.setItem(userKey, nextDay);
-        setCurrentTrainingDay(nextDay);
-      }
+      setCurrentTrainingDay(nextDay);
+      setGlobalTrainingDay(nextDay);
       
       // Refresh exercises for next day after confetti
       setTimeout(async () => {
@@ -592,13 +596,8 @@ const Today = () => {
       
       // Advance to next day
       const nextDay = (parseInt(currentTrainingDay) + 1).toString();
-      const userStr = localStorage.getItem("frank_rock_user");
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        const userKey = `currentTrainingDay_${user.username}`;
-        localStorage.setItem(userKey, nextDay);
-        setCurrentTrainingDay(nextDay);
-      }
+      setCurrentTrainingDay(nextDay);
+      setGlobalTrainingDay(nextDay);
       
       // Refresh exercises for next day
       await refresh();

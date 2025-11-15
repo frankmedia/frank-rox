@@ -8,42 +8,43 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const SHORT_RECOVERY_SESSION_TITLE = "Recovery / Mobility (Short)";
+const SHORT_RECOVERY_ROUNDS = 4;
 
 const SHORT_RECOVERY_EXERCISES: Array<{
   name: string;
   exerciseId: string;
-  durationSec: number;
   notes: string;
+  durationSec?: number;
 }> = [
   {
     name: "Inchworms",
     exerciseId: "c61ef2d5-014d-4e92-bd5e-201a2e8f0072",
-    durationSec: 120,
     notes: "Walk hands out to a strong plank, heels stay heavy on the way back.",
+    durationSec: 45,
   },
   {
     name: "Hip Flexor Stretch Right",
     exerciseId: "74f1bab3-ef99-48e0-95f5-4845d09e7e2f",
-    durationSec: 120,
     notes: "Posterior pelvic tilt, squeeze glute, breathe deep into the front of the hip.",
+    durationSec: 45,
   },
   {
     name: "Hamstring Stretch",
     exerciseId: "ff5cef72-08a8-4168-bb47-5ae49234c463",
-    durationSec: 120,
     notes: "Long spine, hinge at the hips, relax shoulders and keep gentle tension.",
+    durationSec: 45,
   },
   {
     name: "Foam Roller Mid Back",
     exerciseId: "4d01a06b-1ce3-48ee-a6cc-9735d4b92e5c",
-    durationSec: 120,
     notes: "Slow rolls through mid/upper back. Support head, breathe into the floor.",
+    durationSec: 45,
   },
   {
     name: "Standing Hip CARs",
     exerciseId: "3d755717-f706-4b08-8b8c-8586083e6371",
-    durationSec: 120,
     notes: "Controlled articular rotations. Stay tall, limit torso sway, smooth circles.",
+    durationSec: 45,
   },
 ];
 
@@ -63,7 +64,7 @@ export async function createRecoverySessionForRestDay(
     .insert({
       plan_day_id: planDayId,
       name: SHORT_RECOVERY_SESSION_TITLE,
-      notes: "Short recovery circuit. Spend two full minutes on each drill with relaxed breathing.",
+      notes: `Mobility Flow Circuit: 45s work • 15s rest • ${SHORT_RECOVERY_ROUNDS} rounds. Focus on controlled movement and deep breathing.`,
       order_index: 1,
     })
     .select()
@@ -75,14 +76,24 @@ export async function createRecoverySessionForRestDay(
   
   console.log(`✅ Recovery session created: ${session.id}`);
   
-  // 2. Create mobility block
+  // 2. Create mobility block (circuit format with timer)
   const { data: mobilityBlock, error: blockError } = await supabase
     .from("session_blocks")
     .insert({
       session_id: session.id,
-      block_type: "mobility",
-      title: "Mobility & Stretching · Short",
-      parameters: { format: "timed", focus: "recovery" },
+      block_type: "circuit",
+      title: "Mobility Flow Circuit",
+      parameters: {
+        format: "timed",
+        focus: "recovery",
+        rounds: SHORT_RECOVERY_ROUNDS,
+        work_sec: 45,
+        rest_sec: 15,
+      },
+      rounds: SHORT_RECOVERY_ROUNDS,
+      work_sec: 45, // 45 seconds per exercise
+      rest_sec: 15, // 15 seconds rest between exercises
+      rest_between_rounds_s: 30, // brief reset between laps
       order_index: 1,
     })
     .select()
@@ -106,7 +117,9 @@ export async function createRecoverySessionForRestDay(
         block_id: mobilityBlock.id,
         exercise_id: exercise.exerciseId,
         item_order: order++,
-        duration_sec: exercise.durationSec,
+        duration_sec: exercise.durationSec ?? 45,
+        sets: 1,
+        reps: 0,
         status: "draft",
         notes: exercise.notes,
       });
@@ -117,7 +130,7 @@ export async function createRecoverySessionForRestDay(
     }
   }
   
-  console.log(`✅ Added ${order} mobility exercises to recovery session`);
+  console.log(`✅ Added ${order} mobility exercises to recovery circuit (45s work / 15s rest / 2 rounds)`);
   
   return session.id;
 }

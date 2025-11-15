@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { T1Showcase } from "@/components/T1Showcase";
 import { WelcomeVideoModal } from "@/components/WelcomeVideoModal";
+import { useData } from "@/contexts/DataContext";
 
 interface ExerciseLog {
   exerciseName: string;
@@ -172,10 +173,12 @@ const AUTO_NAV_FLAG = "rox_auto_open_first_incomplete";
 const Overview = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
+  const { setTrainingDay } = useData();
   const [loading, setLoading] = useState(true);
   const [hydratedFromCache, setHydratedFromCache] = useState(false);
   const [isFetchingDays, setIsFetchingDays] = useState(false);
   const [daySummaries, setDaySummaries] = useState<DaySummary[]>([]);
+  const [completedDayIndexes, setCompletedDayIndexes] = useState<number[]>([]);
   const [maxDay, setMaxDay] = useState(14);
   const [allRaces, setAllRaces] = useState<Array<{ id: number; race_name: string; race_date: string }>>([]);
   const [healthConnected, setHealthConnected] = useState(false);
@@ -244,14 +247,13 @@ const Overview = () => {
   }, [healthData?.sleepScore]);
 
   useEffect(() => {
-    if (!authUser || authUser.role !== "client") {
-      return;
-    }
+    if (!authUser || authUser.role !== "client") return;
 
     const seenKey = `welcome_video_seen_${authUser.username}`;
-    if (localStorage.getItem(seenKey)) {
-      return;
-    }
+    const alreadySeen = !!localStorage.getItem(seenKey);
+
+    // If athlete has already completed a day or dismissed the video, skip autoplay
+    if (alreadySeen || completedDayIndexes.length > 0) return;
 
     let cancelled = false;
 
@@ -268,9 +270,7 @@ const Overview = () => {
           return;
         }
 
-        if (cancelled || localStorage.getItem(seenKey)) {
-          return;
-        }
+        if (cancelled || localStorage.getItem(seenKey)) return;
 
         const value = data?.value;
         if (value?.url) {
@@ -287,7 +287,7 @@ const Overview = () => {
     return () => {
       cancelled = true;
     };
-  }, [authUser]);
+  }, [authUser, completedDayIndexes]);
 
   const handleDismissWelcomeVideo = useCallback(() => {
     if (authUser?.username) {
@@ -606,6 +606,7 @@ const Overview = () => {
         
         // Merge both sources (union)
         const completedDays: number[] = [...new Set([...completedDaysFromDB, ...completedDaysFromLS])];
+        setCompletedDayIndexes(completedDays);
         
         console.log(`✅ Found ${completedDays.length} completed days:`, completedDays);
 
@@ -891,22 +892,12 @@ const Overview = () => {
     if (Capacitor.isNativePlatform()) {
       Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
     }
-    // Update current training day
-    const userStr = localStorage.getItem("frank_rock_user");
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      const userKey = `currentTrainingDay_${user.username}`;
-      localStorage.setItem(userKey, day.toString());
-      
-      console.log(`📅 Day ${day} selected, updated training day to: ${day}`);
-    }
-
-    // Navigate to today page (show full day, don't auto-open first exercise)
+    setTrainingDay(day.toString());
+    console.log(`📅 Day ${day} selected, updated training day to: ${day}`);
     navigate("/today");
   };
 
   const handleGoToToday = useCallback(() => {
-    const userStr = localStorage.getItem("frank_rock_user");
     let targetDay: number | null = null;
 
     if (daySummaries.length > 0) {
@@ -917,15 +908,12 @@ const Overview = () => {
       targetDay = (firstIncomplete || firstActive || fallback)?.day ?? null;
     }
 
-    if (userStr && targetDay !== null) {
-      const user = JSON.parse(userStr);
-      const userKey = `currentTrainingDay_${user.username}`;
-      localStorage.setItem(userKey, String(targetDay));
+    if (targetDay !== null) {
+      setTrainingDay(String(targetDay));
     }
 
-    // Navigate to today page (show full day, don't auto-open first exercise)
     navigate("/today");
-  }, [daySummaries, navigate]);
+  }, [daySummaries, navigate, setTrainingDay]);
 
   const safeAreaTop = "env(safe-area-inset-top, 0px)";
 

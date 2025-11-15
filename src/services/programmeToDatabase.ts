@@ -570,11 +570,12 @@ async function generateStrengthWorkout(
   };
 
   // Fetch onboarding data if available
-  if (planDay?.plans?.client_id) {
+  const planClientId = (planDay as any)?.plans?.client_id;
+  if (planClientId) {
     const { data: client } = await supabase
       .from("clients")
       .select("onboarding_answers")
-      .eq("id", planDay.plans.client_id)
+      .eq("id", planClientId)
       .single();
 
     if (client?.onboarding_answers) {
@@ -737,6 +738,7 @@ async function generateStrengthWorkout(
           block_type: "strength",
           title: "Lower Body Strength",
           rounds: 1,
+          order_index: 1,
         })
         .select()
         .single();
@@ -810,53 +812,57 @@ async function generateStrengthWorkout(
         });
       }
 
-      // Block B — Core (ALL TIMED EXERCISES WITH COUNTDOWN TIMER)
+      // Block B — Core Flow (timed circuit)
       const { data: coreBlock } = await supabase
         .from("session_blocks")
         .insert({
           session_id: sessionData.id,
-          block_type: "strength",
-          title: "Core Circuit",
-          rounds: 1,
+          block_type: "circuit",
+          title: "Block B — Core Flow",
+          rounds: 2,
+          work_sec: 60,
+          rest_sec: 15,
+          rest_between_rounds_s: 30,
+          order_index: 2,
+          parameters: {
+            format: "circuit",
+            intensity: "moderate",
+            timer: "60s work · 15s reset",
+          },
         })
         .select()
         .single();
 
       if (coreBlock) {
         let order = 0;
+
+        const CORE_FLOW = [
+          {
+            id: "d60a5793-6399-4cec-855f-44eb47c439f9", // Plank
+            duration_sec: 60,
+            notes: "1 min plank · neutral spine, squeeze glutes, breathe steadily.",
+          },
+          {
+            id: "c656a23c-687d-4ccd-8dc5-2edcea151c27", // Dead Bug
+            duration_sec: 45,
+            notes: "45 sec dead bug · ribs down, opposite arm/leg moves slowly.",
+          },
+          {
+            id: "9c7a2d40-74a2-4721-9107-5a0289c1f474", // Bird Dog
+            duration_sec: 45,
+            notes: "45 sec bird dog · reach long, no sway through pelvis.",
+          },
+        ];
         
-        // Plank — 2×45 sec (✅ TIMER WILL SHOW)
-        const plankId = "d60a5793-6399-4cec-855f-44eb47c439f9";
-        await supabase.from("session_block_items").insert({
-          block_id: coreBlock.id,
-          exercise_id: plankId,
-          item_order: order++,
-          sets: 2,
-          duration_sec: 45,
-          notes: "45 sec hold - Strong core, neutral spine. ⏱️ TIMER",
-        });
-
-        // Dead Bug — 2×10 (convert to timed: 10 reps × 3 sec = 30 sec)
-        const deadBugId = "c656a23c-687d-4ccd-8dc5-2edcea151c27";
-        await supabase.from("session_block_items").insert({
-          block_id: coreBlock.id,
-          exercise_id: deadBugId,
-          item_order: order++,
-          sets: 2,
-          duration_sec: 30,
-          notes: "30 sec (~10 reps) - Slow and controlled, opposite arm/leg. ⏱️ TIMER",
-        });
-
-        // Bird Dog — 2×30 sec (✅ TIMER WILL SHOW)
-        const birdDogId = "9c7a2d40-74a2-4721-9107-5a0289c1f474";
-        await supabase.from("session_block_items").insert({
-          block_id: coreBlock.id,
-          exercise_id: birdDogId,
-          item_order: order++,
-          sets: 2,
-          duration_sec: 30,
-          notes: "30 sec per side - Maintain neutral spine. ⏱️ TIMER",
-        });
+        for (const movement of CORE_FLOW) {
+          await supabase.from("session_block_items").insert({
+            block_id: coreBlock.id,
+            exercise_id: movement.id,
+            item_order: order++,
+            duration_sec: movement.duration_sec,
+            notes: movement.notes,
+          });
+        }
       }
 
       // Block C — Light HYROX Conditioning (2 rounds circuit)
@@ -868,6 +874,7 @@ async function generateStrengthWorkout(
           title: "Light HYROX Conditioning",
           rounds: 2, // 2 rounds
           rest_between_rounds_s: 60, // 1 min rest between rounds
+          order_index: 3,
         })
         .select()
         .single();
@@ -916,6 +923,7 @@ async function generateStrengthWorkout(
           block_type: "strength",
           title: "Upper Strength",
           rounds: 1,
+          order_index: 1,
         })
         .select()
         .single();
@@ -1117,6 +1125,7 @@ async function generateStrengthWorkout(
           block_type: "cardio",
           title: "Cardio Finisher",
           rounds: 1,
+          order_index: 4,
         })
         .select()
         .single();
@@ -1343,7 +1352,7 @@ const HYROX_ACCESSORY_TEMPLATES: Record<string, HyroxAccessoryTemplate> = {
     title: "Sled Power Primer",
     description: "Low-handle push + backward drag + lunge endurance to clean up sled stations.",
     blockType: "circuit",
-    rounds: 3,
+    rounds: 2,
     restBetweenRoundsSec: 60,
     parameters: { format: "circuit", intensity: "moderate" },
     items: [
@@ -1680,6 +1689,7 @@ async function duplicateWeekWithProgression(
       }
 
       // Duplicate blocks with progression (CLEAN NEW LOGIC)
+      let fallbackOrder = 1;
       for (const block of session.session_blocks || []) {
         const progressedParams = applyProgression(block.parameters, block.block_type);
 
@@ -1689,6 +1699,9 @@ async function duplicateWeekWithProgression(
           parameters: block.parameters,
         });
 
+        const orderIndex =
+          typeof block.order_index === "number" ? block.order_index : fallbackOrder++;
+
         const { data: newBlock, error: blockError } = await supabase
           .from("session_blocks")
           .insert({
@@ -1697,6 +1710,7 @@ async function duplicateWeekWithProgression(
             title: block.title,
             rounds: progressedBlock.rounds,
             parameters: progressedParams,
+            order_index: orderIndex,
           })
           .select()
           .single();
@@ -1849,9 +1863,9 @@ async function duplicateWeekWithProgression(
               exercise_id: farmersCarry.id,
               item_order: 0,
               sets: 3,
-              reps: 1, // Distance-based (will be in notes)
+              distance_m: 50,
               notes: `Week 2 Grip Training - 50m walk per set, ${farmersWeight}kg per hand. Focus on maintaining grip throughout.`,
-              extra: { weight_kg: farmersWeight, distance_m: 50 },
+              extra: { weight_kg: farmersWeight },
             });
             console.log(`✅ Added Farmers Carry to ${upperBodySession.name} (Day ${week2Day.day_index})`);
           } else {

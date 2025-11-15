@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { getUserSheet, fetchTodayExercises } from "@/services/googleSheets";
 import { getTodayExercises } from "@/services/supabasePlans";
 import { Exercise } from "@/types/workout";
@@ -15,6 +15,8 @@ interface DataContextType {
   userSheet: any;
   refresh: () => Promise<void>;
   useSupabase: boolean; // Expose flag to components
+  currentTrainingDay: string;
+  setTrainingDay: (day: string) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -185,6 +187,39 @@ export const DataProvider = ({ children }: DataProviderProps) => {
     }
   }, []);
 
+  const persistTrainingDay = useCallback(
+    (day: string) => {
+      try {
+        const key = currentUser ? `currentTrainingDay_${currentUser}` : (() => {
+          const userStr = localStorage.getItem("frank_rock_user");
+          if (!userStr) return null;
+          const user = JSON.parse(userStr);
+          return user?.username ? `currentTrainingDay_${user.username}` : null;
+        })();
+
+        if (key) {
+          localStorage.setItem(key, day);
+        }
+      } catch (error) {
+        console.error("Error persisting training day:", error);
+      }
+    },
+    [currentUser]
+  );
+
+  const setTrainingDay = useCallback(
+    (day: string) => {
+      let normalized = parseInt(day, 10);
+      if (Number.isNaN(normalized) || normalized < 1) {
+        normalized = 1;
+      }
+      const normalizedStr = normalized.toString();
+      setCurrentTrainingDay(normalizedStr);
+      persistTrainingDay(normalizedStr);
+    },
+    [persistTrainingDay]
+  );
+
   // Watch for training day changes (poll localStorage every 2 seconds - reduced frequency)
   useEffect(() => {
     const checkTrainingDay = () => {
@@ -241,6 +276,8 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         userSheet,
         refresh,
         useSupabase: USE_SUPABASE,
+        currentTrainingDay,
+        setTrainingDay,
       }}
     >
       {children}

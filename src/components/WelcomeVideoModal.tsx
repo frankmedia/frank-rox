@@ -6,6 +6,7 @@ type WelcomeVideoModalProps = {
   onClose: () => void;
   url?: string | null;
   title?: string | null;
+  portrait?: boolean;
 };
 
 const extractYouTubeId = (url?: string | null): string | null => {
@@ -16,11 +17,13 @@ const extractYouTubeId = (url?: string | null): string | null => {
   return match?.[1] ?? null;
 };
 
-export const WelcomeVideoModal = ({ open, onClose, url, title }: WelcomeVideoModalProps) => {
+export const WelcomeVideoModal = ({ open, onClose, url, title, portrait = false }: WelcomeVideoModalProps) => {
   const videoId = extractYouTubeId(url || undefined);
   const embedUrl = videoId
     ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&playsinline=1`
     : null;
+
+  const aspectClass = portrait ? "aspect-[9/16]" : "aspect-video";
 
   return (
     <Dialog open={open} onOpenChange={(openState) => (!openState ? onClose() : undefined)}>
@@ -35,13 +38,13 @@ export const WelcomeVideoModal = ({ open, onClose, url, title }: WelcomeVideoMod
         </DialogHeader>
 
         {embedUrl ? (
-          <div className="w-full aspect-video rounded-xl overflow-hidden bg-black">
+          <div className={`w-full ${aspectClass} rounded-xl overflow-hidden bg-black`}>
             <iframe
               className="w-full h-full"
               src={embedUrl}
               title={title || "Welcome video"}
               frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
               allowFullScreen
             />
           </div>

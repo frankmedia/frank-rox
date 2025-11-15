@@ -10,6 +10,7 @@ import {
 import { RotateCw, Loader2 } from "lucide-react";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
+import { useData } from "@/contexts/DataContext";
 
 interface TrainingDaySelectorProps {
   onDayChange?: (day: string) => void;
@@ -17,7 +18,9 @@ interface TrainingDaySelectorProps {
 
 export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
   const { user: authUser } = useAuth();
+  const { currentTrainingDay: globalTrainingDay, setTrainingDay } = useData();
   const [currentDay, setCurrentDay] = useState<string>(() => {
+    if (globalTrainingDay) return globalTrainingDay;
     try {
       const userStr = localStorage.getItem("frank_rock_user");
       if (userStr) {
@@ -30,6 +33,12 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
     }
     return "1";
   });
+
+  useEffect(() => {
+    if (globalTrainingDay && globalTrainingDay !== currentDay) {
+      setCurrentDay(globalTrainingDay);
+    }
+  }, [globalTrainingDay]);
   
   const [maxDay, setMaxDay] = useState<number>(99); // Default to 99, will be updated from Supabase
   const [loading, setLoading] = useState(true);
@@ -91,29 +100,21 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
   const handleDayChange = (newDay: string) => {
     // Validate day is never 0 or negative
     const dayNum = parseInt(newDay);
+    let normalizedDay = newDay;
     if (isNaN(dayNum) || dayNum < 1) {
       console.warn(`⚠️ Invalid training day: ${newDay}, resetting to 1`);
-      newDay = "1";
+      normalizedDay = "1";
+    } else {
+      normalizedDay = dayNum.toString();
     }
     
     // Show loading state
     setSwitching(true);
-    setCurrentDay(newDay);
-    
-    // Save to user-specific storage
-    try {
-      const userStr = localStorage.getItem("frank_rock_user");
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        const userKey = `currentTrainingDay_${user.username}`;
-        localStorage.setItem(userKey, newDay);
-      }
-    } catch (e) {
-      console.error("Error saving training day:", e);
-    }
+    setCurrentDay(normalizedDay);
+    setTrainingDay(normalizedDay);
     
     // Notify parent component to reload exercises (no page refresh)
-    onDayChange?.(newDay);
+    onDayChange?.(normalizedDay);
     
     // Clear loading state after a short delay (data should load within 1.5s)
     setTimeout(() => {
