@@ -191,6 +191,9 @@ const Today = () => {
     return "1";
   };
 
+  const [isHyroxSim, setIsHyroxSim] = useState(false);
+  const [simNumber, setSimNumber] = useState(0);
+
   const [currentTrainingDay, setCurrentTrainingDay] = useState(() => {
     try {
       const userStr = localStorage.getItem("frank_rock_user");
@@ -227,6 +230,19 @@ const Today = () => {
     }
     return "1";
   });
+  
+  // Check if current day is a Hyrox simulation
+  useEffect(() => {
+    const dayNum = parseInt(currentTrainingDay);
+    if (dayNum >= 101) {
+      setIsHyroxSim(true);
+      setSimNumber(dayNum - 100); // 101 -> 1, 102 -> 2
+    } else {
+      setIsHyroxSim(false);
+      setSimNumber(0);
+    }
+  }, [currentTrainingDay]);
+  
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [completedReady, setCompletedReady] = useState(false);
   const autoNavTriggeredRef = useRef(false);
@@ -703,7 +719,13 @@ const Today = () => {
       <main className="container max-w-2xl mx-auto px-2 sm:px-4 pt-16 pb-6">
         <div className="relative flex items-center mb-3 sm:mb-6">
           <h2 className="absolute left-1/2 -translate-x-1/2 text-center text-2xl sm:text-3xl md:text-4xl font-extrabold text-foreground" style={{ top: 10 }}>
-            Training <span className="text-yellow-500">Day {currentTrainingDay}</span>
+            {isHyroxSim ? (
+              <>
+                <span className="text-yellow-500">Hyrox Full Simulation</span> #{simNumber}
+              </>
+            ) : (
+              <>Training <span className="text-yellow-500">Day {currentTrainingDay}</span></>
+            )}
           </h2>
           
           <div className="ml-auto flex items-center gap-2">
