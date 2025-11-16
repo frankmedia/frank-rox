@@ -15,6 +15,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Overview from "./pages/Overview";
 import Today from "./pages/Today";
+import Simulation from "./pages/Simulation";
 import ExerciseDetail from "./pages/ExerciseDetail";
 import History from "./pages/History";
 import Profile from "./pages/Profile";
@@ -107,6 +108,18 @@ const App = () => (
                   <DataProvider>
                     <AuthenticatedLayout>
                       <Today />
+                    </AuthenticatedLayout>
+                  </DataProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/simulation/:simNumber"
+              element={
+                <ProtectedRoute>
+                  <DataProvider>
+                    <AuthenticatedLayout>
+                      <Simulation />
                     </AuthenticatedLayout>
                   </DataProvider>
                 </ProtectedRoute>

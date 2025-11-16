@@ -11,6 +11,7 @@ interface DataContextType {
   exercises: Exercise[];
   allExercises: Exercise[];
   loading: boolean;
+  switching: boolean; // True when switching days (keeps old content visible)
   error: string | null;
   userSheet: any;
   refresh: () => Promise<void>;

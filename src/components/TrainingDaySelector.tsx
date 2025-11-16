@@ -68,11 +68,12 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
           return;
         }
 
-        // Get max day from plan_days
+        // Get max day from plan_days (exclude optional Hyrox simulations)
         const { data: planDays } = await supabase
           .from('plan_days')
           .select('day_index')
           .eq('plan_id', plan.id)
+          .is('track_name', null) // Only main programme days
           .order('day_index', { ascending: false })
           .limit(1)
           .single();
@@ -157,14 +158,20 @@ export function TrainingDaySelector({ onDayChange }: TrainingDaySelectorProps) {
           ) : (
             <RotateCw className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1 sm:mr-2" />
           )}
-          <SelectValue placeholder="Day" />
+          <SelectValue placeholder="Day">
+            {parseInt(currentDay) >= 101 ? `Sim #${parseInt(currentDay) - 100}` : `Day ${currentDay}`}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent className="max-h-[300px]">
-          {trainingDays.map((day) => (
-            <SelectItem key={day} value={day} className="text-xl font-bold py-3">
-              Day {day}
-            </SelectItem>
-          ))}
+          {trainingDays.map((day) => {
+            const dayNum = parseInt(day);
+            const label = dayNum >= 101 ? `Sim #${dayNum - 100}` : `Day ${day}`;
+            return (
+              <SelectItem key={day} value={day} className="text-xl font-bold py-3">
+                {label}
+              </SelectItem>
+            );
+          })}
         </SelectContent>
       </Select>
 
