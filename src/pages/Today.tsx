@@ -722,7 +722,7 @@ const Today = () => {
             <h2 className="text-center text-2xl sm:text-3xl md:text-4xl font-extrabold text-foreground" style={{ marginTop: 10 }}>
               {isHyroxSim ? (
                 <>
-                  <span className="text-yellow-500">Hyrox Full Simulation</span> #{simNumber}
+                  <span className="text-yellow-500">{simNumber === 1 ? 'Hyrox Full Simulation' : 'Hyrox Half Simulation'}</span>
                 </>
               ) : (
                 <>Training <span className="text-yellow-500">Day {currentTrainingDay}</span></>
