@@ -112,8 +112,6 @@ const Simulation = () => {
                 exercises!inner (
                   id,
                   name,
-                  video_url,
-                  thumbnail_url,
                   modality
                 )
               )
@@ -165,7 +163,6 @@ const Simulation = () => {
                   targetDistanceKm: distance,
                   suggestedKg: item.weight_kg || undefined,
                   notes: item.notes || (item.extra?.weight ? `Weight: ${item.extra.weight}` : ''),
-                  mediaUrl: item.exercises?.video_url,
                 });
               }
             }
