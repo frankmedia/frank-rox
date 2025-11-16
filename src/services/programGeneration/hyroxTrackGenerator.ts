@@ -20,10 +20,10 @@ export async function generateHyroxTrack(
 
   console.log(`🏃 Creating Hyrox race simulations for plan ${planId}`);
 
-  // Just create 2 simulation workouts (not a full schedule)
+  // Create Hyrox Full and Half simulations
   const simulations = [
-    { dayIndex: 101, title: "Hyrox Full Simulation", variant: "full" },
-    { dayIndex: 102, title: "Hyrox Full Simulation", variant: "full" }, // Second instance for retries
+    { dayIndex: 101, title: "Hyrox Full Simulation", variant: "full" as const },
+    { dayIndex: 102, title: "Hyrox Half Simulation", variant: "half" as const },
   ];
 
   for (const sim of simulations) {
@@ -51,7 +51,7 @@ export async function generateHyroxTrack(
 
     // Generate the simulation workout
     try {
-      await generateHyroxSimulation(supabase, planDay.id);
+      await generateHyroxSimulation(supabase, planDay.id, sim.variant);
     } catch (error: any) {
       console.error(`❌ Error generating ${sim.title}:`, error);
       errors.push(`Error generating ${sim.title}: ${error.message}`);
@@ -63,13 +63,14 @@ export async function generateHyroxTrack(
 }
 
 /**
- * Generate a full Hyrox simulation workout (8 stations + runs)
+ * Generate a Hyrox simulation workout (Full or Half)
  * Uses the EXISTING createHyroxSimInDay function
  */
 async function generateHyroxSimulation(
   supabase: SupabaseClient,
-  planDayId: string
+  planDayId: string,
+  variant: "full" | "half"
 ): Promise<void> {
   const { createHyroxSimInDay } = await import("../generators/hyroxGenerator");
-  await createHyroxSimInDay(supabase, planDayId);
+  await createHyroxSimInDay(supabase, planDayId, variant);
 }

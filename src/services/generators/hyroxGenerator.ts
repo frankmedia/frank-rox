@@ -361,7 +361,8 @@ export async function generateHyroxWeek(
 // Create a single HYROX Simulation day (same logic used by admin)
 export async function createHyroxSimInDay(
   supabase: SupabaseClient,
-  planDayId: string
+  planDayId: string,
+  variant: "full" | "half" = "full"
 ) {
   // Mark as non-rest with description (will update later as well)
   await supabase.from("plan_days").update({ is_rest: false }).eq("id", planDayId);
@@ -374,9 +375,10 @@ export async function createHyroxSimInDay(
     .order("order_index", { ascending: false })
     .limit(1);
   const maxOrder = existingSessions.data?.[0]?.order_index ?? 0;
+  const sessionName = variant === "half" ? "Hyrox Half Simulation (Open Men)" : "Hyrox Simulation (Open Men)";
   const sIns = await supabase
     .from("sessions")
-    .insert({ plan_day_id: planDayId, name: "Hyrox Simulation (Open Men)", order_index: maxOrder + 1 })
+    .insert({ plan_day_id: planDayId, name: sessionName, order_index: maxOrder + 1 })
     .select("id")
     .single();
   if (sIns.error) throw sIns.error;
@@ -432,6 +434,9 @@ export async function createHyroxSimInDay(
     { name: "Wall Balls", searchTerms: ["Wall Balls", "wall ball"], reps: 100, weight: "6kg" },
   ];
 
+  const runDistance = variant === "half" ? 0.5 : 1; // 500m for half, 1km for full
+  const distanceMultiplier = variant === "half" ? 0.5 : 1; // Half all distances for Hyrox Half
+  
   let itemOrder = 0;
   // Add run + station for all 8 stations (no final run after last station)
   for (let i = 0; i < hyroxStations.length; i++) {
@@ -441,7 +446,7 @@ export async function createHyroxSimInDay(
         exercise_id: runExerciseId,
         status: "draft",
         item_order: itemOrder++,
-        extra: { distance: 1 }, // 1km
+        extra: { distance: runDistance }, // 1km for full, 500m for half
       });
     }
 
@@ -456,12 +461,14 @@ export async function createHyroxSimInDay(
     }
     if (stationExerciseId) {
       const extra: any = {};
-      if (hyroxStations[i].distance !== undefined) extra.distance = hyroxStations[i].distance! / 1000; // store in km
+      if (hyroxStations[i].distance !== undefined) {
+        extra.distance = (hyroxStations[i].distance! * distanceMultiplier) / 1000; // store in km, halved for Hyrox Half
+      }
       if (hyroxStations[i].reps !== undefined) {
-        extra.reps = hyroxStations[i].reps;
+        extra.reps = Math.round(hyroxStations[i].reps! * distanceMultiplier); // Half reps for Hyrox Half
         extra.sets = 1;
       }
-      if (hyroxStations[i].weight) extra.weight = hyroxStations[i].weight;
+      if (hyroxStations[i].weight) extra.weight = hyroxStations[i].weight; // Same weights
       await supabase.from("session_block_items").insert({
         block_id: blockId,
         exercise_id: stationExerciseId,
@@ -472,10 +479,11 @@ export async function createHyroxSimInDay(
     }
   }
 
-  // Update description to Hyrox Full Simulation
+  // Update description
+  const description = variant === "half" ? "Hyrox Half Simulation" : "Hyrox Full Simulation";
   await supabase
     .from("plan_days")
-    .update({ description: "Hyrox Full Simulation" })
+    .update({ description })
     .eq("id", planDayId);
 }
 

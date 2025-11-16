@@ -23,6 +23,7 @@ const Simulation = () => {
   const [syncing, setSyncing] = useState(false);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [completedReady, setCompletedReady] = useState(false);
+  const [simTitle, setSimTitle] = useState("Hyrox Full Simulation");
   const containerRef = useRef<HTMLDivElement>(null);
 
   const simDay = simNumber ? 100 + parseInt(simNumber) : 101;
@@ -33,32 +34,159 @@ const Simulation = () => {
     year: 'numeric' 
   });
 
-  // Load simulation exercises
+  // Load simulation exercises directly from database
   useEffect(() => {
     const loadSimulation = async () => {
       if (!authUser?.clientId) return;
       
       setLoading(true);
       try {
-        // Temporarily set training day to load sim exercises
-        const userStr = localStorage.getItem("frank_rock_user");
-        if (userStr) {
-          const user = JSON.parse(userStr);
-          const userKey = `currentTrainingDay_${user.username}`;
-          const oldDay = localStorage.getItem(userKey);
+        console.log(`📋 Loading simulation exercises for sim #${simNumber}, day_index ${simDay}`);
+        
+        // Get active plan
+        const { data: plan } = await supabase
+          .from('plans')
+          .select('id')
+          .eq('client_id', authUser.clientId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!plan) {
+          console.error('No active plan found');
+          toast.error("No active plan found");
+          setLoading(false);
+          return;
+        }
+
+        // Get the simulation day (day_index = simDay, track_name = 'hyrox')
+        const { data: planDay } = await supabase
+          .from('plan_days')
+          .select('id, description')
+          .eq('plan_id', plan.id)
+          .eq('day_index', simDay)
+          .eq('track_name', 'hyrox')
+          .single();
+
+        if (!planDay) {
+          console.error(`No simulation day found for day_index ${simDay}`);
+          toast.error("Simulation not found");
+          setLoading(false);
+          return;
+        }
+
+        console.log(`✅ Found simulation day:`, planDay.id);
+        
+        // Set the simulation title based on description
+        const isHalf = planDay.description?.includes('Half');
+        setSimTitle(isHalf ? "Hyrox Half Simulation" : "Hyrox Full Simulation");
+
+        // Get sessions for this day
+        const { data: sessions } = await supabase
+          .from('sessions')
+          .select(`
+            id,
+            name,
+            notes,
+            session_blocks (
+              id,
+              block_type,
+              title,
+              parameters,
+              rounds,
+              work_sec,
+              rest_sec,
+              rest_between_rounds_s,
+              order_index,
+              session_block_items (
+                id,
+                exercise_id,
+                item_order,
+                sets,
+                reps,
+                duration_sec,
+                distance_m,
+                weight_kg,
+                notes,
+                extra,
+                exercises (
+                  id,
+                  name,
+                  description,
+                  video_url,
+                  thumbnail_url,
+                  modality
+                )
+              )
+            )
+          `)
+          .eq('plan_day_id', planDay.id)
+          .order('order_index');
+
+        if (!sessions || sessions.length === 0) {
+          console.error('No sessions found for simulation');
+          toast.error("No exercises found in simulation");
+          setLoading(false);
+          return;
+        }
+
+        console.log(`✅ Found ${sessions.length} sessions with blocks`);
+
+        // Transform to Exercise[] format
+        const exerciseData: Exercise[] = [];
+        
+        for (const session of sessions) {
+          const blocks = (session as any).session_blocks || [];
           
-          // Set to sim day temporarily
-          localStorage.setItem(userKey, simDay.toString());
-          
-          // Load exercises
-          const exerciseData = await getTodayExercises(authUser.clientId);
-          setExercises(exerciseData);
-          
-          // Restore old day
-          if (oldDay) {
-            localStorage.setItem(userKey, oldDay);
+          for (const block of blocks) {
+            const items = block.session_block_items || [];
+            
+            if (block.block_type === 'circuit' && items.length > 1) {
+              // Circuit block
+              const childExercises = items.map((item: any) => ({
+                id: item.exercise_id || item.id,
+                name: item.exercises?.name || 'Unknown Exercise',
+                type: 'weights' as const,
+                sets: item.sets || 1,
+                reps: item.reps || 0,
+                durationMin: item.duration_sec ? item.duration_sec / 60 : undefined,
+                targetDistanceKm: item.distance_m ? item.distance_m / 1000 : undefined,
+                suggestedKg: item.weight_kg || undefined,
+                notes: item.notes || item.exercises?.description || '',
+                mediaUrl: item.exercises?.video_url,
+              }));
+
+              exerciseData.push({
+                id: block.id,
+                name: block.title || 'Circuit',
+                type: 'circuit',
+                totalRounds: block.rounds || 1,
+                exercises: childExercises,
+                notes: block.parameters?.notes || '',
+              });
+            } else {
+              // Individual exercises
+              for (const item of items) {
+                exerciseData.push({
+                  id: item.exercise_id || item.id,
+                  name: item.exercises?.name || 'Unknown Exercise',
+                  type: 'weights',
+                  sets: item.sets || 1,
+                  reps: item.reps || 0,
+                  durationMin: item.duration_sec ? item.duration_sec / 60 : undefined,
+                  targetDistanceKm: item.distance_m ? item.distance_m / 1000 : undefined,
+                  suggestedKg: item.weight_kg || undefined,
+                  notes: item.notes || item.exercises?.description || '',
+                  mediaUrl: item.exercises?.video_url,
+                });
+              }
+            }
           }
         }
+
+        console.log(`✅ Loaded ${exerciseData.length} exercises for simulation:`, exerciseData.map(e => e.name));
+        setExercises(exerciseData);
       } catch (err) {
         console.error("Error loading simulation:", err);
         toast.error("Failed to load simulation");
@@ -68,7 +196,7 @@ const Simulation = () => {
     };
 
     loadSimulation();
-  }, [authUser?.clientId, simDay]);
+  }, [authUser?.clientId, simDay, simNumber]);
 
   // Load completion status
   useEffect(() => {
@@ -246,7 +374,7 @@ const Simulation = () => {
       <main className="container max-w-2xl mx-auto px-2 sm:px-4 pt-16 pb-6">
         <div className="relative flex flex-col items-center mb-6">
           <h2 className="text-center text-2xl sm:text-3xl md:text-4xl font-extrabold text-foreground">
-            <span className="text-yellow-500">Hyrox Full Simulation</span> #{simNumber}
+            <span className="text-yellow-500">{simTitle}</span>
           </h2>
           <p className="text-sm text-muted-foreground mt-1">{simDate}</p>
         </div>

@@ -1520,25 +1520,25 @@ const Overview = () => {
           ) : (
             <div className="overflow-x-auto -mx-2 px-2 pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
               <div className="flex gap-4" style={{ width: 'max-content' }}>
-                {/* Hyrox Full Simulations (from database) */}
+                {/* Hyrox Full Simulation (only show first one) */}
                 {(() => {
                   const fullSims = hyroxSimDays.filter(d => d.description.includes('Full'));
                   console.log('🏃 Rendering Hyrox Full cards:', fullSims);
-                  return fullSims.slice(0, 2).map((sim, idx) => (
+                  if (fullSims.length === 0) return null;
+                  const sim = fullSims[0]; // Only show first one
+                  return (
                 <Card
                   key={sim.id}
                   className="flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.5)] hover:border-[rgba(255,215,0,0.35)] hover:-translate-y-0.5 active:scale-[0.98] active:shadow-[0_4px_16px_rgba(0,0,0,0.3)] transition-all duration-200 cursor-pointer"
                   onClick={() => {
                     // Navigate to Hyrox simulation workout
-                    navigate(`/simulation/${idx + 1}`);
+                    navigate(`/simulation/1`);
                   }}
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-500 border-yellow-500/30">
                       🏃 SIM
                     </Badge>
-                    {idx === 0 && <Badge variant="secondary" className="text-xs">1</Badge>}
-                    {idx === 1 && <Badge variant="secondary" className="text-xs">2</Badge>}
                   </div>
                   <h4 className="font-semibold text-base mb-1">Hyrox Full</h4>
                   <p className="text-xs text-muted-foreground mb-2">Open Men</p>
@@ -1546,26 +1546,35 @@ const Overview = () => {
                     8 stations with 1km runs between each
                   </p>
                 </Card>
-              ));
+              );
                 })()}
 
-              {/* Hyrox Half - Coming Soon */}
-              <Card
-                className="flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-200 opacity-40 cursor-not-allowed"
-                onClick={() => toast("Coming soon!")}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-500 border-yellow-500/30">
-                    🏃 SIM
-                  </Badge>
-                  <Badge variant="secondary" className="text-xs">Soon</Badge>
-                </div>
-                <h4 className="font-semibold text-base mb-1">Hyrox Half</h4>
-                <p className="text-xs text-muted-foreground mb-2">Open Men</p>
-                <p className="text-xs text-foreground/60">
-                  8 stations with 500m runs between each
-                </p>
-              </Card>
+              {/* Hyrox Half Simulation */}
+              {(() => {
+                const halfSims = hyroxSimDays.filter(d => d.description.includes('Half'));
+                if (halfSims.length === 0) return null;
+                const sim = halfSims[0];
+                return (
+                <Card
+                  key={sim.id}
+                  className="flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.5)] hover:border-[rgba(255,215,0,0.35)] hover:-translate-y-0.5 active:scale-[0.98] active:shadow-[0_4px_16px_rgba(0,0,0,0.3)] transition-all duration-200 cursor-pointer"
+                  onClick={() => {
+                    navigate(`/simulation/2`);
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-500 border-yellow-500/30">
+                      🏃 SIM
+                    </Badge>
+                  </div>
+                  <h4 className="font-semibold text-base mb-1">Hyrox Half</h4>
+                  <p className="text-xs text-muted-foreground mb-2">Open Men</p>
+                  <p className="text-xs text-foreground/60">
+                    8 stations with 500m runs between each
+                  </p>
+                </Card>
+                );
+              })()}
 
               {/* DEKA & ATHX - Coming Soon */}
               {[
