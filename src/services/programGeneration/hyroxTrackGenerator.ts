@@ -32,7 +32,6 @@ export async function generateHyroxTrack(
       .insert({
         plan_id: planId,
         day_index: sim.dayIndex,
-        dayName: null, // Not tied to a specific day
         is_rest: false,
         description: sim.title,
         track_name: "hyrox",
