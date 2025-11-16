@@ -39,12 +39,15 @@ export async function generateHyroxTrack(
   ];
 
   // Create plan_days for Hyrox track
+  // Use day_index 101-114 to avoid conflicts with main programme (1-14)
   for (const day of hyroxSchedule) {
+    const hyroxDayIndex = day.dayIndex + 100; // Offset to 101-114
+    
     const { data: planDay, error: dayError } = await supabase
       .from("plan_days")
       .insert({
         plan_id: planId,
-        day_index: day.dayIndex,
+        day_index: hyroxDayIndex,
         dayName: day.dayName,
         is_rest: day.type === "recovery",
         description: day.title,
@@ -55,13 +58,13 @@ export async function generateHyroxTrack(
       .single();
 
     if (dayError || !planDay) {
-      console.error(`❌ Failed to create Hyrox track day ${day.dayIndex}:`, dayError);
+      console.error(`❌ Failed to create Hyrox track day ${day.dayIndex} (index ${hyroxDayIndex}):`, dayError);
       errors.push(`Failed to create Hyrox track day ${day.dayIndex}: ${dayError?.message}`);
       continue;
     }
 
     dayIds.push(planDay.id);
-    console.log(`✅ Created Hyrox track day ${day.dayIndex}: ${day.title}`);
+    console.log(`✅ Created Hyrox track day ${day.dayIndex} (index ${hyroxDayIndex}): ${day.title}`);
 
     // Generate workout based on type
     try {
