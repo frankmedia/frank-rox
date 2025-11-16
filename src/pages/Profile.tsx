@@ -769,90 +769,46 @@ const Profile = () => {
         </Card>
 
         {/* Membership Plans */}
-        <section className="mb-6">
-          <div className="relative -mx-2 px-2">
-            <Carousel opts={{ align: "center", loop: false }} className="w-full">
-              <CarouselContent className="-ml-3">
+        <section className="mb-6 px-2">
+          <Card className="relative p-5 bg-card/80 border flex flex-col justify-between w-full">
+            <div className="space-y-2">
+              <span className="text-[10px] uppercase tracking-widest font-bold text-amber-500">
+                🥈 Push harder
+              </span>
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-extrabold">Performance</h3>
+              </div>
+              <div className="absolute top-3 right-3">
+                <span className="px-2.5 py-1 rounded-full border border-yellow-500/30 bg-yellow-500/15 text-yellow-300 text-xs font-bold">
+                  £49.99/mo
+                </span>
+              </div>
+              <ul className="mt-2 space-y-1">
                 {[
-                  {
-                    name: "Starter",
-                    price: "£24.44 / month",
-                    color: "#d4d4d8",
-                    pill: "🥉 First Competition",
-                    features: [
-                      "Professionally designed functional‑fitness workouts (Gym Race, ATHX Games, Spartan, HYROX)",
-                      "Structured weekly blocks",
-                      "Progress tracking via app",
-                    ],
-                  },
-                  {
-                    name: "Performance",
-                    price: "£49.99 / month",
-                    color: "#f59e0b",
-                    pill: "🥈 Push harder",
-                    features: [
-                      "Personalised training plan",
-                      "Monthly PT check-ins",
-                      "Refined nutrition guidance",
-                      "Strength & endurance balance",
-                      "Progress review & feedback",
-                    ],
-                  },
-                  {
-                    name: "Pro",
-                    price: "£99.99 / month",
-                    color: "#22c55e",
-                    pill: "🥇 Peak performance",
-                    features: [
-                      "Advanced, data-driven programming",
-                      "Bi‑weekly PT video calls",
-                      "Detailed nutrition & recovery plan",
-                      "Race‑day strategy sessions",
-                      "Ongoing performance analytics",
-                    ],
-                  },
-                ].map((tier) => {
-                  const parts = String(tier.price).split('/');
-                  const amount = parts[0]?.trim() || String(tier.price);
-                  const badgePrice = `${amount}/mo`;
-                  return (
-                  <CarouselItem key={tier.name} className="pl-3 basis-[72vw] sm:basis-[320px]">
-                    <Card className="relative p-5 bg-card/80 border flex flex-col justify-between min-h-[440px]">
-                      <div className="space-y-2">
-                        <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: tier.color }}>
-                          {tier.pill}
-                        </span>
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-2xl font-extrabold">{tier.name}</h3>
-                        </div>
-                        <div className="absolute top-3 right-3">
-                          <span className="px-2.5 py-1 rounded-full border border-yellow-500/30 bg-yellow-500/15 text-yellow-300 text-xs font-bold">
-                            {badgePrice}
-                          </span>
-                        </div>
-                        <ul className="mt-2 space-y-1">
-                          {tier.features.map((f) => (
-                            <li key={f} className="text-[15px] sm:text-base text-foreground/80">• {f}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div className="mt-4">
-                        <Button
-                          className="w-full h-12 text-lg font-bold"
-                          style={{ backgroundColor: "#FFCC00", color: "#000" }}
-                          onClick={() => {
-                            toast.info(`Selected ${tier.name}. Payment flow coming soon.`);
-                          }}
-                        >
-                          {`Select ${tier.name}`}
-                        </Button>
-                      </div>
-                    </Card>
-                  </CarouselItem>
-                )})}
-              </CarouselContent>
-            </Carousel>
-          </div>
+                  "Personalised training plan",
+                  "Monthly PT check-ins",
+                  "Refined nutrition guidance",
+                  "Strength & endurance balance",
+                  "Progress review & feedback",
+                ].map((f) => (
+                  <li key={f} className="text-[15px] sm:text-base text-foreground/80">
+                    • {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="mt-4">
+              <Button
+                className="w-full h-12 text-lg font-bold"
+                style={{ backgroundColor: "#FFCC00", color: "#000" }}
+                onClick={() => {
+                  toast.info("Selected Performance. Payment flow coming soon.");
+                }}
+              >
+                Select Performance
+              </Button>
+            </div>
+          </Card>
         </section>
         
         {/* Connections */}

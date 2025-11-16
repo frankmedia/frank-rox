@@ -89,6 +89,7 @@ const Simulation = () => {
             id,
             name,
             notes,
+            order_index,
             session_blocks (
               id,
               block_type,
@@ -121,8 +122,7 @@ const Simulation = () => {
               )
             )
           `)
-          .eq('plan_day_id', planDay.id)
-          .order('order_index');
+          .eq('plan_day_id', planDay.id);
 
         if (!sessions || sessions.length === 0) {
           console.error('No sessions found for simulation');
@@ -142,42 +142,25 @@ const Simulation = () => {
           for (const block of blocks) {
             const items = block.session_block_items || [];
             
-            if (block.block_type === 'circuit' && items.length > 1) {
-              // Circuit block
-              const childExercises = items.map((item: any) => ({
-                id: item.exercise_id || item.id,
-                name: item.exercises?.name || 'Unknown Exercise',
-                type: 'weights' as const,
-                sets: item.sets || 1,
-                reps: item.reps || 0,
-                durationMin: item.duration_sec ? item.duration_sec / 60 : undefined,
-                targetDistanceKm: item.distance_m ? item.distance_m / 1000 : undefined,
-                suggestedKg: item.weight_kg || undefined,
-                notes: item.notes || item.exercises?.description || '',
-                mediaUrl: item.exercises?.video_url,
-              }));
-
-              exerciseData.push({
-                id: block.id,
-                name: block.title || 'Circuit',
-                type: 'circuit',
-                totalRounds: block.rounds || 1,
-                exercises: childExercises,
-                notes: block.parameters?.notes || '',
-              });
-            } else {
-              // Individual exercises
+            console.log(`🔍 Processing block type: ${block.block_type}, items count: ${items.length}`);
+            
+            // For simulation blocks, process all items as individual exercises
+            if (block.block_type === 'simulation' || block.block_type === 'circuit') {
+              // Process all items as individual exercises
               for (const item of items) {
+                const distance = item.extra?.distance || (item.distance_m ? item.distance_m / 1000 : undefined);
+                const reps = item.extra?.reps || item.reps || 0;
+                
                 exerciseData.push({
                   id: item.exercise_id || item.id,
                   name: item.exercises?.name || 'Unknown Exercise',
-                  type: 'weights',
+                  type: (item.exercises?.modality === 'running' ? 'running' : 'weights') as any,
                   sets: item.sets || 1,
-                  reps: item.reps || 0,
+                  reps: reps,
                   durationMin: item.duration_sec ? item.duration_sec / 60 : undefined,
-                  targetDistanceKm: item.distance_m ? item.distance_m / 1000 : undefined,
+                  targetDistanceKm: distance,
                   suggestedKg: item.weight_kg || undefined,
-                  notes: item.notes || item.exercises?.description || '',
+                  notes: item.notes || item.exercises?.description || (item.extra?.weight ? `Weight: ${item.extra.weight}` : ''),
                   mediaUrl: item.exercises?.video_url,
                 });
               }
