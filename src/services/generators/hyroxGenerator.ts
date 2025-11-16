@@ -472,10 +472,10 @@ export async function createHyroxSimInDay(
     }
   }
 
-  // Update description
+  // Update description to Hyrox Full Simulation
   await supabase
     .from("plan_days")
-    .update({ description: "Hyrox Simulation: 8 stations with 1km runs between each (Open Men weights)" })
+    .update({ description: "Hyrox Full Simulation" })
     .eq("id", planDayId);
 }
 

@@ -634,7 +634,6 @@ const Overview = () => {
           .eq('plan_id', plan.id)
           .eq('track_name', 'hyrox')
           .eq('is_optional', true)
-          .like('description', '%Simulation%')
           .order('day_index', { ascending: true });
 
         if (!hyroxError && hyroxDays) {
