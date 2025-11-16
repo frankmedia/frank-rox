@@ -1115,15 +1115,22 @@ const Today = () => {
                 <div className={hasMultipleIntros ? "overflow-x-auto -mx-2 px-2 pb-2" : "-mx-2"} style={{ WebkitOverflowScrolling: 'touch' }}>
                   <div className={hasMultipleIntros ? "flex gap-4" : "px-2"} style={hasMultipleIntros ? { width: 'max-content' } : {}}>
                     {introCards.map((intro) => (
-                      <Card key={intro.id} className={`p-6 bg-primary/5 border-primary/20 ${hasMultipleIntros ? 'flex-shrink-0 w-80' : 'w-full'}`}>
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 bg-primary/20 rounded-full">
-                            <Info className="w-5 h-5 text-primary" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg mb-2">{intro.name}</h3>
-                            <p className="text-sm text-foreground/70 leading-relaxed">{intro.notes}</p>
-                          </div>
+                      <Card 
+                        key={intro.id} 
+                        className={`
+                          p-6 bg-[#111111] 
+                          rounded-[18px]
+                          border border-[rgba(255,215,0,0.2)]
+                          shadow-[0_8px_24px_rgba(0,0,0,0.4)]
+                          hover:shadow-[0_12px_32px_rgba(0,0,0,0.5)] hover:border-[rgba(255,215,0,0.35)] hover:-translate-y-0.5
+                          active:scale-[0.98] active:shadow-[0_4px_16px_rgba(0,0,0,0.3)]
+                          transition-all duration-200
+                          ${hasMultipleIntros ? 'flex-shrink-0 w-80' : 'w-full'}
+                        `}
+                      >
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg mb-2">{intro.name}</h3>
+                          <p className="text-sm text-foreground/70 leading-relaxed">{intro.notes}</p>
                         </div>
                       </Card>
                     ))}

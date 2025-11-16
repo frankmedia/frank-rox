@@ -84,11 +84,12 @@ export async function createRecoverySessionForRestDay(
       block_type: "circuit",
       title: "Mobility Flow Circuit",
       parameters: {
-        format: "timed",
+        format: "circuit",
         focus: "recovery",
         rounds: SHORT_RECOVERY_ROUNDS,
         work_sec: 45,
         rest_sec: 15,
+        notes: `45s work • 15s rest • ${SHORT_RECOVERY_ROUNDS} rounds. Focus on controlled movement and deep breathing.`,
       },
       rounds: SHORT_RECOVERY_ROUNDS,
       work_sec: 45, // 45 seconds per exercise
@@ -111,17 +112,23 @@ export async function createRecoverySessionForRestDay(
       continue;
     }
 
+    const durationSec = exercise.durationSec ?? 45;
+    const durationMin = durationSec / 60; // Convert to minutes for extra field
+
     const { error: itemError } = await supabase
       .from("session_block_items")
       .insert({
         block_id: mobilityBlock.id,
         exercise_id: exercise.exerciseId,
         item_order: order++,
-        duration_sec: exercise.durationSec ?? 45,
+        duration_sec: durationSec,
         sets: 1,
         reps: 0,
         status: "draft",
         notes: exercise.notes,
+        extra: {
+          duration: durationMin, // Store in minutes for admin panel display
+        },
       });
     
     if (itemError) {
