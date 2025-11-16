@@ -476,7 +476,7 @@ const Overview = () => {
       }
       
       if (dayIds.length > 0) {
-        console.log(`✅ Generated ${dayIds.length} Hyrox track days`);
+        console.log(`✅ Generated ${dayIds.length} Hyrox simulations`);
         toast.success(`${dayIds.length} Race Simulations added to your plan!`);
         
         // Reload the Hyrox days
