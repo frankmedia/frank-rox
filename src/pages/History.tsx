@@ -118,7 +118,9 @@ const History = () => {
   const { user: authUser } = useAuth();
   const [activeTab, setActiveTab] = useState("history");
   const [history, setHistory] = useState<WorkoutLog[]>([]);
+  const [hyroxHistory, setHyroxHistory] = useState<WorkoutLog[]>([]);
   const [dailyWorkouts, setDailyWorkouts] = useState<DailyWorkout[]>([]);
+  const [hyroxWorkouts, setHyroxWorkouts] = useState<DailyWorkout[]>([]);
   const [personalBests, setPersonalBests] = useState<PersonalBest[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -181,17 +183,30 @@ const History = () => {
         return;
       }
         
-        // Fetch workout logs from Supabase
-        const { data: logs, error } = await supabase
+        // Fetch main programme workout logs from Supabase (track_name IS NULL)
+        const { data: mainLogs, error: mainError } = await supabase
           .from('workout_logs')
           .select('*')
           .eq('client_id', authUser.clientId)
+          .is('track_name', null)
           .order('logged_at', { ascending: false });
         
-        if (error) throw error;
+        if (mainError) throw mainError;
         
-        console.log('📊 Supabase workout logs:', logs);
-        console.log('📊 Total logs from Supabase:', logs?.length || 0);
+        // Fetch Hyrox simulation logs from Supabase (track_name = 'hyrox')
+        const { data: hyroxLogs, error: hyroxError } = await supabase
+          .from('workout_logs')
+          .select('*')
+          .eq('client_id', authUser.clientId)
+          .eq('track_name', 'hyrox')
+          .order('logged_at', { ascending: false });
+        
+        if (hyroxError) throw hyroxError;
+        
+        console.log('📊 Main programme logs:', mainLogs?.length || 0);
+        console.log('📊 Hyrox simulation logs:', hyroxLogs?.length || 0);
+        
+        const logs = mainLogs || [];
         
         // Convert Supabase logs to WorkoutLog format
         const supabaseHistory: WorkoutLog[] = (logs || []).map((log: any) => {
@@ -297,6 +312,49 @@ const History = () => {
         // Group workouts by date
         const grouped = groupWorkoutsByDate(historyData);
         setDailyWorkouts(grouped);
+        
+        // Process Hyrox logs
+        const hyroxHistory: WorkoutLog[] = (hyroxLogs || []).map((log: any) => {
+          let parsedNotes = log.notes;
+          let simulationData = null;
+          try {
+            if (log.notes && log.notes.startsWith('{')) {
+              const parsed = JSON.parse(log.notes);
+              if (parsed.type === 'simulation') {
+                simulationData = parsed;
+                parsedNotes = null;
+              }
+            }
+          } catch (e) {
+            // Keep as regular notes
+          }
+          
+          return {
+            id: String(log.id),
+            exercise: log.exercise_name,
+            date: new Date(log.logged_at).toLocaleString("en-GB", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            sets: log.sets,
+            reps: log.reps,
+            weight: log.weight,
+            weights: log.weights,
+            isPB: log.is_pb || false,
+            duration: log.duration_min,
+            distance: log.distance_km,
+            notes: parsedNotes,
+            rating: log.rating,
+            simulationData,
+          };
+        });
+        
+        setHyroxHistory(hyroxHistory);
+        const groupedHyrox = groupWorkoutsByDate(hyroxHistory);
+        setHyroxWorkouts(groupedHyrox);
         
         // Calculate Personal Bests
         const pbs: PersonalBest[] = [];
@@ -428,14 +486,18 @@ const History = () => {
 
       <main className="container max-w-2xl mx-auto px-4 pt-20 pb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="history" className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" />
               Logbook
             </TabsTrigger>
+            <TabsTrigger value="sims" className="flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              SIM
+            </TabsTrigger>
             <TabsTrigger value="pb" className="flex items-center gap-2">
               <Trophy className="w-4 h-4" />
-              Personal Bests
+              PB
             </TabsTrigger>
           </TabsList>
 
@@ -476,6 +538,116 @@ const History = () => {
                 <p className="text-muted-foreground">No personal bests recorded yet</p>
                 <p className="text-sm text-muted-foreground mt-2">Complete some workouts to start tracking your PRs!</p>
               </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="sims" className="space-y-4">
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : hyroxWorkouts.length > 0 ? (
+              <Accordion type="multiple" defaultValue={[hyroxWorkouts[0]?.date]} className="space-y-4">
+                {hyroxWorkouts.map((day) => (
+                  <AccordionItem key={day.date} value={day.date} className="border-none">
+                    <Card className="overflow-hidden">
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-secondary/10">
+                        <div className="flex items-center justify-between w-full pr-2">
+                          <div className="flex items-center gap-3">
+                            <Calendar className="w-5 h-5 text-yellow-500" />
+                            <div className="text-left">
+                              <h3 className="text-lg font-bold text-foreground">{day.displayDate}</h3>
+                              <p className="text-xs text-muted-foreground">{day.totalExercises} simulation{day.totalExercises !== 1 ? 's' : ''}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-4 text-sm">
+                            {day.totalDuration > 0 && (
+                              <div className="text-right">
+                                <p className="font-bold text-foreground">{day.totalDuration}min</p>
+                                <p className="text-xs text-muted-foreground">Duration</p>
+                              </div>
+                            )}
+                            {day.totalDistance > 0 && (
+                              <div className="text-right">
+                                <p className="font-bold text-foreground">{day.totalDistance.toFixed(1)}km</p>
+                                <p className="text-xs text-muted-foreground">Distance</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-0">
+                        <div className="space-y-2 px-4 pb-4">
+                          {day.exercises.map((entry) => (
+                            <Card key={entry.id} className="p-4 border border-yellow-500/20 bg-yellow-500/5">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h4 className="font-bold text-foreground text-lg">{entry.exercise}</h4>
+                                    {entry.isPB && (
+                                      <Badge className="bg-yellow-500 text-black text-xs">
+                                        <Medal className="w-3 h-3 mr-1" />
+                                        PB
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{entry.date}</p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleDeleteLog(entry.id, entry.exercise)}
+                                  disabled={deleting === entry.id}
+                                >
+                                  {deleting === entry.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                {entry.duration && (
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-primary" />
+                                    <span className="text-sm font-semibold text-foreground">{entry.duration} min</span>
+                                  </div>
+                                )}
+                                {entry.distance && (
+                                  <div className="flex items-center gap-2">
+                                    <TrendingUp className="w-4 h-4 text-primary" />
+                                    <span className="text-sm font-semibold text-foreground">{entry.distance} km</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {entry.notes && (
+                                <p className="text-sm text-muted-foreground mt-3 italic border-l-2 border-primary pl-3">
+                                  {entry.notes}
+                                </p>
+                              )}
+
+                              {entry.rating !== undefined && entry.rating !== null && (
+                                <div className="mt-3">
+                                  <FlameRating value={entry.rating} readonly size="sm" />
+                                </div>
+                              )}
+                            </Card>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </Card>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            ) : (
+              <div className="text-center py-12">
+                <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground mb-2">No race simulations logged yet</p>
+                <p className="text-sm text-muted-foreground">Complete a Hyrox simulation to see it here!</p>
+              </div>
             )}
           </TabsContent>
 
