@@ -1420,43 +1420,73 @@ const Overview = () => {
           />
         </motion.div>
 
-        {/* Optional Hyrox Track - Horizontal Scrolling */}
+        {/* Race Simulations - Horizontal Scrolling */}
         <div className="mb-6">
-          <h3 className="text-lg font-bold mb-3 px-2">Optional Hyrox Training</h3>
+          <h3 className="text-lg font-bold mb-3 px-2">Race Sims</h3>
           <p className="text-sm text-muted-foreground mb-4 px-2">
-            Extra Hyrox-focused workouts you can do anytime. Simulations, station work, and accessories.
+            Full race simulations you can do anytime to track your progress.
           </p>
           <div className="overflow-x-auto -mx-2 px-2 pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
             <div className="flex gap-4" style={{ width: 'max-content' }}>
-              {/* Placeholder cards - we'll populate these with actual Hyrox track days */}
+              {/* Race simulation cards */}
               {[
-                { day: 1, title: "Hyrox Simulation - Full Race", type: "simulation" },
-                { day: 2, title: "SkiErg + Sled Technique", type: "station" },
-                { day: 3, title: "Burpee + Rowing Intervals", type: "station" },
-                { day: 8, title: "Hyrox Simulation - Timed", type: "simulation" },
-                { day: 13, title: "Hyrox Accessory Work", type: "accessory" },
-              ].map((hyroxDay) => (
+                { 
+                  id: "hyrox-full", 
+                  title: "Hyrox Full", 
+                  subtitle: "Open Men",
+                  description: "8 stations with 1km runs between each",
+                  enabled: true 
+                },
+                { 
+                  id: "hyrox-half", 
+                  title: "Hyrox Half", 
+                  subtitle: "Open Men",
+                  description: "8 stations with 500m runs between each",
+                  enabled: true 
+                },
+                { 
+                  id: "deka", 
+                  title: "DEKA", 
+                  subtitle: "Fit / Mile",
+                  description: "10 functional fitness zones",
+                  enabled: false 
+                },
+                { 
+                  id: "athx", 
+                  title: "ATHX", 
+                  subtitle: "Standard",
+                  description: "Hybrid athletic competition",
+                  enabled: false 
+                },
+              ].map((sim) => (
                 <Card
-                  key={hyroxDay.day}
-                  className="flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.5)] hover:border-[rgba(255,215,0,0.35)] hover:-translate-y-0.5 active:scale-[0.98] active:shadow-[0_4px_16px_rgba(0,0,0,0.3)] transition-all duration-200 cursor-pointer"
+                  key={sim.id}
+                  className={`flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-200 ${
+                    sim.enabled 
+                      ? "hover:shadow-[0_12px_32px_rgba(0,0,0,0.5)] hover:border-[rgba(255,215,0,0.35)] hover:-translate-y-0.5 active:scale-[0.98] active:shadow-[0_4px_16px_rgba(0,0,0,0.3)] cursor-pointer" 
+                      : "opacity-40 cursor-not-allowed"
+                  }`}
                   onClick={() => {
-                    // TODO: Navigate to Hyrox day
-                    toast(`Opening ${hyroxDay.title} (coming soon)`);
+                    if (!sim.enabled) {
+                      toast("Coming soon!");
+                      return;
+                    }
+                    // TODO: Navigate to simulation
+                    toast(`Opening ${sim.title} (coming soon)`);
                   }}
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-black font-bold text-sm">
-                      {hyroxDay.day}
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {hyroxDay.type === "simulation" ? "🏃 SIM" : hyroxDay.type === "station" ? "🎯 STATION" : "💪 ACCESSORY"}
+                  <div className="flex items-center justify-between mb-3">
+                    <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-500 border-yellow-500/30">
+                      🏃 SIMULATION
                     </Badge>
+                    {!sim.enabled && (
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Soon</span>
+                    )}
                   </div>
-                  <h4 className="font-semibold text-base mb-1">{hyroxDay.title}</h4>
-                  <p className="text-xs text-muted-foreground">
-                    {hyroxDay.type === "simulation" ? "Full 8-station simulation with 1km runs" : 
-                     hyroxDay.type === "station" ? "Station-specific technique work" :
-                     "Supplementary strength & conditioning"}
+                  <h4 className="font-bold text-lg mb-1">{sim.title}</h4>
+                  <p className="text-xs text-yellow-500/80 font-medium mb-2">{sim.subtitle}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {sim.description}
                   </p>
                 </Card>
               ))}
