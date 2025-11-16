@@ -622,8 +622,8 @@ const Overview = () => {
           return;
         }
 
-        // Filter to only main track (track_name is null)
-        const planDays = allPlanDays.filter(d => !d.track_name);
+        // Filter to only main track (exclude 'hyrox' track)
+        const planDays = allPlanDays.filter(d => d.track_name !== 'hyrox');
 
         console.log(`📋 Loaded ${planDays.length} main plan days (${allPlanDays.length} total including optional)`);
 
