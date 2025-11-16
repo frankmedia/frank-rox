@@ -1443,10 +1443,28 @@ const Overview = () => {
           <p className="text-sm text-muted-foreground mb-4 px-2">
             Full race simulations you can do anytime to track your progress.
           </p>
-          <div className="overflow-x-auto -mx-2 px-2 pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <div className="flex gap-4" style={{ width: 'max-content' }}>
-              {/* Hyrox Full Simulations (from database) */}
-              {hyroxSimDays.filter(d => d.description.includes('Full')).slice(0, 2).map((sim, idx) => (
+          
+          {hyroxSimDays.length === 0 ? (
+            <Card className="p-6 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)]">
+              <div className="text-center">
+                <h4 className="font-semibold text-base mb-2">Race Sims Not Available</h4>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Generate a new programme to unlock Hyrox Full & Half simulations!
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black"
+                  onClick={() => navigate('/admin')}
+                >
+                  Generate New Programme
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <div className="overflow-x-auto -mx-2 px-2 pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="flex gap-4" style={{ width: 'max-content' }}>
+                {/* Hyrox Full Simulations (from database) */}
+                {hyroxSimDays.filter(d => d.description.includes('Full')).slice(0, 2).map((sim, idx) => (
                 <Card
                   key={sim.id}
                   className="flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.5)] hover:border-[rgba(255,215,0,0.35)] hover:-translate-y-0.5 active:scale-[0.98] active:shadow-[0_4px_16px_rgba(0,0,0,0.3)] transition-all duration-200 cursor-pointer"
@@ -1525,8 +1543,9 @@ const Overview = () => {
                   </p>
                 </Card>
               ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {isFetchingDays && (
