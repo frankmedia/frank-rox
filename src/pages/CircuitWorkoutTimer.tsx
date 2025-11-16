@@ -8,7 +8,8 @@ import type { Exercise } from "@/types/workout";
 import { triggerSuccessHaptic } from "@/utils/haptics";
 import { 
   markExerciseComplete,
-  syncCircuitToSupabase
+  syncCircuitToSupabase,
+  getCurrentTrackName
 } from "@/services/workoutCache";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/utils/supabaseClient";
@@ -310,6 +311,9 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
           .limit(1)
           .single();
           
+        // Get track_name for this training day
+        const trackName = await getCurrentTrackName(authUser.clientId, trainingDay);
+        
         await syncCircuitToSupabase(
           authUser.clientId,
           plan?.id || null,
@@ -317,7 +321,8 @@ export function CircuitWorkoutTimer({ exercise, onComplete }: CircuitWorkoutTime
           exercise.name,
           exercises,
           completedRoundsData, // Pass completed rounds data
-          ratingToSave > 0 ? ratingToSave : undefined // Pass rating as 7th parameter
+          ratingToSave > 0 ? ratingToSave : undefined, // Pass rating as 7th parameter
+          trackName // Pass track_name as 8th parameter
         );
         
         toast.success("✅ Circuit Complete!", {

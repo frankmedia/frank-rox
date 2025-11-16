@@ -314,6 +314,49 @@ export async function checkPersonalBest(
 // ============================================
 
 /**
+ * Get the track_name for the current training day
+ */
+export async function getCurrentTrackName(
+  clientId: string,
+  trainingDay: number
+): Promise<string | null> {
+  try {
+    // Get active plan
+    const { data: plan, error: planError } = await supabase
+      .from("plans")
+      .select("id")
+      .eq("client_id", clientId)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (planError || !plan) {
+      console.log("⚠️  No active plan found for clientId:", clientId);
+      return null;
+    }
+
+    // Get plan_day for this training day
+    const { data: planDay, error: dayError } = await supabase
+      .from("plan_days")
+      .select("track_name")
+      .eq("plan_id", plan.id)
+      .eq("day_index", trainingDay)
+      .single();
+
+    if (dayError || !planDay) {
+      console.log("⚠️  No plan_day found for day:", trainingDay);
+      return null;
+    }
+
+    return planDay.track_name || null;
+  } catch (err) {
+    console.error("❌ Error getting track_name:", err);
+    return null;
+  }
+}
+
+/**
  * Immediately sync workout log to Supabase (hybrid approach)
  * This runs right after marking an exercise as done, not waiting for "Complete Day"
  */
@@ -333,9 +376,10 @@ export async function syncWorkoutLogToSupabase(
     rating?: number;
     notes?: string;
     isPB?: boolean;
+    trackName?: string | null; // Add track name for optional tracks
   }
 ): Promise<{ success: boolean; error?: string; logId?: string }> {
-  console.log("🧩 syncWorkoutLogToSupabase CALLED", { exerciseName: logData.exerciseName, duration: logData.duration, distance: logData.distance });
+  console.log("🧩 syncWorkoutLogToSupabase CALLED", { exerciseName: logData.exerciseName, duration: logData.duration, distance: logData.distance, trackName: logData.trackName });
   
   try {
     const timestamp = new Date().toISOString();
@@ -355,6 +399,7 @@ export async function syncWorkoutLogToSupabase(
       notes: logData.notes || null,
       rating: logData.rating || null,
       is_pb: logData.isPB || false,
+      track_name: logData.trackName || null, // Add track name for optional tracks
     };
 
     if (logData.exerciseId) {
@@ -405,7 +450,8 @@ export async function syncCircuitToSupabase(
     targetDistanceKm?: number;
   }>,
   completedRounds: Record<string, number[]>,
-  rating?: number
+  rating?: number,
+  trackName?: string | null // Add track name for optional tracks
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const timestamp = new Date().toISOString();
@@ -479,6 +525,7 @@ export async function syncCircuitToSupabase(
             notes: `Completed rounds: ${rounds.join(", ")}`,
             rating: null,
             is_pb: isPB,
+            track_name: trackName || null, // Add track name for optional tracks
           });
         }
       }

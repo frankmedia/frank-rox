@@ -12,7 +12,8 @@ import {
   markCircuitRound, 
   getCircuitProgress,
   markExerciseComplete,
-  syncCircuitToSupabase
+  syncCircuitToSupabase,
+  getCurrentTrackName
 } from "@/services/workoutCache";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -90,6 +91,9 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
           [exercises[0].id]: intervalTimes
         };
         
+        // Get track_name for this training day
+        const trackName = await getCurrentTrackName(authUser.clientId, trainingDay);
+        
         const result = await syncCircuitToSupabase(
           authUser.clientId,
           plan?.id || null,
@@ -97,7 +101,8 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
           exercise.name,
           exercises,
           completedRounds,
-          rating
+          rating,
+          trackName // Pass track_name
         );
         
         if (result.success) {
@@ -298,13 +303,18 @@ export function CircuitWorkout({ exercise, onComplete }: CircuitWorkoutProps) {
         .limit(1)
         .single();
         
+      // Get track_name for this training day
+      const trackName = await getCurrentTrackName(authUser.clientId, trainingDay);
+      
       const result = await syncCircuitToSupabase(
         authUser.clientId,
         plan?.id || null,
         trainingDay,
         exercise.name,
         exercises,
-        completedRounds
+        completedRounds,
+        undefined, // rating
+        trackName // Pass track_name
       );
       
       if (result.success) {

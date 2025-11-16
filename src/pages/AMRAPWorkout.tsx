@@ -10,7 +10,8 @@ import { useWakeLock } from "@/hooks/useWakeLock";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   markExerciseComplete,
-  syncWorkoutLogToSupabase 
+  syncWorkoutLogToSupabase,
+  getCurrentTrackName
 } from "@/services/workoutCache";
 import { supabase } from "@/utils/supabaseClient";
 
@@ -94,6 +95,9 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
             .order("created_at", { ascending: false })
             .limit(1)
             .single();
+          
+          // Get track_name for this training day
+          const trackName = await getCurrentTrackName(authUser.clientId, trainingDay);
             
           await syncWorkoutLogToSupabase(
             authUser.clientId,
@@ -103,6 +107,7 @@ export function AMRAPWorkout({ exercise, onComplete }: AMRAPWorkoutProps) {
               exerciseName: exercise.name,
               duration: timeElapsed,
               notes: `${timeCap} min time cap - ${exercises.length} exercises`,
+              trackName, // Add track_name
             }
           );
           

@@ -23,7 +23,8 @@ import { useWorkoutSession } from "@/contexts/WorkoutSessionContext";
 import { 
   markExerciseComplete,
   syncWorkoutLogToSupabase,
-  checkPersonalBest 
+  checkPersonalBest,
+  getCurrentTrackName
 } from "@/services/workoutCache";
 import { supabase } from "@/utils/supabaseClient";
 
@@ -543,6 +544,9 @@ const ExerciseDetail = () => {
           .order("created_at", { ascending: false })
           .limit(1)
           .single();
+        
+        // Get track_name for this training day
+        const trackName = await getCurrentTrackName(authUser.clientId, trainingDay);
           
         const syncResult = await syncWorkoutLogToSupabase(
           authUser.clientId,
@@ -559,6 +563,7 @@ const ExerciseDetail = () => {
             distance: data.distance,
             rating: data.rating,
             isPB,
+            trackName, // Add track_name for optional tracks
           }
         );
         

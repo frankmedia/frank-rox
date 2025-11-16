@@ -14,7 +14,7 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { ExerciseListSkeleton } from "@/components/ExerciseCardSkeleton";
 import { shareWorkout } from "@/utils/share";
 import { supabase } from "@/utils/supabaseClient";
-import { isExerciseComplete, getCompletionStats } from "@/services/workoutCache";
+import { isExerciseComplete, getCompletionStats, getCurrentTrackName } from "@/services/workoutCache";
 import confetti from "canvas-confetti";
 import { Capacitor } from "@capacitor/core";
 import { AppHealth } from "@/services/appHealth";
@@ -419,6 +419,9 @@ const Today = () => {
       const planId = plan?.id || null;
       const trainingDay = parseInt(currentTrainingDay);
 
+      // Get track_name for this training day
+      const trackName = await getCurrentTrackName(authUser.clientId, trainingDay);
+
       // Bulk insert workout logs if status is 'completed'
       if (status === 'completed' && todayLogs.length > 0) {
         const workoutLogsToInsert = todayLogs.map((log: any) => ({
@@ -436,6 +439,7 @@ const Today = () => {
           notes: log.notes || null,
           rating: log.rating || null,
           is_pb: log.isPB || false,
+          track_name: trackName || null, // Add track_name for optional tracks
         }));
 
         console.log('💾 Syncing to Supabase:', {
