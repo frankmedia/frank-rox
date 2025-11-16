@@ -183,6 +183,7 @@ const Overview = () => {
   const [healthConnected, setHealthConnected] = useState(false);
   const [planRefreshToken, setPlanRefreshToken] = useState(0);
   const [hyroxSimDays, setHyroxSimDays] = useState<Array<{ id: string; day_index: number; description: string }>>([]);
+  const [generatingHyrox, setGeneratingHyrox] = useState(false);
   const [healthData, setHealthData] = useState<{
     steps: number;
     heartRate: { average: number; max: number; min: number } | null;
@@ -455,6 +456,51 @@ const Overview = () => {
     );
   };
 
+  // Generate Hyrox track on-demand for existing plans
+  const generateHyroxTrackForPlan = async (planId: string) => {
+    if (generatingHyrox) return; // Prevent duplicate generation
+    
+    try {
+      setGeneratingHyrox(true);
+      console.log('🏃 Generating Hyrox track for plan:', planId);
+      
+      // Import the generator dynamically
+      const { generateHyroxTrack } = await import("@/services/programGeneration/hyroxTrackGenerator");
+      
+      // Generate the Hyrox track
+      const { dayIds, errors } = await generateHyroxTrack(supabase, planId);
+      
+      if (errors.length > 0) {
+        console.error('⚠️ Errors generating Hyrox track:', errors);
+        toast.error('Some Hyrox workouts could not be generated');
+      }
+      
+      if (dayIds.length > 0) {
+        console.log(`✅ Generated ${dayIds.length} Hyrox track days`);
+        toast.success(`${dayIds.length} Race Simulations added to your plan!`);
+        
+        // Reload the Hyrox days
+        const { data: hyroxDays } = await supabase
+          .from('plan_days')
+          .select('id, day_index, description')
+          .eq('plan_id', planId)
+          .eq('track_name', 'hyrox')
+          .eq('is_optional', true)
+          .like('description', '%Simulation%')
+          .order('day_index', { ascending: true });
+        
+        if (hyroxDays) {
+          setHyroxSimDays(hyroxDays);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error generating Hyrox track:', error);
+      toast.error('Failed to generate Race Simulations');
+    } finally {
+      setGeneratingHyrox(false);
+    }
+  };
+
   useEffect(() => {
     if (!authUser?.clientId) {
       setHydratedFromCache(false);
@@ -592,6 +638,12 @@ const Overview = () => {
         if (!hyroxError && hyroxDays) {
           console.log(`🏃 Loaded ${hyroxDays.length} Hyrox simulation days`);
           setHyroxSimDays(hyroxDays);
+          
+          // If no Hyrox track exists, generate it automatically
+          if (hyroxDays.length === 0) {
+            console.log('🏃 No Hyrox track found, generating on-demand...');
+            generateHyroxTrackForPlan(plan.id);
+          }
         }
 
         // Calculate max day (day_index is 1-based: 1, 2, 3...)
@@ -1437,27 +1489,31 @@ const Overview = () => {
           />
         </motion.div>
 
-        {/* Race Simulations - Horizontal Scrolling */}
-        <div className="mb-6">
-          <h3 className="text-lg font-bold mb-3 px-2">Race Sims</h3>
-          <p className="text-sm text-muted-foreground mb-4 px-2">
-            Full race simulations you can do anytime to track your progress.
-          </p>
-          
-          {hyroxSimDays.length === 0 ? (
+        {/* Race Simulations - Horizontal Scrolling - Only show if there's an active plan */}
+        {daySummaries.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-bold mb-3 px-2">Race Sims</h3>
+            <p className="text-sm text-muted-foreground mb-4 px-2">
+              Full race simulations you can do anytime to track your progress.
+            </p>
+            
+            {generatingHyrox ? (
             <Card className="p-6 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)]">
               <div className="text-center">
-                <h4 className="font-semibold text-base mb-2">Race Sims Not Available</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Generate a new programme to unlock Hyrox Full & Half simulations!
+                <Loader2 className="w-8 h-8 animate-spin text-yellow-500 mx-auto mb-3" />
+                <h4 className="font-semibold text-base mb-2">Generating Race Simulations...</h4>
+                <p className="text-sm text-muted-foreground">
+                  Adding Hyrox Full simulations to your plan
                 </p>
-                <Button 
-                  variant="outline" 
-                  className="border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black"
-                  onClick={() => navigate('/admin')}
-                >
-                  Generate New Programme
-                </Button>
+              </div>
+            </Card>
+          ) : hyroxSimDays.length === 0 ? (
+            <Card className="p-6 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)]">
+              <div className="text-center">
+                <h4 className="font-semibold text-base mb-2">Loading Race Sims...</h4>
+                <p className="text-sm text-muted-foreground">
+                  Race simulations will appear here shortly
+                </p>
               </div>
             </Card>
           ) : (
@@ -1546,7 +1602,8 @@ const Overview = () => {
               </div>
             </div>
           )}
-        </div>
+          </div>
+        )}
 
         {isFetchingDays && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
