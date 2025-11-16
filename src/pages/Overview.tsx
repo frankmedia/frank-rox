@@ -608,22 +608,24 @@ const Overview = () => {
           localStorage.setItem(lastPlanIdKey, currentPlanId);
         }
 
-        // Fetch plan_days to get structure (main track only)
-        const { data: planDays, error: planDaysError } = await supabase
+        // Fetch plan_days to get structure
+        const { data: allPlanDays, error: planDaysError } = await supabase
           .from('plan_days')
-          .select('day_index, is_rest')
+          .select('day_index, is_rest, track_name')
           .eq('plan_id', plan.id)
-          .is('track_name', null) // Only main track
           .order('day_index', { ascending: true });
 
-        if (planDaysError || !planDays || planDays.length === 0) {
+        if (planDaysError || !allPlanDays || allPlanDays.length === 0) {
           console.error("Error loading plan days:", planDaysError);
           setLoading(false);
           setIsFetchingDays(false);
           return;
         }
 
-        console.log(`📋 Loaded ${planDays.length} plan days`);
+        // Filter to only main track (track_name is null)
+        const planDays = allPlanDays.filter(d => !d.track_name);
+
+        console.log(`📋 Loaded ${planDays.length} main plan days (${allPlanDays.length} total including optional)`);
 
         // Fetch Hyrox simulation days (optional track)
         const { data: hyroxDays, error: hyroxError } = await supabase
