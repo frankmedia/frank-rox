@@ -83,14 +83,13 @@ const Simulation = () => {
         setSimTitle(isHalf ? "Hyrox Half Simulation" : "Hyrox Full Simulation");
 
         // Get sessions for this day
-        const { data: sessions } = await supabase
+        const { data: sessions, error: sessionsError } = await supabase
           .from('sessions')
           .select(`
             id,
             name,
             notes,
-            order_index,
-            session_blocks (
+            session_blocks!inner (
               id,
               block_type,
               title,
@@ -99,8 +98,7 @@ const Simulation = () => {
               work_sec,
               rest_sec,
               rest_between_rounds_s,
-              order_index,
-              session_block_items (
+              session_block_items!inner (
                 id,
                 exercise_id,
                 item_order,
@@ -111,7 +109,7 @@ const Simulation = () => {
                 weight_kg,
                 notes,
                 extra,
-                exercises (
+                exercises!inner (
                   id,
                   name,
                   description,
@@ -123,6 +121,13 @@ const Simulation = () => {
             )
           `)
           .eq('plan_day_id', planDay.id);
+        
+        if (sessionsError) {
+          console.error('❌ Session query error:', sessionsError);
+          toast.error("Failed to load simulation data");
+          setLoading(false);
+          return;
+        }
 
         if (!sessions || sessions.length === 0) {
           console.error('No sessions found for simulation');
