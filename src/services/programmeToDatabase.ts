@@ -299,6 +299,13 @@ export async function createPlanInDatabase(
     // 5. Duplicate Week 1 sessions to Week 2 with progressive overload
     await duplicateWeekWithProgression(supabase, planDays, programme, warnings);
 
+    // 6. Generate optional Hyrox track (14 parallel days) - ALWAYS GENERATED AS SEPARATE TRACK
+    console.log("🏃 Generating optional Hyrox track (separate from main 14-day programme)...");
+    const { generateHyroxTrack } = await import("./programGeneration/hyroxTrackGenerator");
+    const { dayIds: hyroxDayIds, errors: hyroxErrors } = await generateHyroxTrack(supabase, plan.id);
+    warnings.push(...hyroxErrors);
+    console.log(`✅ Created ${hyroxDayIds.length} optional Hyrox track days (track_name: 'hyrox', is_optional: true)`);
+
     return { planId: plan.id, warnings };
   } catch (error: any) {
     throw new Error(`Failed to create programme in database: ${error.message}`);

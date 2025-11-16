@@ -17,7 +17,6 @@ import { AppHealth } from "@/services/appHealth";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { T1Showcase } from "@/components/T1Showcase";
 import { WelcomeVideoModal } from "@/components/WelcomeVideoModal";
 import { useData } from "@/contexts/DataContext";
 
@@ -1421,10 +1420,6 @@ const Overview = () => {
           />
         </motion.div>
 
-        <T1Showcase
-          className="mb-8"
-          onPlanGenerated={() => setPlanRefreshToken((token) => token + 1)}
-        />
 
         {isFetchingDays && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">

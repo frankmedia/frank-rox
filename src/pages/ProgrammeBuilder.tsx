@@ -397,11 +397,6 @@ async function buildFullProgramme(prefs: UserPreferences): Promise<SessionBlock[
         effort: "hard"
       });
       usedDays.add(upperDay);
-
-      if (!hyroxAccessoryScheduled) {
-        addHyroxAccessorySession(sessions, upperDay, prefs.blockType, getHyroxAccessoryKind(prefs.hyroxProfile));
-        hyroxAccessoryScheduled = true;
-      }
     }
 
     if (strengthDays >= 3) {
