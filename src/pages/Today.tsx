@@ -718,17 +718,24 @@ const Today = () => {
       {/* Today's Workout */}
       <main className="container max-w-2xl mx-auto px-2 sm:px-4 pt-16 pb-6">
         <div className="relative flex items-center mb-3 sm:mb-6">
-          <h2 className="absolute left-1/2 -translate-x-1/2 text-center text-2xl sm:text-3xl md:text-4xl font-extrabold text-foreground" style={{ top: 10 }}>
-            {isHyroxSim ? (
-              <>
-                <span className="text-yellow-500">Hyrox Full Simulation</span> #{simNumber}
-              </>
-            ) : (
-              <>Training <span className="text-yellow-500">Day {currentTrainingDay}</span></>
+          <div className="flex-1 flex flex-col items-center">
+            <h2 className="text-center text-2xl sm:text-3xl md:text-4xl font-extrabold text-foreground" style={{ marginTop: 10 }}>
+              {isHyroxSim ? (
+                <>
+                  <span className="text-yellow-500">Hyrox Full Simulation</span> #{simNumber}
+                </>
+              ) : (
+                <>Training <span className="text-yellow-500">Day {currentTrainingDay}</span></>
+              )}
+            </h2>
+            {isHyroxSim && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
             )}
-          </h2>
+          </div>
           
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
