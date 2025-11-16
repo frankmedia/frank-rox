@@ -105,8 +105,6 @@ const Simulation = () => {
                 sets,
                 reps,
                 duration_sec,
-                distance_m,
-                weight_kg,
                 notes,
                 extra,
                 exercises!inner (
@@ -150,8 +148,9 @@ const Simulation = () => {
             if (block.block_type === 'simulation' || block.block_type === 'circuit') {
               // Process all items as individual exercises
               for (const item of items) {
-                const distance = item.extra?.distance || (item.distance_m ? item.distance_m / 1000 : undefined);
+                const distance = item.extra?.distance || 0;
                 const reps = item.extra?.reps || item.reps || 0;
+                const weight = item.extra?.weight || '';
                 
                 exerciseData.push({
                   id: item.exercise_id || item.id,
@@ -161,8 +160,7 @@ const Simulation = () => {
                   reps: reps,
                   durationMin: item.duration_sec ? item.duration_sec / 60 : undefined,
                   targetDistanceKm: distance,
-                  suggestedKg: item.weight_kg || undefined,
-                  notes: item.notes || (item.extra?.weight ? `Weight: ${item.extra.weight}` : ''),
+                  notes: weight ? `Weight: ${weight}` : (item.notes || ''),
                 });
               }
             }
