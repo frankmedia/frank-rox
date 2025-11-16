@@ -638,7 +638,7 @@ const Overview = () => {
           .order('day_index', { ascending: true });
 
         if (!hyroxError && hyroxDays) {
-          console.log(`🏃 Loaded ${hyroxDays.length} Hyrox simulation days`);
+          console.log(`🏃 Loaded ${hyroxDays.length} Hyrox simulation days:`, hyroxDays);
           setHyroxSimDays(hyroxDays);
           
           // If no Hyrox track exists, generate it automatically
@@ -1522,7 +1522,10 @@ const Overview = () => {
             <div className="overflow-x-auto -mx-2 px-2 pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
               <div className="flex gap-4" style={{ width: 'max-content' }}>
                 {/* Hyrox Full Simulations (from database) */}
-                {hyroxSimDays.filter(d => d.description.includes('Full')).slice(0, 2).map((sim, idx) => (
+                {(() => {
+                  const fullSims = hyroxSimDays.filter(d => d.description.includes('Full'));
+                  console.log('🏃 Rendering Hyrox Full cards:', fullSims);
+                  return fullSims.slice(0, 2).map((sim, idx) => (
                 <Card
                   key={sim.id}
                   className="flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.5)] hover:border-[rgba(255,215,0,0.35)] hover:-translate-y-0.5 active:scale-[0.98] active:shadow-[0_4px_16px_rgba(0,0,0,0.3)] transition-all duration-200 cursor-pointer"
@@ -1550,7 +1553,8 @@ const Overview = () => {
                     8 stations with 1km runs between each
                   </p>
                 </Card>
-              ))}
+              ));
+                })()}
 
               {/* Hyrox Half - Coming Soon */}
               <Card
