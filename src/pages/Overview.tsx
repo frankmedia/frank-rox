@@ -182,6 +182,7 @@ const Overview = () => {
   const [allRaces, setAllRaces] = useState<Array<{ id: number; race_name: string; race_date: string }>>([]);
   const [healthConnected, setHealthConnected] = useState(false);
   const [planRefreshToken, setPlanRefreshToken] = useState(0);
+  const [hyroxSimDays, setHyroxSimDays] = useState<Array<{ id: string; day_index: number; description: string }>>([]);
   const [healthData, setHealthData] = useState<{
     steps: number;
     heartRate: { average: number; max: number; min: number } | null;
@@ -561,11 +562,12 @@ const Overview = () => {
           localStorage.setItem(lastPlanIdKey, currentPlanId);
         }
 
-        // Fetch plan_days to get structure
+        // Fetch plan_days to get structure (main track only)
         const { data: planDays, error: planDaysError } = await supabase
           .from('plan_days')
           .select('day_index, is_rest')
           .eq('plan_id', plan.id)
+          .is('track_name', null) // Only main track
           .order('day_index', { ascending: true });
 
         if (planDaysError || !planDays || planDays.length === 0) {
@@ -576,6 +578,21 @@ const Overview = () => {
         }
 
         console.log(`📋 Loaded ${planDays.length} plan days`);
+
+        // Fetch Hyrox simulation days (optional track)
+        const { data: hyroxDays, error: hyroxError } = await supabase
+          .from('plan_days')
+          .select('id, day_index, description')
+          .eq('plan_id', plan.id)
+          .eq('track_name', 'hyrox')
+          .eq('is_optional', true)
+          .like('description', '%Simulation%')
+          .order('day_index', { ascending: true });
+
+        if (!hyroxError && hyroxDays) {
+          console.log(`🏃 Loaded ${hyroxDays.length} Hyrox simulation days`);
+          setHyroxSimDays(hyroxDays);
+        }
 
         // Calculate max day (day_index is 1-based: 1, 2, 3...)
         const maxDayIndex = Math.max(...planDays.map(pd => pd.day_index));
@@ -1428,64 +1445,82 @@ const Overview = () => {
           </p>
           <div className="overflow-x-auto -mx-2 px-2 pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
             <div className="flex gap-4" style={{ width: 'max-content' }}>
-              {/* Race simulation cards */}
+              {/* Hyrox Full Simulations (from database) */}
+              {hyroxSimDays.filter(d => d.description.includes('Full')).slice(0, 2).map((sim, idx) => (
+                <Card
+                  key={sim.id}
+                  className="flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.5)] hover:border-[rgba(255,215,0,0.35)] hover:-translate-y-0.5 active:scale-[0.98] active:shadow-[0_4px_16px_rgba(0,0,0,0.3)] transition-all duration-200 cursor-pointer"
+                  onClick={() => {
+                    // Navigate to Hyrox simulation workout
+                    const userStr = localStorage.getItem('user');
+                    if (userStr) {
+                      const userData = JSON.parse(userStr);
+                      const userKey = `currentTrainingDay_${userData.username}`;
+                      localStorage.setItem(userKey, sim.day_index.toString());
+                      navigate('/today');
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-500 border-yellow-500/30">
+                      🏃 SIM
+                    </Badge>
+                    {idx === 0 && <Badge variant="secondary" className="text-xs">1</Badge>}
+                    {idx === 1 && <Badge variant="secondary" className="text-xs">2</Badge>}
+                  </div>
+                  <h4 className="font-semibold text-base mb-1">Hyrox Full</h4>
+                  <p className="text-xs text-muted-foreground mb-2">Open Men</p>
+                  <p className="text-xs text-foreground/60">
+                    8 stations with 1km runs between each
+                  </p>
+                </Card>
+              ))}
+
+              {/* Hyrox Half - Coming Soon */}
+              <Card
+                className="flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-200 opacity-40 cursor-not-allowed"
+                onClick={() => toast("Coming soon!")}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-500 border-yellow-500/30">
+                    🏃 SIM
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">Soon</Badge>
+                </div>
+                <h4 className="font-semibold text-base mb-1">Hyrox Half</h4>
+                <p className="text-xs text-muted-foreground mb-2">Open Men</p>
+                <p className="text-xs text-foreground/60">
+                  8 stations with 500m runs between each
+                </p>
+              </Card>
+
+              {/* DEKA & ATHX - Coming Soon */}
               {[
                 { 
-                  id: "hyrox-full", 
-                  title: "Hyrox Full", 
-                  subtitle: "Open Men",
-                  description: "8 stations with 1km runs between each",
-                  enabled: true 
-                },
-                { 
-                  id: "hyrox-half", 
-                  title: "Hyrox Half", 
-                  subtitle: "Open Men",
-                  description: "8 stations with 500m runs between each",
-                  enabled: true 
-                },
-                { 
-                  id: "deka", 
                   title: "DEKA", 
                   subtitle: "Fit / Mile",
                   description: "10 functional fitness zones",
-                  enabled: false 
                 },
                 { 
-                  id: "athx", 
                   title: "ATHX", 
                   subtitle: "Standard",
                   description: "Hybrid athletic competition",
-                  enabled: false 
                 },
               ].map((sim) => (
                 <Card
-                  key={sim.id}
-                  className={`flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-200 ${
-                    sim.enabled 
-                      ? "hover:shadow-[0_12px_32px_rgba(0,0,0,0.5)] hover:border-[rgba(255,215,0,0.35)] hover:-translate-y-0.5 active:scale-[0.98] active:shadow-[0_4px_16px_rgba(0,0,0,0.3)] cursor-pointer" 
-                      : "opacity-40 cursor-not-allowed"
-                  }`}
-                  onClick={() => {
-                    if (!sim.enabled) {
-                      toast("Coming soon!");
-                      return;
-                    }
-                    // TODO: Navigate to simulation
-                    toast(`Opening ${sim.title} (coming soon)`);
-                  }}
+                  key={sim.title}
+                  className="flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-200 opacity-40 cursor-not-allowed"
+                  onClick={() => toast("Coming soon!")}
                 >
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2 mb-3">
                     <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-500 border-yellow-500/30">
-                      🏃 SIMULATION
+                      🏃 SIM
                     </Badge>
-                    {!sim.enabled && (
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Soon</span>
-                    )}
+                    <Badge variant="secondary" className="text-xs">Soon</Badge>
                   </div>
-                  <h4 className="font-bold text-lg mb-1">{sim.title}</h4>
-                  <p className="text-xs text-yellow-500/80 font-medium mb-2">{sim.subtitle}</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  <h4 className="font-semibold text-base mb-1">{sim.title}</h4>
+                  <p className="text-xs text-muted-foreground mb-2">{sim.subtitle}</p>
+                  <p className="text-xs text-foreground/60">
                     {sim.description}
                   </p>
                 </Card>
