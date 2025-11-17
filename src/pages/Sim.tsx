@@ -1221,48 +1221,27 @@ const Sim = () => {
               </Card>
             )}
 
-            {/* Complete/Skip Day Buttons */}
+            {/* Complete Simulation Button */}
             {!loading && exercises.filter(ex => ex.type !== "intro").length > 0 && (
               <div className="container max-w-2xl mx-auto px-4 py-6 space-y-3">
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleSkipDay}
-                    disabled={syncing}
-                    variant="outline"
-                    className="flex-1 h-12 text-base font-semibold"
-                  >
-                    {syncing ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Syncing...
-                      </>
-                    ) : (
-                      <>
-                        <SkipForward className="w-5 h-5 mr-2" />
-                        Skip Day
-                      </>
-                    )}
-                  </Button>
-                  
-                  <Button
-                    onClick={handleCompleteDay}
-                    disabled={syncing}
-                    className="flex-1 h-12 text-base font-semibold"
-                    style={{ backgroundColor: '#FFCC00', color: '#000' }}
-                  >
-                    {syncing ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Syncing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-5 h-5 mr-2" />
-                        Complete Day
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleCompleteDay}
+                  disabled={syncing}
+                  className="w-full h-12 text-base font-semibold"
+                  style={{ backgroundColor: '#FFCC00', color: '#000' }}
+                >
+                  {syncing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5 mr-2" />
+                      Complete Simulation
+                    </>
+                  )}
+                </Button>
 
                 {/* Share Workout Button - Native Apps Only */}
                 {isNativeApp && (
