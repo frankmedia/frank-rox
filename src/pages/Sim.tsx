@@ -1185,10 +1185,16 @@ const Sim = () => {
                 const loggedData = exerciseLogs[exercise.name];
                 console.log(`📋 Exercise "${exercise.name}" logged data:`, loggedData);
                 
+                // Modify exercise name for Hyrox Half runs
+                const displayExercise = { ...exercise };
+                if (simNumber === 2 && exercise.name.includes("1km Run")) {
+                  displayExercise.name = exercise.name.replace("1km", "500m");
+                }
+                
                 return (
                   <ExerciseCard
                     key={exercise.id}
-                    exercise={exercise}
+                    exercise={displayExercise}
                     onClick={() => navigate(`/exercise/${exercise.id}`)}
                     isCompleted={completedExercises.has(exercise.id)}
                     loggedDuration={loggedData?.duration}
