@@ -1533,7 +1533,7 @@ const Overview = () => {
                   onClick={() => {
                     // Navigate to Hyrox simulation workout
                     setTrainingDay('101');
-                    navigate('/today');
+                    navigate('/sim');
                   }}
                 >
                   <div className="flex items-center gap-2 mb-3">
@@ -1561,7 +1561,7 @@ const Overview = () => {
                   className="flex-shrink-0 w-64 p-5 bg-[#111111] rounded-[18px] border border-[rgba(255,215,0,0.2)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.5)] hover:border-[rgba(255,215,0,0.35)] hover:-translate-y-0.5 active:scale-[0.98] active:shadow-[0_4px_16px_rgba(0,0,0,0.3)] transition-all duration-200 cursor-pointer"
                   onClick={() => {
                     setTrainingDay('102');
-                    navigate('/today');
+                    navigate('/sim');
                   }}
                 >
                   <div className="flex items-center gap-2 mb-3">
