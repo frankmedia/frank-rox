@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { Calendar, Trophy, TrendingUp, Trash2, Edit2, Camera, Info, Shield, HelpCircle, Bug, Lightbulb, MessageCircle, Heart, MoreHorizontal, Upload, Bell } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar, Trophy, TrendingUp, Trash2, Edit2, Camera, Info, Shield, HelpCircle, Bug, Lightbulb, MessageCircle, Heart, MoreHorizontal, Upload, Bell, Target, Clock } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { formatTime, formatDate } from '@/lib/utils';
 import { hapticImpact, HapticsImpactStyle } from '@/utils/hapticsBridge';
 import { restorePurchases } from '@/lib/iap';
 import { supabase } from '@/lib/supabaseClient';
 import { getUserId } from '@/lib/userSync';
+import { getMyCompetitions, daysUntil, formatCompetitionDate } from '@/lib/competitions';
+import type { CompetitionEntry, Competition } from '@/types';
 
 const APP_VERSION = '1.0.0';
 
@@ -26,6 +28,7 @@ export function Profile() {
   );
   const [cameraPermission, setCameraPermission] = useState<string>('unknown');
   const [notificationPermission, setNotificationPermission] = useState<string>('unknown');
+  const [myCompetitions, setMyCompetitions] = useState<(CompetitionEntry & { competition: Competition })[]>([]);
   const [feedbackCategory, setFeedbackCategory] = useState<'bug' | 'feature' | 'question' | 'praise' | 'other'>('bug');
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackContact, setFeedbackContact] = useState('');
@@ -33,6 +36,18 @@ export function Profile() {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+
+  // Fetch user's competitions
+  useEffect(() => {
+    const fetchCompetitions = async () => {
+      const userId = await getUserId();
+      if (userId) {
+        const competitions = await getMyCompetitions(userId);
+        setMyCompetitions(competitions);
+      }
+    };
+    fetchCompetitions();
+  }, []);
 
   const handleSaveDate = async () => {
     await hapticImpact(HapticsImpactStyle.Light);
@@ -246,10 +261,10 @@ export function Profile() {
           <div className="flex-1 space-y-1">
             <input
               type="text"
-              value={profile.name}
-              onChange={(e) => updateProfile({ name: e.target.value })}
+              value={profile.name === 'Athlete' ? '' : profile.name}
+              onChange={(e) => updateProfile({ name: e.target.value || 'Athlete' })}
               className="w-full bg-transparent border-b border-white/20 text-2xl font-bold focus:outline-none focus:border-yellow-500"
-              placeholder="First name"
+              placeholder="Athlete Name"
             />
             <input
               type="text"
@@ -260,27 +275,62 @@ export function Profile() {
             />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <label className="block text-white/50 mb-1">Email</label>
-            <input
-              type="email"
-              value={profile.email || ''}
-              onChange={(e) => updateProfile({ email: e.target.value })}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-500"
-              placeholder="you@example.com"
-            />
+        <div>
+          <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+            <div>
+              <label className="block text-white/50 mb-1">Email</label>
+              <input
+                type="email"
+                value={profile.email || ''}
+                onChange={(e) => updateProfile({ email: e.target.value })}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-500"
+                placeholder="you@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-white/50 mb-1">Date of Birth</label>
+              <input
+                type="text"
+                value={profile.dateOfBirth || ''}
+                onChange={(e) => updateProfile({ dateOfBirth: e.target.value })}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-500"
+                placeholder="DD/MM/YYYY"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-white/50 mb-1">Date of Birth</label>
-            <input
-              type="text"
-              value={profile.dateOfBirth || ''}
-              onChange={(e) => updateProfile({ dateOfBirth: e.target.value })}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-500"
-              placeholder="DD/MM/YYYY"
-            />
+
+          <div className="text-sm">
+            <label className="block text-white/50 mb-2">Category (for competitions)</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => updateProfile({ sex: 'male' })}
+                className={`py-3 rounded-lg font-semibold transition-all ${
+                  profile.sex === 'male'
+                    ? 'bg-yellow-500 text-black'
+                    : 'bg-white/5 text-white border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                Male
+              </button>
+              <button
+                type="button"
+                onClick={() => updateProfile({ sex: 'female' })}
+                className={`py-3 rounded-lg font-semibold transition-all ${
+                  profile.sex === 'female'
+                    ? 'bg-yellow-500 text-black'
+                    : 'bg-white/5 text-white border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                Female
+              </button>
+            </div>
           </div>
+          
+          {/* Discreet info message */}
+          <p className="text-[10px] text-white/30 text-center mt-2">
+            These details will be shown on your results page when competing
+          </p>
         </div>
       </div>
 
@@ -425,6 +475,71 @@ export function Profile() {
           </button>
         )}
       </div>
+
+      {/* Your Competitions */}
+      {myCompetitions.length > 0 && (
+        <div className="px-6 py-6 border-b border-white/10">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-yellow-500" />
+            Your Competitions
+          </h2>
+          <div className="space-y-3">
+            {myCompetitions.map((entry) => {
+              const comp = entry.competition;
+              const simDays = daysUntil(comp.simulation_date);
+              const isUpcoming = simDays >= 0;
+              
+              return (
+                <div
+                  key={entry.id}
+                  className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-xl p-4 border border-yellow-500/20"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-white">{comp.title}</h3>
+                      <p className="text-xs text-white/60 capitalize">{comp.workout_type.replace('_', ' ')}</p>
+                    </div>
+                    {entry.has_completed ? (
+                      <div className="flex items-center gap-1 bg-green-500/20 text-green-400 px-2 py-1 rounded-full text-xs font-semibold">
+                        <Trophy className="w-3 h-3" />
+                        Completed
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 bg-white/10 text-white/60 px-2 py-1 rounded-full text-xs font-semibold">
+                        <Clock className="w-3 h-3" />
+                        Pending
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex items-center gap-2 text-white/80">
+                      <Target className="w-4 h-4 text-yellow-500" />
+                      <span className="text-white/50">Simulation:</span>
+                      <span className="font-semibold">{formatCompetitionDate(comp.simulation_date)}</span>
+                    </div>
+
+                    {comp.competition_date && (
+                      <div className="flex items-center gap-2 text-white/80">
+                        <Calendar className="w-4 h-4 text-yellow-500" />
+                        <span className="text-white/50">Race Day:</span>
+                        <span className="font-semibold">{formatCompetitionDate(comp.competition_date)}</span>
+                      </div>
+                    )}
+
+                    {isUpcoming && !entry.has_completed && (
+                      <div className="flex items-center gap-2 text-yellow-500 font-semibold mt-2">
+                        <Clock className="w-4 h-4" />
+                        {simDays === 0 ? 'Today!' : `${simDays} day${simDays === 1 ? '' : 's'} until simulation`}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* History */}
       <div className="px-6 py-6">

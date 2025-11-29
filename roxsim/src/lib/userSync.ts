@@ -49,8 +49,10 @@ export async function syncUserProfile(
   const userData = {
     device_id: deviceId,
     name: profile.name || null,
+    surname: profile.surname || null,
     email: profile.email || null,
     date_of_birth: formattedDob,
+    sex: profile.sex || null,
     athlete_photo: profile.athletePhoto || null,
     total_sims: profile.stats.totalSims,
     best_full_time: profile.stats.bestFullTime,
